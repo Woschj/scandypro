@@ -31,6 +31,24 @@ def _mittelwert(eintraege: list[WohlbefindenEintrag], feld: str) -> float | None
     return round(sum(werte) / len(werte), 1) if werte else None
 
 
+def _trend(aktuell: float | None, vorwoche: float | None) -> dict | None:
+    """Trend als eingefärbter Pfeil statt Zahlenvergleich - mit
+    Zwischenschritten je nach Stärke der Veränderung (siehe
+    app/templates/wohlbefinden/uebersicht.html)."""
+    if aktuell is None or vorwoche is None:
+        return None
+    delta = aktuell - vorwoche
+    if delta > 1.5:
+        return {"symbol": "↑↑", "css": "trend-auf", "text": "deutlich im Aufwind"}
+    if delta > 0.3:
+        return {"symbol": "↑", "css": "trend-auf", "text": "etwas im Aufwind"}
+    if delta < -1.5:
+        return {"symbol": "↓↓", "css": "trend-ab", "text": "deutlich schwerer als zuletzt"}
+    if delta < -0.3:
+        return {"symbol": "↓", "css": "trend-ab", "text": "etwas schwerer als zuletzt"}
+    return {"symbol": "→", "css": "trend-gleich", "text": "ähnlich wie zuletzt"}
+
+
 def _heatmap_wochen(eintraege: list[WohlbefindenEintrag], erster_montag: date, heute: date) -> list[list[dict]]:
     """Baut das Wochen-Raster für die Verlaufs-Heatmap ("Mood-Heatmap"):
     eine Zeile pro Woche, sieben Tageskacheln je Zeile, eingefärbt nach
@@ -105,11 +123,18 @@ async def _wochenansicht_kontext(session: SessionDep, teilnehmer_id: int, woche_
     diese_woche_eintraege = list(eintraege_by_datum.values())
     vorwoche_eintraege = list(vorwoche_result.scalars().all())
 
+    stimmung_avg = _mittelwert(diese_woche_eintraege, "stimmung")
+    belastbarkeit_avg = _mittelwert(diese_woche_eintraege, "belastbarkeit")
+    stimmung_avg_vorwoche = _mittelwert(vorwoche_eintraege, "stimmung")
+    belastbarkeit_avg_vorwoche = _mittelwert(vorwoche_eintraege, "belastbarkeit")
+
     auswertung = {
-        "stimmung_avg": _mittelwert(diese_woche_eintraege, "stimmung"),
-        "belastbarkeit_avg": _mittelwert(diese_woche_eintraege, "belastbarkeit"),
-        "stimmung_avg_vorwoche": _mittelwert(vorwoche_eintraege, "stimmung"),
-        "belastbarkeit_avg_vorwoche": _mittelwert(vorwoche_eintraege, "belastbarkeit"),
+        "stimmung_avg": stimmung_avg,
+        "belastbarkeit_avg": belastbarkeit_avg,
+        "stimmung_avg_vorwoche": stimmung_avg_vorwoche,
+        "belastbarkeit_avg_vorwoche": belastbarkeit_avg_vorwoche,
+        "stimmung_trend": _trend(stimmung_avg, stimmung_avg_vorwoche),
+        "belastbarkeit_trend": _trend(belastbarkeit_avg, belastbarkeit_avg_vorwoche),
     }
 
     heute = date.today()
@@ -139,16 +164,54 @@ async def _wochenansicht_kontext(session: SessionDep, teilnehmer_id: int, woche_
     }
 
 
+async def _tag_kontext(session: SessionDep, teilnehmer_id: int, tag_param: str | None) -> dict:
+    """Baut den Render-Kontext für die kompakte Einzeltag-Ansicht (eigene
+    Ansicht der/des Teilnehmer:in): ein Regler-Paar für genau einen Tag,
+    mit Vor-/Zurück-Navigation - nie in die Zukunft."""
+    heute = date.today()
+    if tag_param:
+        try:
+            ausgewaehlter_tag = date.fromisoformat(tag_param)
+        except ValueError:
+            ausgewaehlter_tag = heute
+    else:
+        ausgewaehlter_tag = heute
+    ausgewaehlter_tag = min(ausgewaehlter_tag, heute)
+
+    result = await session.execute(
+        select(WohlbefindenEintrag).where(
+            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id, WohlbefindenEintrag.datum == ausgewaehlter_tag
+        )
+    )
+    eintrag = result.scalar_one_or_none()
+
+    tag = {
+        "datum": ausgewaehlter_tag.isoformat(),
+        "label": f"{WOCHENTAG_NAMEN[ausgewaehlter_tag.weekday()]}, {ausgewaehlter_tag.strftime('%d.%m.%Y')}",
+        "stimmung": eintrag.stimmung if eintrag else 5,
+        "belastbarkeit": eintrag.belastbarkeit if eintrag else 5,
+        "kommentar": eintrag.kommentar if eintrag else None,
+        "gesetzt": eintrag is not None,
+    }
+
+    return {
+        "tag": tag,
+        "tag_json": json.dumps(tag).replace("</", "<\\/"),
+        "ist_heute": ausgewaehlter_tag == heute,
+        "vorheriger_tag": (ausgewaehlter_tag - timedelta(days=1)).isoformat(),
+        "naechster_tag": (ausgewaehlter_tag + timedelta(days=1)).isoformat() if ausgewaehlter_tag < heute else None,
+    }
+
+
 @router.get("", response_class=HTMLResponse)
-async def uebersicht(
-    request: Request, current_user: CurrentUser, session: SessionDep, woche_start: str | None = None
-):
+async def uebersicht(request: Request, current_user: CurrentUser, session: SessionDep, tag: str | None = None):
     if current_user.role != RoleEnum.teilnehmer:
         return templates.TemplateResponse(
             request, "wohlbefinden/kein_zugriff.html", {"current_user": current_user}, status_code=403
         )
 
-    kontext = await _wochenansicht_kontext(session, current_user.id, woche_start)
+    kontext = await _wochenansicht_kontext(session, current_user.id, None)
+    kontext.update(await _tag_kontext(session, current_user.id, tag))
 
     freigaben_result = await session.execute(
         select(WohlbefindenFreigabe)

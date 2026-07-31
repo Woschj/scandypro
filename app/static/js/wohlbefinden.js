@@ -1,14 +1,11 @@
 /*
- * "Mein Tag": ein Regler pro Feld (Stimmung/Energie) mit genau einer
- * großen Emoji-Vorschau statt einer Reihe aus 10 Buttons - bewusst
- * reduziert, damit die Seite auch mit zwei Reglern pro Tag nicht
- * überladen wirkt (Zielgruppe: möglichst wenig kognitive Last).
+ * "Mein Tag": kompakte Einzeltag-Ansicht - ein Regler-Paar für genau
+ * einen Tag (Stimmung/Energie), Navigation wechselt per Seitenaufruf
+ * zwischen Tagen (siehe app/routers/wohlbefinden.py:_tag_kontext).
  */
 (function () {
   function init(root) {
-    const dataScript = root.querySelector("#wochendaten-data");
-    const daten = JSON.parse(dataScript.textContent);
-    const datenByDatum = Object.fromEntries(daten.map((tag) => [tag.datum, tag]));
+    const tagDaten = JSON.parse(root.querySelector("#tag-data").textContent);
     const emojiListen = JSON.parse(root.querySelector("#emoji-daten").textContent);
     const toast = root.querySelector("#zeitlinie-toast");
     const kommentarPanel = root.querySelector("#kommentar-panel");
@@ -17,7 +14,6 @@
     const kommentarSpeichern = root.querySelector("#kommentar-speichern");
     const kommentarSchliessen = root.querySelector("#kommentar-schliessen");
 
-    let aktivesDatum = null;
     let zeigeToastTimeout = null;
 
     function zeigeToast(text) {
@@ -27,14 +23,17 @@
       zeigeToastTimeout = setTimeout(() => toast.classList.remove("sichtbar"), 1400);
     }
 
-    async function speichereTag(datum) {
-      const tag = datenByDatum[datum];
+    async function speichereTag() {
       try {
         await fetch("/wohlbefinden/tag", {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ datum: tag.datum, stimmung: tag.stimmung, belastbarkeit: tag.belastbarkeit }),
+          body: JSON.stringify({
+            datum: tagDaten.datum,
+            stimmung: tagDaten.stimmung,
+            belastbarkeit: tagDaten.belastbarkeit,
+          }),
         });
         zeigeToast("Gespeichert ✓");
       } catch (err) {
@@ -43,10 +42,8 @@
     }
 
     root.querySelectorAll(".emoji-slider").forEach((slider) => {
-      const tagEintrag = slider.closest("[data-datum]");
-      const datum = tagEintrag.dataset.datum;
       const feld = slider.dataset.feld;
-      const preview = tagEintrag.querySelector(`[data-preview="${feld}"]`);
+      const preview = root.querySelector(`[data-preview="${feld}"]`);
       const emojis = emojiListen[feld];
 
       slider.addEventListener("input", () => {
@@ -54,47 +51,38 @@
         preview.textContent = emojis[wert - 1];
       });
       slider.addEventListener("change", () => {
-        const wert = parseInt(slider.value, 10);
-        datenByDatum[datum][feld] = wert;
-        datenByDatum[datum].gesetzt = true;
-        speichereTag(datum);
+        tagDaten[feld] = parseInt(slider.value, 10);
+        tagDaten.gesetzt = true;
+        speichereTag();
       });
     });
 
-    function aktualisierePin(datum) {
-      const btn = root.querySelector(`[data-kommentar-btn="${datum}"]`);
-      const hatKommentar = !!(datenByDatum[datum].kommentar && datenByDatum[datum].kommentar.trim());
+    function aktualisierePin() {
+      const btn = root.querySelector("[data-kommentar-btn]");
+      const hatKommentar = !!(tagDaten.kommentar && tagDaten.kommentar.trim());
       btn.classList.toggle("tag-kommentar-btn--gesetzt", hatKommentar);
-      btn.title = hatKommentar
-        ? `Kommentar: ${datenByDatum[datum].kommentar}`
-        : "Kommentar hinzufügen";
+      btn.title = hatKommentar ? `Kommentar: ${tagDaten.kommentar}` : "Kommentar hinzufügen";
     }
 
-    function oeffneKommentar(datum) {
-      aktivesDatum = datum;
-      const tag = datenByDatum[datum];
-      kommentarTitel.textContent = "Kommentar – " + tag.label;
-      kommentarText.value = tag.kommentar || "";
+    function oeffneKommentar() {
+      kommentarTitel.textContent = "Kommentar – " + tagDaten.label;
+      kommentarText.value = tagDaten.kommentar || "";
       kommentarPanel.classList.add("sichtbar");
       kommentarText.focus();
     }
 
-    root.querySelectorAll("[data-kommentar-btn]").forEach((btn) => {
-      btn.addEventListener("click", () => oeffneKommentar(btn.dataset.kommentarBtn));
-    });
+    root.querySelector("[data-kommentar-btn]").addEventListener("click", oeffneKommentar);
 
     kommentarSchliessen.addEventListener("click", () => kommentarPanel.classList.remove("sichtbar"));
     kommentarSpeichern.addEventListener("click", async () => {
-      if (aktivesDatum === null) return;
-      const tag = datenByDatum[aktivesDatum];
-      tag.kommentar = kommentarText.value;
+      tagDaten.kommentar = kommentarText.value;
       await fetch("/wohlbefinden/tag/kommentar", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ datum: tag.datum, kommentar: tag.kommentar }),
+        body: JSON.stringify({ datum: tagDaten.datum, kommentar: tagDaten.kommentar }),
       });
-      aktualisierePin(aktivesDatum);
+      aktualisierePin();
       kommentarPanel.classList.remove("sichtbar");
       zeigeToast("Kommentar gespeichert ✓");
     });

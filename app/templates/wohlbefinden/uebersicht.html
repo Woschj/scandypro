@@ -5,10 +5,14 @@
 <p class="visibility-hint">Nur für dich sichtbar, außer du gibst gezielt frei.</p>
 
 <div class="card">
-  <div class="wochen-nav">
-    <a class="btn btn-ghost btn-sm" href="/wohlbefinden?woche_start={{ vorherige_woche }}">&larr; Vorherige Woche</a>
-    <span class="wochen-label">{{ wochenbereich }}{% if ist_aktuelle_woche %} <span class="chip chip-brand">diese Woche</span>{% endif %}</span>
-    <a class="btn btn-ghost btn-sm" href="/wohlbefinden?woche_start={{ naechste_woche }}">Nächste Woche &rarr;</a>
+  <div class="tage-nav">
+    <a class="btn btn-ghost btn-sm" href="/wohlbefinden?tag={{ vorheriger_tag }}">&larr; Tag zurück</a>
+    <span class="tage-nav-label">{{ tag.label }}{% if ist_heute %} <span class="chip chip-brand">heute</span>{% endif %}</span>
+    {% if naechster_tag %}
+    <a class="btn btn-ghost btn-sm" href="/wohlbefinden?tag={{ naechster_tag }}">Tag vor &rarr;</a>
+    {% else %}
+    <span class="btn btn-ghost btn-sm" style="visibility:hidden;">Tag vor &rarr;</span>
+    {% endif %}
   </div>
 
   <p class="karte-meta" style="margin-bottom: var(--space-4);">Zieh den Regler dahin, wo dein Tag gerade steht. Tipp auf 💬 für eine kurze Notiz.</p>
@@ -16,33 +20,28 @@
   <div class="tage-widget">
     <script id="emoji-daten" type="application/json">{{ {"stimmung": STIMMUNG_EMOJI, "belastbarkeit": ENERGIE_EMOJI} | tojson | safe }}</script>
 
-    <div class="tage-liste">
-      {% for tag in wochendaten %}
-      <div class="tag-eintrag" data-datum="{{ tag.datum }}">
-        <div class="tag-eintrag-kopf">
-          <span class="tag-eintrag-label">{{ tag.label }}</span>
-          <button type="button" class="tag-kommentar-btn {% if tag.kommentar %}tag-kommentar-btn--gesetzt{% endif %}"
-            data-kommentar-btn="{{ tag.datum }}"
-            title="{{ 'Kommentar: ' ~ tag.kommentar if tag.kommentar else 'Kommentar hinzufügen' }}">💬</button>
-        </div>
-        <div class="emoji-picker" data-feld="stimmung">
-          <div class="emoji-picker-kopf">
-            <span class="emoji-picker-label">Stimmung</span>
-            <span class="emoji-picker-preview" data-preview="stimmung">{{ tag.stimmung | stimmung_emoji }}</span>
-          </div>
-          <input type="range" class="emoji-slider emoji-slider--stimmung" data-feld="stimmung"
-            min="1" max="10" step="1" value="{{ tag.stimmung }}" aria-label="Stimmung">
-        </div>
-        <div class="emoji-picker" data-feld="belastbarkeit">
-          <div class="emoji-picker-kopf">
-            <span class="emoji-picker-label">Energie</span>
-            <span class="emoji-picker-preview" data-preview="belastbarkeit">{{ tag.belastbarkeit | energie_emoji }}</span>
-          </div>
-          <input type="range" class="emoji-slider emoji-slider--energie" data-feld="belastbarkeit"
-            min="1" max="10" step="1" value="{{ tag.belastbarkeit }}" aria-label="Energie">
-        </div>
+    <div class="tag-eintrag" data-datum="{{ tag.datum }}">
+      <div class="tag-eintrag-kopf">
+        <button type="button" class="tag-kommentar-btn {% if tag.kommentar %}tag-kommentar-btn--gesetzt{% endif %}"
+          data-kommentar-btn="{{ tag.datum }}"
+          title="{{ 'Kommentar: ' ~ tag.kommentar if tag.kommentar else 'Kommentar hinzufügen' }}">💬 Kommentar</button>
       </div>
-      {% endfor %}
+      <div class="emoji-picker" data-feld="stimmung">
+        <div class="emoji-picker-kopf">
+          <span class="emoji-picker-label">Stimmung</span>
+          <span class="emoji-picker-preview" data-preview="stimmung">{{ tag.stimmung | stimmung_emoji }}</span>
+        </div>
+        <input type="range" class="emoji-slider emoji-slider--stimmung" data-feld="stimmung"
+          min="1" max="10" step="1" value="{{ tag.stimmung }}" aria-label="Stimmung">
+      </div>
+      <div class="emoji-picker" data-feld="belastbarkeit">
+        <div class="emoji-picker-kopf">
+          <span class="emoji-picker-label">Energie</span>
+          <span class="emoji-picker-preview" data-preview="belastbarkeit">{{ tag.belastbarkeit | energie_emoji }}</span>
+        </div>
+        <input type="range" class="emoji-slider emoji-slider--energie" data-feld="belastbarkeit"
+          min="1" max="10" step="1" value="{{ tag.belastbarkeit }}" aria-label="Energie">
+      </div>
     </div>
 
     <div id="zeitlinie-toast" class="zeitlinie-toast"></div>
@@ -60,7 +59,7 @@
       </div>
     </div>
 
-    <script id="wochendaten-data" type="application/json">{{ wochendaten_json | safe }}</script>
+    <script id="tag-data" type="application/json">{{ tag_json | safe }}</script>
   </div>
 </div>
 
@@ -70,21 +69,15 @@
     <div class="auswertung-stat">
       <div class="eyebrow">Stimmung</div>
       <div class="auswertung-emoji">{{ auswertung.stimmung_avg | stimmung_emoji if auswertung.stimmung_avg is not none else "–" }}</div>
-      {% if auswertung.stimmung_avg is not none and auswertung.stimmung_avg_vorwoche is not none %}
-      {% set delta = auswertung.stimmung_avg - auswertung.stimmung_avg_vorwoche %}
-      <div class="auswertung-trend">
-        {% if delta > 0.3 %}📈 im Aufwind{% elif delta < -0.3 %}📉 etwas schwerer als zuletzt{% else %}➡️ ähnlich wie zuletzt{% endif %}
-      </div>
+      {% if auswertung.stimmung_trend %}
+      <div class="auswertung-trend {{ auswertung.stimmung_trend.css }}" title="{{ auswertung.stimmung_trend.text }}">{{ auswertung.stimmung_trend.symbol }}</div>
       {% endif %}
     </div>
     <div class="auswertung-stat">
       <div class="eyebrow">Energie</div>
       <div class="auswertung-emoji">{{ auswertung.belastbarkeit_avg | energie_emoji if auswertung.belastbarkeit_avg is not none else "–" }}</div>
-      {% if auswertung.belastbarkeit_avg is not none and auswertung.belastbarkeit_avg_vorwoche is not none %}
-      {% set delta = auswertung.belastbarkeit_avg - auswertung.belastbarkeit_avg_vorwoche %}
-      <div class="auswertung-trend">
-        {% if delta > 0.3 %}📈 im Aufwind{% elif delta < -0.3 %}📉 etwas schwerer als zuletzt{% else %}➡️ ähnlich wie zuletzt{% endif %}
-      </div>
+      {% if auswertung.belastbarkeit_trend %}
+      <div class="auswertung-trend {{ auswertung.belastbarkeit_trend.css }}" title="{{ auswertung.belastbarkeit_trend.text }}">{{ auswertung.belastbarkeit_trend.symbol }}</div>
       {% endif %}
     </div>
   </div>

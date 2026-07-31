@@ -564,29 +564,23 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 .section-divider { border: none; border-top: 1px solid var(--line); margin: var(--space-6) 0; }
 
 /* Mein Tag - Emoji-Skala */
-.wochen-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
-.wochen-nav .wochen-label { font-family: var(--font-display); font-weight: 600; }
+.wochen-nav, .tage-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+.wochen-nav .wochen-label, .tage-nav .tage-nav-label { font-family: var(--font-display); font-weight: 600; }
 
 .tage-widget { position: relative; }
 
-.tage-liste { display: flex; flex-direction: column; gap: var(--space-4); }
-.tag-eintrag { padding-bottom: var(--space-4); border-bottom: 1px solid var(--line); }
-.tag-eintrag:last-child { border-bottom: none; padding-bottom: 0; }
-.tag-eintrag-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
-.tag-eintrag-label { font-family: var(--font-display); font-weight: 600; font-size: 0.875rem; }
+.tag-eintrag-kopf { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
 
 .tag-kommentar-btn {
   border: 1px solid var(--line);
   background: var(--bg);
   border-radius: 999px;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  font-size: 1rem;
+  padding: 0.4rem 0.875rem;
+  font-size: 0.875rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.3rem;
 }
 .tag-kommentar-btn:hover { background: var(--bg-raised); border-color: var(--brand); }
 .tag-kommentar-btn--gesetzt { border-color: var(--accent); background: #fbf0dd; }
@@ -690,4 +684,7 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 .auswertung-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); }
 .auswertung-stat { text-align: center; }
 .auswertung-stat .auswertung-emoji { font-size: 2.5rem; line-height: 1; }
-.auswertung-stat .auswertung-trend { font-size: 0.8125rem; color: var(--ink-soft); margin-top: 0.25rem; }
+.auswertung-stat .auswertung-trend { font-size: 1.25rem; font-weight: 700; margin-top: 0.25rem; cursor: default; }
+.auswertung-trend.trend-auf { color: var(--success); }
+.auswertung-trend.trend-ab { color: var(--danger); }
+.auswertung-trend.trend-gleich { color: var(--ink-soft); }
