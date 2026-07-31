@@ -2,11 +2,11 @@
 {% block title %}Meine Freigaben – ScandyPro{% endblock %}
 {% block content %}
 <h1>Meine Freigaben</h1>
-<p class="visibility-hint">Alles an einem Ort: wer gerade auf deine Wohlbefinden-/Bewerbungsdaten zugreifen darf,
-  und wer wann tatsächlich reingeschaut hat.</p>
+<p class="visibility-hint">Alles an einem Ort: wer gerade auf deine Einträge zu "Mein Tag" bzw. deine Bewerbungsdaten
+  zugreifen darf, und wer wann tatsächlich reingeschaut hat.</p>
 
 <div class="card">
-  <h3>Wohlbefinden</h3>
+  <h3>Mein Tag</h3>
   {% if wohlbefinden_freigaben %}
   <table>
     <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
@@ -69,7 +69,7 @@
     <tr>
       <td>{{ e.zeitpunkt.strftime("%d.%m.%Y %H:%M") }}</td>
       <td>{{ akteur_by_id[e.akteur_id].name if e.akteur_id in akteur_by_id else "?" }}</td>
-      <td>{{ "Wohlbefinden gelesen" if e.zieltyp.value == "wohlbefinden" else "Bewerbung gelesen" }}</td>
+      <td>{{ '"Mein Tag" gelesen' if e.zieltyp.value == "wohlbefinden" else "Bewerbung gelesen" }}</td>
     </tr>
     {% endfor %}
     </tbody>
@@ -85,9 +85,9 @@
     <p class="karte-meta">Das entfernt deine Einträge unwiderruflich (inkl. Dateien und Freigaben) - dein
       Zugang zu ScandyPro bleibt bestehen. Zur Bestätigung bitte "LÖSCHEN" eintippen.</p>
 
-    <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" onsubmit="return confirm('Wirklich alle Wohlbefinden-Einträge unwiderruflich löschen?');" class="form-row" style="margin-bottom: var(--space-4);">
+    <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" onsubmit="return confirm('Wirklich alle Einträge zu &quot;Mein Tag&quot; unwiderruflich löschen?');" class="form-row" style="margin-bottom: var(--space-4);">
       <div class="field">
-        <label for="bestaetigung-wb">Alle Wohlbefinden-Daten löschen</label>
+        <label for="bestaetigung-wb">Alle Einträge zu "Mein Tag" löschen</label>
         <input type="text" id="bestaetigung-wb" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
       </div>
       <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>

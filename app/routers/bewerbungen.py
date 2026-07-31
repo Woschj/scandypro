@@ -230,7 +230,7 @@ async def freigabe_erstellen(
 
     empfaenger = await session.get(User, empfaenger_id)
     if empfaenger is None or empfaenger.role != RoleEnum.berufstrainer:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültiger Empfänger.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Empfänger:in.")
 
     ziel_bewerbung_id = None
     if umfang == BewerbungsFreigabeUmfang.einzeln:
@@ -274,7 +274,7 @@ async def teilnehmer_ansicht(request: Request, teilnehmer_id: int, current_user:
     Zeigt bei Umfang 'einzeln' nur die freigegebenen Bewerbungen, keine
     Dateien (Dokument-Zugriff bleibt in dieser Version beim Owner)."""
     if current_user.role != RoleEnum.berufstrainer:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur Berufstrainer nutzen diese Ansicht.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur Berufstrainer:innen nutzen diese Ansicht.")
 
     zuordnung_result = await session.execute(
         select(BerufstrainerZuordnung).where(

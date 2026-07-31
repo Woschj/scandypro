@@ -229,7 +229,7 @@ async def freigabe_erstellen(
 
     empfaenger = await session.get(User, empfaenger_id)
     if empfaenger is None or empfaenger.role != RoleEnum.psychosoziale_mitarbeit:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültiger Empfänger.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Empfänger:in.")
 
     session.add(
         WohlbefindenFreigabe(

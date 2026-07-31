@@ -20,18 +20,18 @@
         <a href="/wochenberichte" class="{% if request.url.path.startswith('/wochenberichte') %}active{% endif %}">Wochenberichte</a>
         {% endif %}
         {% if current_user.role.value == "teilnehmer" %}
-        <a href="/wohlbefinden" class="{% if request.url.path.startswith('/wohlbefinden') %}active{% endif %}">Wohlbefinden</a>
+        <a href="/wohlbefinden" class="{% if request.url.path.startswith('/wohlbefinden') %}active{% endif %}">Mein Tag</a>
         <a href="/bewerbungen" class="{% if request.url.path.startswith('/bewerbungen') %}active{% endif %}">Bewerbungen</a>
         <a href="/freigaben" class="{% if request.url.path.startswith('/freigaben') %}active{% endif %}">Meine Freigaben</a>
         {% endif %}
         {% if current_user.role.value == "einrichtungs_admin" %}
         <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Abteilungen</a>
-        <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">PSM-Zuordnungen</a>
-        <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Trainer-Zuordnungen</a>
+        <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeit</a>
+        <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
         {% endif %}
       </nav>
       <div class="user-chip">
-        <span>{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value }})</span></span>
+        <span>{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></span>
         <form method="post" action="/logout" style="margin:0;">
           <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
         </form>

@@ -102,7 +102,7 @@
       <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
       {% if b.status.value == "entwurf" %}
       <form method="post" action="/wochenberichte/{{ b.id }}/abgeben">
-        <button type="submit" class="btn btn-primary btn-sm">Bei Berufstrainer abgeben</button>
+        <button type="submit" class="btn btn-primary btn-sm">Bei Berufstrainer:in abgeben</button>
       </form>
       <form method="post" action="/wochenberichte/{{ b.id }}/loeschen" onsubmit="return confirm('Entwurf löschen?');">
         <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>

@@ -59,7 +59,7 @@
   {% if current_user.role.value in ["psychosoziale_mitarbeit", "einrichtungs_admin"] %}
   Für deine Rolle sind hier standardmäßig keine Boards sichtbar (siehe Berechtigungskonzept).
   {% elif current_user.role.value == "teilnehmer" %}
-  Für dich ist noch kein Board freigegeben. Sprich deinen Berufstrainer an.
+  Für dich ist noch kein Board freigegeben. Sprich deine Berufstrainer:in an.
   {% else %}
   Noch keine Boards vorhanden.
   {% endif %}

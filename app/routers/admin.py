@@ -114,7 +114,7 @@ async def leitung_hinzufuegen(
     handlungsfeld = await session.get(Handlungsfeld, handlungsfeld_id)
     trainer = await session.get(User, berufstrainer_id)
     if handlungsfeld is None or trainer is None or trainer.role != RoleEnum.berufstrainer:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültiges Handlungsfeld oder ungültiger Trainer.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültiges Handlungsfeld oder ungültige Berufstrainer:in.")
 
     session.add(HandlungsfeldLeitung(handlungsfeld_id=handlungsfeld_id, berufstrainer_id=berufstrainer_id))
     await session.commit()
@@ -167,7 +167,7 @@ async def psm_zuordnung_erstellen(
     psm = await session.get(User, psm_id)
     teilnehmer = await session.get(User, teilnehmer_id)
     if psm is None or psm.role != RoleEnum.psychosoziale_mitarbeit:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige PSM-Auswahl.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Auswahl bei der psychosozialen Mitarbeit.")
     if teilnehmer is None or teilnehmer.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Teilnehmer-Auswahl.")
 
@@ -222,7 +222,7 @@ async def trainer_zuordnung_erstellen(
     trainer = await session.get(User, berufstrainer_id)
     teilnehmer = await session.get(User, teilnehmer_id)
     if trainer is None or trainer.role != RoleEnum.berufstrainer:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Trainer-Auswahl.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Berufstrainer:in-Auswahl.")
     if teilnehmer is None or teilnehmer.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Teilnehmer-Auswahl.")
 

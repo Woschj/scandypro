@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Wohlbefinden – {{ teilnehmer.name }} – ScandyPro{% endblock %}
+{% block title %}Mein Tag – {{ teilnehmer.name }} – ScandyPro{% endblock %}
 {% block content %}
 <p><a href="/">&larr; Zurück</a></p>
-<h1>Wohlbefinden von {{ teilnehmer.name }}</h1>
+<h1>"Mein Tag" von {{ teilnehmer.name }}</h1>
 <p class="visibility-hint">Freigegebene Ansicht - nur lesend. {{ teilnehmer.name }} kann diese Freigabe
   jederzeit widerrufen.</p>
 
@@ -14,7 +14,7 @@
   </div>
 
   <table>
-    <thead><tr><th>Tag</th><th>Wohlbefinden</th><th>Energie</th><th>Notiz</th></tr></thead>
+    <thead><tr><th>Tag</th><th>Stimmung</th><th>Energie</th><th>Notiz</th></tr></thead>
     <tbody>
     {% for tag in wochendaten %}
     <tr>
@@ -32,7 +32,7 @@
   <h3>Woche im Rückblick</h3>
   <div class="auswertung-grid">
     <div class="auswertung-stat">
-      <div class="eyebrow">Wohlbefinden im Schnitt</div>
+      <div class="eyebrow">Stimmung im Schnitt</div>
       <div class="wert">{{ auswertung.stimmung_avg if auswertung.stimmung_avg is not none else "–" }}</div>
     </div>
     <div class="auswertung-stat">

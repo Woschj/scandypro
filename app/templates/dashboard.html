@@ -2,13 +2,13 @@
 {% block title %}Dashboard – ScandyPro{% endblock %}
 {% block content %}
 <h1>Willkommen, {{ current_user.name }}</h1>
-<p class="visibility-hint">Deine Rolle: {{ current_user.role.value }}</p>
+<p class="visibility-hint">Deine Rolle: {{ current_user.role.value | rollenname }}</p>
 
 {% if psm_kontakt %}
-<p class="visibility-hint">Deine PSM-Kontaktperson: <strong>{{ psm_kontakt.name }}</strong></p>
+<p class="visibility-hint">Zuständige psychosoziale Mitarbeit: <strong>{{ psm_kontakt.name }}</strong></p>
 {% endif %}
 {% if trainer_kontakt %}
-<p class="visibility-hint">Dein Berufstrainer/deine Berufstrainerin: <strong>{{ trainer_kontakt.name }}</strong></p>
+<p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong></p>
 {% endif %}
 
 <div class="card-grid">
@@ -21,11 +21,11 @@
   {% if current_user.role.value == "teilnehmer" %}
   <div class="card">
     <h3>Wochenberichte</h3>
-    <p>Tätigkeiten dokumentieren und bei deinem Berufstrainer abgeben.</p>
+    <p>Tätigkeiten dokumentieren und bei der zuständigen Berufstrainer:in abgeben.</p>
     <a class="btn btn-primary" href="/wochenberichte">Öffnen</a>
   </div>
   <div class="card">
-    <h3>Wohlbefinden</h3>
+    <h3>Mein Tag</h3>
     <p>Nur für dich sichtbar, außer du gibst gezielt frei.</p>
     <a class="btn btn-primary" href="/wohlbefinden">Öffnen</a>
   </div>
@@ -63,7 +63,7 @@
     {% else %}
     <p class="empty-state">Dir ist noch niemand persönlich zugeordnet.</p>
     {% endif %}
-    <p class="empty-state" style="margin-top: var(--space-3);">Nur sichtbar, wenn die/der Teilnehmer:in aktiv freigegeben hat.</p>
+    <p class="empty-state" style="margin-top: var(--space-3);">Nur sichtbar, wenn die Teilnehmer:in aktiv freigegeben hat.</p>
   </div>
 
   {% elif current_user.role.value == "psychosoziale_mitarbeit" %}
@@ -84,7 +84,7 @@
     {% else %}
     <p class="empty-state">Dir sind noch keine Teilnehmer:innen zugeordnet.</p>
     {% endif %}
-    <p class="empty-state" style="margin-top: var(--space-3);">Zugriff auf Wohlbefinden-Daten nur nach expliziter Freigabe durch die Teilnehmer:innen selbst.</p>
+    <p class="empty-state" style="margin-top: var(--space-3);">Zugriff auf Einträge zu "Mein Tag" nur nach expliziter Freigabe durch die Teilnehmer:innen selbst.</p>
   </div>
 
   {% elif current_user.role.value == "einrichtungs_admin" %}
@@ -94,13 +94,13 @@
     <a class="btn btn-primary" href="/admin/abteilungen">Öffnen</a>
   </div>
   <div class="card">
-    <h3>PSM-Zuordnungen</h3>
+    <h3>Zuordnungen Psychosoziale Mitarbeit</h3>
     <p>Wer betreut wen (organisatorisch, ohne Dateneinblick).</p>
     <a class="btn btn-primary" href="/admin/psm-zuordnungen">Öffnen</a>
   </div>
   <div class="card">
-    <h3>Trainer-Zuordnungen</h3>
-    <p>Persönlicher Berufstrainer-Kontakt je Teilnehmer:in (organisatorisch, ohne Dateneinblick).</p>
+    <h3>Berufstrainer:innen-Zuordnungen</h3>
+    <p>Persönliche Berufstrainer:in-Zuordnung je Teilnehmer:in (organisatorisch, ohne Dateneinblick).</p>
     <a class="btn btn-primary" href="/admin/trainer-zuordnungen">Öffnen</a>
   </div>
   {% endif %}

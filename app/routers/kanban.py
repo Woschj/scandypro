@@ -122,7 +122,7 @@ async def meine_aufgaben(current_user: CurrentUser, session: SessionDep):
 
 @router.get("/boards/personen/{teilnehmer_id}")
 async def personen_board_oeffnen(teilnehmer_id: int, current_user: CurrentUser, session: SessionDep):
-    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer öffnen fremde Personen-Boards.")
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen öffnen fremde Personen-Boards.")
     teilnehmer = await session.get(User, teilnehmer_id)
     if teilnehmer is None or teilnehmer.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
@@ -140,7 +140,7 @@ async def board_erstellen(
     titel: str = Form(...),
     handlungsfeld_id: int = Form(...),
 ):
-    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer legen Boards an.")
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen legen Boards an.")
     if not await ist_leiter_von_handlungsfeld(session, current_user.id, handlungsfeld_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur die Leitung eines Handlungsfelds legt dort Boards an.")
 
@@ -404,7 +404,7 @@ async def gruppen_liste(
     wird ein leerer String statt gar keinem Parameter gesendet, daher hier
     als str entgegennehmen und selbst zu int|None konvertieren, statt
     FastAPI direkt int|None parsen zu lassen (das wirft bei "" einen 422)."""
-    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer verwalten Handlungsfeld-Teams.")
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen verwalten Handlungsfeld-Teams.")
     handlungsfeld_id = int(handlungsfeld_id) if handlungsfeld_id else None
 
     geleitete_ids = await geleitete_handlungsfeld_ids(session, current_user.id)
@@ -474,7 +474,7 @@ async def gruppen_liste(
 async def hf_mitglied_hinzufuegen(
     handlungsfeld_id: int, current_user: CurrentUser, session: SessionDep, teilnehmer_id: int = Form(...)
 ):
-    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer verwalten Handlungsfeld-Mitglieder.")
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen verwalten Handlungsfeld-Mitglieder.")
     if not await ist_leiter_von_handlungsfeld(session, current_user.id, handlungsfeld_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Du leitest dieses Handlungsfeld nicht.")
 
@@ -495,7 +495,7 @@ async def hf_mitglied_hinzufuegen(
 async def hf_mitglied_entfernen(
     handlungsfeld_id: int, mitglied_id: int, current_user: CurrentUser, session: SessionDep
 ):
-    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer verwalten Handlungsfeld-Mitglieder.")
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen verwalten Handlungsfeld-Mitglieder.")
     if not await ist_leiter_von_handlungsfeld(session, current_user.id, handlungsfeld_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Du leitest dieses Handlungsfeld nicht.")
 
@@ -530,7 +530,7 @@ async def gruppe_erstellen(
     handlungsfeld_id: int = Form(...),
     mitglieder: list[int] = Form(default=[]),
 ):
-    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer verwalten Arbeitsgruppen.")
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen verwalten Arbeitsgruppen.")
     if not await ist_leiter_von_handlungsfeld(session, current_user.id, handlungsfeld_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Du leitest dieses Handlungsfeld nicht.")
 

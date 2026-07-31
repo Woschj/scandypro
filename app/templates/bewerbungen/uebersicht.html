@@ -203,8 +203,8 @@
   <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Für wen freigeben</h3></summary>
   <div style="margin-top: var(--space-4);">
     {% if trainer_kontakt %}
-    <p class="karte-meta">Dein Berufstrainer <strong>{{ trainer_kontakt.name }}</strong> sieht deine Bewerbungen erst,
-      wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
+    <p class="karte-meta">Die zuständige Berufstrainer:in (<strong>{{ trainer_kontakt.name }}</strong>) sieht deine
+      Bewerbungen erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
     <form method="post" action="/bewerbungen/freigaben" class="form-row">
       <input type="hidden" name="empfaenger_id" value="{{ trainer_kontakt.id }}">
       <div class="field">
@@ -229,7 +229,7 @@
       <button type="submit" class="btn btn-primary">Freigeben</button>
     </form>
     {% else %}
-    <p class="empty-state">Dir ist noch kein Berufstrainer zugeordnet - sprich deine Einrichtung an.</p>
+    <p class="empty-state">Dir ist noch keine Berufstrainer:in zugeordnet - sprich deine Einrichtung an.</p>
     {% endif %}
 
     {% if freigaben %}
@@ -238,7 +238,7 @@
       <tbody>
       {% for f in freigaben %}
       <tr>
-        <td>{{ trainer_kontakt.name if trainer_kontakt and trainer_kontakt.id == f.empfaenger_id else "Trainer #" ~ f.empfaenger_id }}</td>
+        <td>{{ trainer_kontakt.name if trainer_kontakt and trainer_kontakt.id == f.empfaenger_id else "Berufstrainer:in #" ~ f.empfaenger_id }}</td>
         <td>
           {% if f.umfang.value == "alle" %}Alle Bewerbungen
           {% elif f.bewerbung_id in bewerbung_by_id %}{{ bewerbung_by_id[f.bewerbung_id].firma }}

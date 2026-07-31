@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Wohlbefinden – ScandyPro{% endblock %}
+{% block title %}Mein Tag – ScandyPro{% endblock %}
 {% block content %}
-<h1>Wohlbefinden</h1>
+<h1>Mein Tag</h1>
 <p class="visibility-hint">Nur für dich sichtbar, außer du gibst gezielt frei.</p>
 
 <div class="card">
@@ -12,7 +12,7 @@
   </div>
 
   <div class="zeitlinie-legende">
-    <span><span class="swatch" style="background: var(--brand);"></span> Wohlbefinden</span>
+    <span><span class="swatch" style="background: var(--brand);"></span> Stimmung</span>
     <span><span class="swatch" style="background: var(--accent);"></span> Energie</span>
     <span>Zieh die Punkte dahin, wo dein Tag gerade steht. Tipp auf 💬 für eine kurze Notiz.</span>
   </div>
@@ -42,7 +42,7 @@
   <h3>Deine Woche im Rückblick</h3>
   <div class="auswertung-grid">
     <div class="auswertung-stat">
-      <div class="eyebrow">Wohlbefinden im Schnitt</div>
+      <div class="eyebrow">Stimmung im Schnitt</div>
       <div class="wert">{{ auswertung.stimmung_avg if auswertung.stimmung_avg is not none else "–" }}</div>
       {% if auswertung.stimmung_avg is not none and auswertung.stimmung_avg_vorwoche is not none %}
       {% set delta = (auswertung.stimmung_avg - auswertung.stimmung_avg_vorwoche) | round(1) %}
@@ -81,8 +81,8 @@
   <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Für wen freigeben</h3></summary>
   <div style="margin-top: var(--space-4);">
     {% if psm_kontakt %}
-    <p class="karte-meta">Deine PSM-Kontaktperson <strong>{{ psm_kontakt.name }}</strong> sieht deine Daten erst,
-      wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
+    <p class="karte-meta">Die zuständige psychosoziale Mitarbeit (<strong>{{ psm_kontakt.name }}</strong>) sieht deine
+      Einträge erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
     <form method="post" action="/wohlbefinden/freigaben" class="form-row">
       <input type="hidden" name="empfaenger_id" value="{{ psm_kontakt.id }}">
       <div class="field">
@@ -108,7 +108,7 @@
       <tbody>
       {% for f in freigaben %}
       <tr>
-        <td>{{ psm_kontakt.name if psm_kontakt and psm_kontakt.id == f.empfaenger_id else "PSM #" ~ f.empfaenger_id }}</td>
+        <td>{{ psm_kontakt.name if psm_kontakt and psm_kontakt.id == f.empfaenger_id else "Psychosoziale Mitarbeit #" ~ f.empfaenger_id }}</td>
         <td>{{ "Gesamter Verlauf" if f.umfang.value == "alle" else "Befristet" }}</td>
         <td>{{ f.gueltig_bis or "unbefristet" }}</td>
         <td>
