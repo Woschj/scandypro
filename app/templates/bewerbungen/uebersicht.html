@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Bewerbungen – ScandyPro{% endblock %}
+{% block content %}
+<h1>Bewerbungen</h1>
+<p class="visibility-hint">Nur für dich sichtbar, außer du gibst gezielt frei.</p>
+
+{% if ausstehende_rueckmeldungen %}
+<div class="card">
+  <h3>Worauf du noch wartest</h3>
+  <p class="karte-meta">Bewerbungen, bei denen du noch auf eine Rückmeldung wartest – zur Übersicht gebündelt.</p>
+  <table>
+    <thead><tr><th>Firma</th><th>Position</th><th>Status</th><th>Zeitraum</th></tr></thead>
+    <tbody>
+    {% for e in ausstehende_rueckmeldungen %}
+    <tr>
+      <td>{{ e.bewerbung.firma }}</td>
+      <td>{{ e.bewerbung.position }}</td>
+      <td><span class="chip">{{ e.bewerbung.status.value }}</span></td>
+      <td>
+        {% if e.tage_bis_termin is not none %}
+          {% if e.tage_bis_termin < 0 %}
+            Termin war vor {{ -e.tage_bis_termin }} Tag{{ "en" if e.tage_bis_termin != -1 }}
+          {% elif e.tage_bis_termin == 0 %}
+            Termin heute
+          {% else %}
+            Termin in {{ e.tage_bis_termin }} Tag{{ "en" if e.tage_bis_termin != 1 }}
+          {% endif %}
+        {% elif e.tage_seit_versand is not none %}
+          Läuft seit {{ e.tage_seit_versand }} Tag{{ "en" if e.tage_seit_versand != 1 }}
+        {% else %}
+          –
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Lebenslauf &amp; Zeugnisse</h3>
+  <p class="karte-meta">Einmal hochladen, für alle Bewerbungen wiederverwendbar. Die Reihenfolge hier bestimmt
+    die Reihenfolge im Gesamt-PDF-Export einer Bewerbung.</p>
+  {% if stammunterlagen %}
+  <table>
+    <thead><tr><th></th><th>Kategorie</th><th>Datei</th><th></th></tr></thead>
+    <tbody>
+    {% for u in stammunterlagen %}
+    <tr>
+      <td style="white-space: nowrap;">
+        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-oben" style="display:inline;">
+          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.first %}disabled{% endif %} title="Nach oben">▲</button>
+        </form>
+        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-unten" style="display:inline;">
+          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.last %}disabled{% endif %} title="Nach unten">▼</button>
+        </form>
+      </td>
+      <td>{{ u.kategorie.value|capitalize }}</td>
+      <td>
+        <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+        {% if u.id in nicht_einbettbare_ids %}
+        <span class="karte-meta">– wird nicht ins Gesamt-PDF eingebunden (kein PDF/Bild)</span>
+        {% endif %}
+      </td>
+      <td>
+        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" onsubmit="return confirm('Datei löschen?');">
+          <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <form method="post" action="/bewerbungen/unterlagen" enctype="multipart/form-data" class="form-row" style="margin-top: var(--space-4);">
+    <div class="field">
+      <label for="kategorie">Kategorie</label>
+      <select id="kategorie" name="kategorie">
+        <option value="lebenslauf">Lebenslauf</option>
+        <option value="zeugnis">Zeugnis</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="datei">Datei (PDF, Word oder Bild, max. 10 MB)</label>
+      <input type="file" id="datei" name="datei" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Hochladen</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Neue Bewerbung</h3>
+  <form method="post" action="/bewerbungen" enctype="multipart/form-data">
+    <div class="form-row">
+      <div class="field">
+        <label for="firma">Firma</label>
+        <input type="text" id="firma" name="firma" required>
+      </div>
+      <div class="field">
+        <label for="position">Position</label>
+        <input type="text" id="position" name="position" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label for="beworben_am">Beworben am (optional)</label>
+        <input type="date" id="beworben_am" name="beworben_am">
+      </div>
+      <div class="field">
+        <label for="naechster_termin">Nächster Termin (optional)</label>
+        <input type="date" id="naechster_termin" name="naechster_termin">
+      </div>
+    </div>
+    <div class="field">
+      <label for="notizen">Notizen (optional)</label>
+      <textarea id="notizen" name="notizen"></textarea>
+    </div>
+    <div class="field">
+      <label for="deckblatt">Deckblatt (optional, PDF/Bild empfohlen – erscheint im PDF vor dem Anschreiben)</label>
+      <input type="file" id="deckblatt" name="deckblatt">
+    </div>
+    <div class="field">
+      <label for="anschreiben">Anschreiben (optional, PDF/Bild empfohlen)</label>
+      <input type="file" id="anschreiben" name="anschreiben">
+    </div>
+    <button type="submit" class="btn btn-primary">Anlegen</button>
+  </form>
+</div>
+
+<h2>Übersicht</h2>
+{% if bewerbungen %}
+{% for b in bewerbungen %}
+<div class="card">
+  <div class="form-row" style="align-items: center; margin-bottom: var(--space-3);">
+    <h3 style="margin: 0; flex: 1;">{{ b.firma }} — {{ b.position }}</h3>
+    <form method="post" action="/bewerbungen/{{ b.id }}/status">
+      <select name="status_wert" onchange="this.form.submit()">
+        {% for s in status_optionen %}
+        <option value="{{ s.value }}" {% if s == b.status %}selected{% endif %}>{{ s.value }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+  <p class="karte-meta">
+    Beworben am {{ b.beworben_am or "–" }} · Nächster Termin: {{ b.naechster_termin or "–" }}
+  </p>
+  {% if b.notizen %}<p>{{ b.notizen }}</p>{% endif %}
+
+  <div class="eyebrow" style="margin-top: var(--space-3); margin-bottom: var(--space-2);">Deckblatt (optional, vor dem Anschreiben)</div>
+  {% for u in deckblatt_by_bewerbung.get(b.id, []) %}
+  <div style="display:flex; align-items:center; gap: var(--space-2); margin-bottom: var(--space-2);">
+    <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+    {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
+    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" onsubmit="return confirm('Deckblatt löschen?');">
+      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="empty-state">Kein Deckblatt hochgeladen.</p>
+  {% endfor %}
+  <form method="post" action="/bewerbungen/{{ b.id }}/deckblatt" enctype="multipart/form-data" class="form-row">
+    <div class="field">
+      <input type="file" name="datei" required>
+    </div>
+    <button type="submit" class="btn btn-ghost btn-sm">Deckblatt hochladen</button>
+  </form>
+
+  <div class="eyebrow" style="margin-top: var(--space-4); margin-bottom: var(--space-2);">Anschreiben</div>
+  {% for u in anschreiben_by_bewerbung.get(b.id, []) %}
+  <div style="display:flex; align-items:center; gap: var(--space-2); margin-bottom: var(--space-2);">
+    <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+    {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
+    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" onsubmit="return confirm('Anschreiben löschen?');">
+      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="empty-state">Noch kein Anschreiben hochgeladen.</p>
+  {% endfor %}
+  <form method="post" action="/bewerbungen/{{ b.id }}/anschreiben" enctype="multipart/form-data" class="form-row">
+    <div class="field">
+      <input type="file" name="datei" required>
+    </div>
+    <button type="submit" class="btn btn-ghost btn-sm">Anschreiben hochladen</button>
+  </form>
+
+  <div style="margin-top: var(--space-3); display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap;">
+    <a class="btn btn-ghost btn-sm" href="/bewerbungen/{{ b.id }}/pdf">Gesamt-PDF erzeugen</a>
+    <span class="karte-meta">Deckblatt + Anschreiben + Lebenslauf/Zeugnisse (in deiner Sortierung) in einem PDF. Nur PDF-/Bilddateien werden eingebunden, Word-Dokumente bitte separat anhängen.</span>
+  </div>
+
+  <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" onsubmit="return confirm('Bewerbung endgültig löschen?');" style="margin-top: var(--space-3);">
+    <button type="submit" class="btn btn-danger btn-sm">Bewerbung löschen</button>
+  </form>
+</div>
+{% endfor %}
+{% else %}
+<p class="empty-state">Noch keine Bewerbungen erfasst.</p>
+{% endif %}
+
+<details class="card">
+  <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Für wen freigeben</h3></summary>
+  <div style="margin-top: var(--space-4);">
+    {% if trainer_kontakt %}
+    <p class="karte-meta">Dein Berufstrainer <strong>{{ trainer_kontakt.name }}</strong> sieht deine Bewerbungen erst,
+      wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
+    <form method="post" action="/bewerbungen/freigaben" class="form-row">
+      <input type="hidden" name="empfaenger_id" value="{{ trainer_kontakt.id }}">
+      <div class="field">
+        <label for="umfang">Umfang</label>
+        <select id="umfang" name="umfang" onchange="document.getElementById('freigabe-bewerbung-feld').style.display = this.value === 'einzeln' ? '' : 'none';">
+          <option value="alle">Alle Bewerbungen</option>
+          <option value="einzeln">Nur eine Bewerbung</option>
+        </select>
+      </div>
+      <div class="field" id="freigabe-bewerbung-feld" style="display:none;">
+        <label for="bewerbung_id">Welche Bewerbung</label>
+        <select id="bewerbung_id" name="bewerbung_id">
+          {% for b in bewerbungen %}
+          <option value="{{ b.id }}">{{ b.firma }} — {{ b.position }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="gueltig_bis">Gültig bis (optional)</label>
+        <input type="date" id="gueltig_bis" name="gueltig_bis">
+      </div>
+      <button type="submit" class="btn btn-primary">Freigeben</button>
+    </form>
+    {% else %}
+    <p class="empty-state">Dir ist noch kein Berufstrainer zugeordnet - sprich deine Einrichtung an.</p>
+    {% endif %}
+
+    {% if freigaben %}
+    <table style="margin-top: var(--space-4);">
+      <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
+      <tbody>
+      {% for f in freigaben %}
+      <tr>
+        <td>{{ trainer_kontakt.name if trainer_kontakt and trainer_kontakt.id == f.empfaenger_id else "Trainer #" ~ f.empfaenger_id }}</td>
+        <td>
+          {% if f.umfang.value == "alle" %}Alle Bewerbungen
+          {% elif f.bewerbung_id in bewerbung_by_id %}{{ bewerbung_by_id[f.bewerbung_id].firma }}
+          {% else %}Einzelne Bewerbung{% endif %}
+        </td>
+        <td>{{ f.gueltig_bis or "unbefristet" }}</td>
+        <td>
+          <form method="post" action="/bewerbungen/freigaben/{{ f.id }}/widerrufen">
+            <button type="submit" class="btn btn-ghost btn-sm">Widerrufen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</details>
+{% endblock %}

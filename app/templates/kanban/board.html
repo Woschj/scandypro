@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ k.board.titel }} – ScandyPro{% endblock %}
+{% block content_class %}main-content--wide{% endblock %}
+{% block content %}
+<p><a href="/kanban">&larr; Alle Boards</a></p>
+{% if k.handlungsfeld %}
+<span class="chip chip-brand">{{ k.handlungsfeld.name }}</span>
+{% elif k.board.typ.value == "person" %}
+<span class="chip chip-neutral">Persönliches Board</span>
+{% endif %}
+<h1 style="margin-top: var(--space-2);">{{ k.board.titel }}</h1>
+
+{% if freigaben_kontext %}
+<div class="card">
+  <h3>Freigegeben für</h3>
+  {% if freigaben_kontext.freigaben %}
+  <table>
+    <tbody>
+    {% for freigabe, gruppe in freigaben_kontext.freigaben %}
+      <tr>
+        <td>{{ gruppe.name }}</td>
+        <td style="text-align: right;">
+          <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben/{{ freigabe.id }}/entfernen">
+            <button type="submit" class="btn btn-ghost btn-sm">Freigabe entfernen</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Noch für keine Teilnehmergruppe freigegeben.</p>
+  {% endif %}
+
+  {% if freigaben_kontext.verfuegbare_gruppen %}
+  <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben" class="form-row" style="margin-top: var(--space-4);">
+    <div class="field">
+      <label for="gruppe_id">Arbeitsgruppe freigeben</label>
+      <select id="gruppe_id" name="gruppe_id">
+        {% for g in freigaben_kontext.verfuegbare_gruppen %}
+        <option value="{{ g.id }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Freigeben</button>
+  </form>
+  {% else %}
+  <p class="empty-state">Keine weiteren Arbeitsgruppen dieses Handlungsfelds verfügbar.
+    <a href="/kanban/gruppen?handlungsfeld_id={{ k.board.handlungsfeld_id }}">Neue Gruppe anlegen</a></p>
+  {% endif %}
+
+  {% if k.darf_board_verwalten %}
+  <form method="post" action="/kanban/boards/{{ k.board.id }}/loeschen" onsubmit="return confirm('Board \'{{ k.board.titel }}\' inkl. aller Spalten und Karten endgültig löschen?');" style="margin-top: var(--space-4);">
+    <button type="submit" class="btn btn-ghost btn-sm">Board löschen</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{% include "kanban/_spalten.html" %}
+<script src="/static/js/kanban.js"></script>
+{% endblock %}

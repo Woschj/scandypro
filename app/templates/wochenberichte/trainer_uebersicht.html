@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Wochenberichte – ScandyPro{% endblock %}
+{% block content %}
+<h1>Wochenberichte</h1>
+<p class="visibility-hint">Abgegebene Wochenberichte der Teilnehmer:innen deiner Handlungsfelder.</p>
+
+{% if berichte_anzeige %}
+<div class="zuklapp-liste">
+{% for eintrag in berichte_anzeige %}
+{% set b = eintrag.bericht %}
+<details class="zuklapp-eintrag">
+  <summary>
+    <span class="zuklapp-eintrag-chevron">▸</span>
+    <span class="chip chip-success">abgegeben</span>
+    <span class="zuklapp-eintrag-titel">{{ teilnehmer_by_id[b.teilnehmer_id].name }} — KW {{ b.kw_nummer }}/{{ b.kw_jahr }}</span>
+  </summary>
+  <div class="zuklapp-eintrag-body">
+    <table>
+      <thead><tr><th>Tag</th><th>Zeit</th><th>Tätigkeiten</th></tr></thead>
+      <tbody>
+      {% for tag in eintrag.tage %}
+      <tr>
+        <td>{{ tag.key|capitalize }}<br><span class="karte-meta">{{ tag.datum.strftime("%d.%m.") }}</span></td>
+        <td>{% if tag.start or tag.ende %}{{ tag.start or "?" }}–{{ tag.ende or "?" }}{% else %}<span class="empty-state">–</span>{% endif %}</td>
+        <td>{{ tag.taetigkeiten or "" }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if b.besonderheiten %}<p style="margin-top: var(--space-3);"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
+    <p class="karte-meta">Abgegeben am {{ b.abgegeben_am.strftime("%d.%m.%Y %H:%M") }}</p>
+    <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
+  </div>
+</details>
+{% endfor %}
+</div>
+{% else %}
+<p class="empty-state">Noch keine abgegebenen Wochenberichte.</p>
+{% endif %}
+{% endblock %}

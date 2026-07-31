@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Wochenberichte – ScandyPro{% endblock %}
+{% block content %}
+<h1>Wochenberichte</h1>
+<p class="visibility-hint">Entwürfe sind nur für dich sichtbar. Abgegebene Wochenberichte sehen die
+  Leitungen deiner Handlungsfelder.</p>
+
+<details class="card">
+  <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Neuer Wochenbericht</h3></summary>
+  <form method="post" action="/wochenberichte" style="margin-top: var(--space-4);">
+    <div class="field" style="max-width: 220px;">
+      <label for="woche">Kalenderwoche</label>
+      <input type="week" id="woche" name="woche" value="{{ aktuelle_kw }}" required>
+    </div>
+
+    {% for tag in wochentage %}
+    <div style="margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--line);">
+      <div class="eyebrow" style="margin-bottom: var(--space-2);">{{ tag_labels[tag] }}</div>
+      <div class="form-row">
+        <div class="field" style="max-width: 140px;">
+          <label for="start_{{ tag }}">Beginn</label>
+          <input type="time" id="start_{{ tag }}" name="start_{{ tag }}">
+        </div>
+        <div class="field" style="max-width: 140px;">
+          <label for="ende_{{ tag }}">Ende</label>
+          <input type="time" id="ende_{{ tag }}" name="ende_{{ tag }}">
+        </div>
+      </div>
+      <div class="field">
+        <label for="taetigkeiten_{{ tag }}">Tätigkeiten</label>
+        <textarea id="taetigkeiten_{{ tag }}" name="taetigkeiten_{{ tag }}" rows="2"></textarea>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="field">
+      <label for="besonderheiten">Besonderheiten der Woche (optional)</label>
+      <textarea id="besonderheiten" name="besonderheiten"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Als Entwurf speichern</button>
+  </form>
+</details>
+
+<h2>Meine Wochenberichte</h2>
+{% if berichte_anzeige %}
+<div class="zuklapp-liste">
+{% for eintrag in berichte_anzeige %}
+{% set b = eintrag.bericht %}
+<details class="zuklapp-eintrag">
+  <summary>
+    <span class="zuklapp-eintrag-chevron">▸</span>
+    <span class="chip {% if b.status.value == 'abgegeben' %}chip-success{% else %}chip-neutral{% endif %}">
+      {{ b.status.value }}
+    </span>
+    <span class="zuklapp-eintrag-titel">KW {{ b.kw_nummer }}/{{ b.kw_jahr }}</span>
+  </summary>
+  <div class="zuklapp-eintrag-body">
+    {% if b.status.value == "entwurf" %}
+    <form method="post" action="/wochenberichte/{{ b.id }}/bearbeiten">
+      {% for tag in eintrag.tage %}
+      <div style="margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--line);">
+        <div class="eyebrow" style="margin-bottom: var(--space-2);">{{ tag_labels[tag.key] }} · {{ tag.datum.strftime("%d.%m.") }}</div>
+        <div class="form-row">
+          <div class="field" style="max-width: 140px;">
+            <label for="start_{{ b.id }}_{{ tag.key }}">Beginn</label>
+            <input type="time" id="start_{{ b.id }}_{{ tag.key }}" name="start_{{ tag.key }}" value="{{ tag.start or '' }}">
+          </div>
+          <div class="field" style="max-width: 140px;">
+            <label for="ende_{{ b.id }}_{{ tag.key }}">Ende</label>
+            <input type="time" id="ende_{{ b.id }}_{{ tag.key }}" name="ende_{{ tag.key }}" value="{{ tag.ende or '' }}">
+          </div>
+        </div>
+        <div class="field">
+          <label for="taetigkeiten_{{ b.id }}_{{ tag.key }}">Tätigkeiten</label>
+          <textarea id="taetigkeiten_{{ b.id }}_{{ tag.key }}" name="taetigkeiten_{{ tag.key }}" rows="2">{{ tag.taetigkeiten or "" }}</textarea>
+        </div>
+      </div>
+      {% endfor %}
+      <div class="field">
+        <label for="besonderheiten_{{ b.id }}">Besonderheiten der Woche (optional)</label>
+        <textarea id="besonderheiten_{{ b.id }}" name="besonderheiten">{{ b.besonderheiten or "" }}</textarea>
+      </div>
+      <button type="submit" class="btn btn-ghost btn-sm">Änderungen speichern</button>
+    </form>
+    {% else %}
+    <table>
+      <thead><tr><th>Tag</th><th>Zeit</th><th>Tätigkeiten</th></tr></thead>
+      <tbody>
+      {% for tag in eintrag.tage %}
+      <tr>
+        <td>{{ tag.key|capitalize }}<br><span class="karte-meta">{{ tag.datum.strftime("%d.%m.") }}</span></td>
+        <td>{% if tag.start or tag.ende %}{{ tag.start or "?" }}–{{ tag.ende or "?" }}{% else %}<span class="empty-state">–</span>{% endif %}</td>
+        <td>{{ tag.taetigkeiten or "" }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if b.besonderheiten %}<p style="margin-top: var(--space-3);"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
+    {% endif %}
+
+    <div style="display:flex; gap: var(--space-2); margin-top: var(--space-3);">
+      <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
+      {% if b.status.value == "entwurf" %}
+      <form method="post" action="/wochenberichte/{{ b.id }}/abgeben">
+        <button type="submit" class="btn btn-primary btn-sm">Bei Berufstrainer abgeben</button>
+      </form>
+      <form method="post" action="/wochenberichte/{{ b.id }}/loeschen" onsubmit="return confirm('Entwurf löschen?');">
+        <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</details>
+{% endfor %}
+</div>
+{% else %}
+<p class="empty-state">Noch keine Wochenberichte.</p>
+{% endif %}
+{% endblock %}

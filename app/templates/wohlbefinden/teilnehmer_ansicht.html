@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Wohlbefinden – {{ teilnehmer.name }} – ScandyPro{% endblock %}
+{% block content %}
+<p><a href="/">&larr; Zurück</a></p>
+<h1>Wohlbefinden von {{ teilnehmer.name }}</h1>
+<p class="visibility-hint">Freigegebene Ansicht - nur lesend. {{ teilnehmer.name }} kann diese Freigabe
+  jederzeit widerrufen.</p>
+
+<div class="card">
+  <div class="wochen-nav">
+    <a class="btn btn-ghost btn-sm" href="/wohlbefinden/teilnehmer/{{ teilnehmer.id }}?woche_start={{ vorherige_woche }}">&larr; Vorherige Woche</a>
+    <span class="wochen-label">{{ wochenbereich }}{% if ist_aktuelle_woche %} <span class="chip chip-brand">diese Woche</span>{% endif %}</span>
+    <a class="btn btn-ghost btn-sm" href="/wohlbefinden/teilnehmer/{{ teilnehmer.id }}?woche_start={{ naechste_woche }}">Nächste Woche &rarr;</a>
+  </div>
+
+  <table>
+    <thead><tr><th>Tag</th><th>Wohlbefinden</th><th>Energie</th><th>Notiz</th></tr></thead>
+    <tbody>
+    {% for tag in wochendaten %}
+    <tr>
+      <td>{{ tag.label }}</td>
+      <td>{{ tag.stimmung if tag.gesetzt else "–" }}</td>
+      <td>{{ tag.belastbarkeit if tag.gesetzt else "–" }}</td>
+      <td>{{ tag.kommentar or "" }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Woche im Rückblick</h3>
+  <div class="auswertung-grid">
+    <div class="auswertung-stat">
+      <div class="eyebrow">Wohlbefinden im Schnitt</div>
+      <div class="wert">{{ auswertung.stimmung_avg if auswertung.stimmung_avg is not none else "–" }}</div>
+    </div>
+    <div class="auswertung-stat">
+      <div class="eyebrow">Energie im Schnitt</div>
+      <div class="wert">{{ auswertung.belastbarkeit_avg if auswertung.belastbarkeit_avg is not none else "–" }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Verlauf</h3>
+  <p class="karte-meta">{{ monat_start }} – {{ monat_ende }}</p>
+  {% if monat_chart.hat_daten %}
+  <svg viewBox="0 0 {{ monat_chart.breite }} {{ monat_chart.hoehe }}" style="width:100%; height:auto;">
+    <polyline points="{{ monat_chart.belastbarkeit_punkte }}" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0.85"></polyline>
+    <polyline points="{{ monat_chart.stimmung_punkte }}" fill="none" stroke="var(--brand)" stroke-width="2"></polyline>
+  </svg>
+  {% else %}
+  <p class="empty-state">Noch keine Daten für einen Verlauf.</p>
+  {% endif %}
+</div>
+{% endblock %}

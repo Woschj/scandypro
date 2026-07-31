@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Kanban – ScandyPro{% endblock %}
+{% block content_class %}main-content--wide{% endblock %}
+{% block content %}
+<h1>Kanban-Boards</h1>
+
+{% if current_user.role.value == "berufstrainer" %}
+<div class="card">
+  <h3>Neues Board</h3>
+  {% if eigene_handlungsfelder %}
+  <form method="post" action="/kanban/boards">
+    <div class="form-row">
+      <div class="field">
+        <label for="titel">Titel</label>
+        <input type="text" id="titel" name="titel" required>
+      </div>
+      <div class="field">
+        <label for="handlungsfeld_id">Handlungsfeld</label>
+        <select id="handlungsfeld_id" name="handlungsfeld_id" required>
+          {% for h in eigene_handlungsfelder %}
+          <option value="{{ h.id }}">{{ h.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Board anlegen</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="empty-state">Du leitest aktuell kein Handlungsfeld. Wende dich an die Einrichtungs-Verwaltung.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if board_kontexte %}
+<div class="zuklapp-liste">
+  {% for k in board_kontexte %}
+  <details class="zuklapp-eintrag" open>
+    <summary>
+      <span class="zuklapp-eintrag-chevron">▸</span>
+      {% if k.board.typ.value == "person" %}
+      <span class="chip chip-neutral">Persönlich</span>
+      {% else %}
+      <span class="chip chip-brand">{{ handlungsfeld_by_id[k.board.handlungsfeld_id].name }}</span>
+      {% endif %}
+      <span class="zuklapp-eintrag-titel">{{ k.board.titel }}</span>
+    </summary>
+    <div class="zuklapp-eintrag-body">
+      {% include "kanban/_spalten.html" %}
+      {% if k.board.typ.value == "team" and current_user.role.value == "berufstrainer" %}
+      <p style="margin-top: var(--space-3);"><a href="/kanban/boards/{{ k.board.id }}">Board verwalten (Freigaben für Arbeitsgruppen)</a></p>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+<script src="/static/js/kanban.js"></script>
+{% else %}
+<p class="empty-state">
+  {% if current_user.role.value in ["psychosoziale_mitarbeit", "einrichtungs_admin"] %}
+  Für deine Rolle sind hier standardmäßig keine Boards sichtbar (siehe Berechtigungskonzept).
+  {% elif current_user.role.value == "teilnehmer" %}
+  Für dich ist noch kein Board freigegeben. Sprich deinen Berufstrainer an.
+  {% else %}
+  Noch keine Boards vorhanden.
+  {% endif %}
+</p>
+{% endif %}
+{% endblock %}

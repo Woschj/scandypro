@@ -1,0 +1,220 @@
+{# Spalten/Karten-Rendering eines Boards - Partial, gemeinsam genutzt von
+   kanban/board.html (Einzelansicht) und kanban/liste.html (alle Boards
+   direkt mit vollen Spalten aufgeklappt). Erwartet eine Variable `k` mit den
+   Feldern board, spalten, karten_by_spalte, zuweisungen_by_karte,
+   unteraufgaben_by_karte, boardmitglieder, darf_sichtbarkeit_aendern, heute
+   (siehe app/routers/kanban.py, _board_kontext). #}
+<div class="board-columns">
+  {% for spalte in k.spalten %}
+  {% set karten = k.karten_by_spalte.get(spalte.id, []) %}
+  <div class="board-column">
+    <div class="board-column-head">
+      <h3>{{ spalte.name }}</h3>
+      <span class="spalte-count">{{ karten | length }}</span>
+      {% if k.darf_board_verwalten %}
+      <details class="spalte-verwalten">
+        <summary title="Spalte verwalten">⋮</summary>
+        <div class="spalte-verwalten-body">
+          <form method="post" action="/kanban/spalten/{{ spalte.id }}/umbenennen" class="form-row">
+            <div class="field">
+              <input type="text" name="name" value="{{ spalte.name }}" required>
+            </div>
+            <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
+          </form>
+          <form method="post" action="/kanban/spalten/{{ spalte.id }}/loeschen" onsubmit="return confirm('Spalte inkl. aller Karten löschen?');">
+            <button type="submit" class="btn btn-ghost btn-sm">Spalte löschen</button>
+          </form>
+        </div>
+      </details>
+      {% endif %}
+    </div>
+    <div class="karten-liste" data-spalte-id="{{ spalte.id }}">
+    {% for karte in karten %}
+      {% set zuweisungen = k.zuweisungen_by_karte.get(karte.id, []) %}
+      {% set unteraufgaben = k.unteraufgaben_by_karte.get(karte.id, []) %}
+      {% set erledigte_unteraufgaben = unteraufgaben | selectattr("erledigt") | list %}
+      {% set ist_faellig_ueberfaellig = karte.faelligkeit and karte.faelligkeit < k.heute %}
+      <details class="karte {% if karte.sichtbarkeit.value == 'privat' %}karte-privat{% endif %}" draggable="true" data-karte-id="{{ karte.id }}">
+        <summary>
+          <div class="karte-titel">{{ karte.titel }}</div>
+
+          {% if karte.faelligkeit or karte.sichtbarkeit.value == "privat" %}
+          <div class="karte-badges">
+            {% if karte.faelligkeit %}
+            <span class="karte-badge {% if ist_faellig_ueberfaellig %}karte-badge--faellig{% endif %}">
+              📅 {{ karte.faelligkeit.strftime("%d.%m.") }}{% if ist_faellig_ueberfaellig %} · überfällig{% endif %}
+            </span>
+            {% endif %}
+            {% if karte.sichtbarkeit.value == "privat" %}
+            <span class="karte-badge karte-badge--privat">🔒 Nur für dich</span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          {% if unteraufgaben %}
+          <div class="karte-fortschritt">{{ erledigte_unteraufgaben | length }}/{{ unteraufgaben | length }} Unteraufgaben erledigt</div>
+          <div class="fortschritt-leiste">
+            <div class="fortschritt-leiste-fuellung" style="width: {{ (erledigte_unteraufgaben | length / unteraufgaben | length * 100) | round | int }}%;"></div>
+          </div>
+          {% endif %}
+
+          {% if zuweisungen %}
+          <div class="avatar-row">
+            {% for z in zuweisungen %}
+            {% set person = k.boardmitglieder.get(z.teilnehmer_id) %}
+            <span class="avatar avatar-{{ z.teilnehmer_id % 5 }}" title="{{ person.name if person else '?' }}" aria-label="{{ person.name if person else '?' }}">{{ (person.name | initialen) if person else "?" }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </summary>
+
+        <div class="karte-body">
+          {% if karte.beschreibung %}<p>{{ karte.beschreibung }}</p>{% endif %}
+
+          <form method="post" action="/kanban/karten/{{ karte.id }}/aktualisieren" class="form-row">
+            <input type="hidden" name="titel" value="{{ karte.titel }}">
+            <div class="field" style="flex-basis: 100%;">
+              <label for="beschreibung-{{ karte.id }}">Beschreibung</label>
+              <textarea id="beschreibung-{{ karte.id }}" name="beschreibung">{{ karte.beschreibung or "" }}</textarea>
+            </div>
+            <div class="field">
+              <label for="faelligkeit-{{ karte.id }}">Fälligkeit</label>
+              <input type="date" id="faelligkeit-{{ karte.id }}" name="faelligkeit" value="{{ karte.faelligkeit or '' }}">
+            </div>
+            {% if k.darf_sichtbarkeit_aendern %}
+            <div class="field">
+              <label for="sichtbarkeit-{{ karte.id }}">Sichtbarkeit</label>
+              <select id="sichtbarkeit-{{ karte.id }}" name="sichtbarkeit">
+                <option value="privat" {% if karte.sichtbarkeit.value == "privat" %}selected{% endif %}>Nur für mich</option>
+                <option value="team" {% if karte.sichtbarkeit.value == "team" %}selected{% endif %}>Auch für zuständige Trainer:innen</option>
+              </select>
+            </div>
+            {% endif %}
+            <button type="submit" class="btn btn-ghost btn-sm">Speichern</button>
+          </form>
+
+          {% if k.boardmitglieder %}
+          <div class="eyebrow" style="margin-top: var(--space-4);">Zugewiesen</div>
+          {% if zuweisungen %}
+          <div class="avatar-liste" style="margin: var(--space-2) 0;">
+            {% for z in zuweisungen %}
+            {% set person = k.boardmitglieder.get(z.teilnehmer_id) %}
+            <div class="avatar-liste-eintrag">
+              <span class="avatar avatar-{{ z.teilnehmer_id % 5 }}">{{ (person.name | initialen) if person else "?" }}</span>
+              <span style="flex:1;">{{ person.name if person else "?" }}</span>
+              <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen/{{ z.id }}/entfernen">
+                <button type="submit" class="btn btn-ghost btn-sm">Entfernen</button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% set zugewiesene_ids = zuweisungen | map(attribute="teilnehmer_id") | list %}
+          {% set freie_mitglieder = k.boardmitglieder.values() | rejectattr("id", "in", zugewiesene_ids) | list %}
+          {% if freie_mitglieder %}
+          <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen" class="form-row">
+            <div class="field">
+              <select name="teilnehmer_id">
+                {% for m in freie_mitglieder %}
+                <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-ghost btn-sm">Zuweisen</button>
+          </form>
+          {% endif %}
+          {% endif %}
+
+          <div class="eyebrow" style="margin-top: var(--space-4);">Unteraufgaben</div>
+          {% for u in unteraufgaben %}
+          <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}">
+            <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/umschalten">
+              <button type="submit" class="btn btn-ghost btn-sm" style="min-height:auto; padding: 0.15rem 0.5rem;">{{ "✓" if u.erledigt else "○" }}</button>
+            </form>
+            <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
+            {% if u.zugewiesen_an and u.zugewiesen_an in k.boardmitglieder %}
+            <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.boardmitglieder[u.zugewiesen_an].name }}">{{ k.boardmitglieder[u.zugewiesen_an].name | initialen }}</span>
+            {% endif %}
+            <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/loeschen">
+              <button type="submit" class="btn btn-ghost btn-sm">✕</button>
+            </form>
+          </div>
+          {% else %}
+          <p class="empty-state">Keine Unteraufgaben.</p>
+          {% endfor %}
+          <form method="post" action="/kanban/karten/{{ karte.id }}/unteraufgaben" class="form-row">
+            <div class="field">
+              <input type="text" name="titel" placeholder="Neue Unteraufgabe" required>
+            </div>
+            {% if k.boardmitglieder %}
+            <div class="field">
+              <select name="zugewiesen_an">
+                <option value="">– niemand –</option>
+                {% for m in k.boardmitglieder.values() %}
+                <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+            <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+          </form>
+
+          {% if k.darf_board_verwalten or karte.ersteller_id == current_user.id %}
+          <form method="post" action="/kanban/karten/{{ karte.id }}/loeschen" onsubmit="return confirm('Karte endgültig löschen?');" style="margin-top: var(--space-4);">
+            <button type="submit" class="btn btn-ghost btn-sm">Karte löschen</button>
+          </form>
+          {% endif %}
+        </div>
+      </details>
+    {% else %}
+    <p class="empty-state">Keine Karten.</p>
+    {% endfor %}
+    </div>
+
+    <details class="neue-karte-toggle">
+      <summary>+ Karte hinzufügen</summary>
+      <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten/{{ spalte.id }}/karten">
+        <div class="field">
+          <label>Titel</label>
+          <input type="text" name="titel" placeholder="Titel" required style="margin-bottom: var(--space-2);">
+          <textarea name="beschreibung" placeholder="Beschreibung (optional)"></textarea>
+        </div>
+        {% if k.boardmitglieder %}
+        <div class="field">
+          <label>Zuweisen</label>
+          <div class="checkbox-list">
+            {% for m in k.boardmitglieder.values() %}
+            <label><input type="checkbox" name="zugewiesene" value="{{ m.id }}"> {{ m.name }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if k.darf_sichtbarkeit_aendern %}
+        <div class="field">
+          <label for="neue-sichtbarkeit-{{ spalte.id }}">Sichtbarkeit</label>
+          <select id="neue-sichtbarkeit-{{ spalte.id }}" name="sichtbarkeit">
+            <option value="privat">Nur für mich</option>
+            <option value="team">Auch für zuständige Trainer:innen</option>
+          </select>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+      </form>
+    </details>
+  </div>
+  {% endfor %}
+  {% if k.darf_board_verwalten %}
+  <div class="board-column board-column--neu">
+    <details class="neue-karte-toggle">
+      <summary>+ Spalte hinzufügen</summary>
+      <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten">
+        <div class="field">
+          <label>Name</label>
+          <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>
+        </div>
+        <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+      </form>
+    </details>
+  </div>
+  {% endif %}
+</div>

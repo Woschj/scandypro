@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Handlungsfeld-Team – ScandyPro{% endblock %}
+{% block content %}
+<p><a href="/kanban">&larr; Kanban</a></p>
+<h1>Handlungsfeld-Team</h1>
+<p class="visibility-hint">Boards werden für Arbeitsgruppen freigegeben, nicht für einzelne Personen.
+  Du siehst nur Handlungsfelder, die du leitest.</p>
+
+<h2>Handlungsfeld wählen</h2>
+<div class="card">
+  {% if eigene_handlungsfelder %}
+  <form method="get" action="/kanban/gruppen">
+    <div class="field">
+      <label for="handlungsfeld_id_select">Handlungsfeld</label>
+      <select id="handlungsfeld_id_select" name="handlungsfeld_id" onchange="this.form.submit()">
+        <option value="">– Handlungsfeld wählen –</option>
+        {% for h in eigene_handlungsfelder %}
+        <option value="{{ h.id }}" {% if h.id == ausgewaehltes_handlungsfeld_id %}selected{% endif %}>{{ h.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+  {% else %}
+  <p class="empty-state">Du leitest aktuell kein Handlungsfeld.</p>
+  {% endif %}
+</div>
+
+{% if ausgewaehltes_handlungsfeld_id %}
+<h2>Mitglieder des Handlungsfelds</h2>
+<div class="card">
+  <p class="karte-meta">Nur Mitglieder eines Handlungsfelds können in eine Arbeitsgruppe aufgenommen oder
+    persönlich mit Kanban-Aufgaben bedacht werden.</p>
+  {% if abteilungs_teilnehmer %}
+  <table>
+    <thead><tr><th>Teilnehmer:in</th><th></th></tr></thead>
+    <tbody>
+    {% for t in abteilungs_teilnehmer %}
+      <tr>
+        <td>{{ t.name }}</td>
+        <td style="text-align: right;">
+          {% if t.id in hf_mitglied_teilnehmer_ids %}
+          <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder/{{ hf_mitglied_id_by_teilnehmer[t.id] }}/entfernen">
+            <button type="submit" class="btn btn-ghost btn-sm">Entfernen</button>
+          </form>
+          {% else %}
+          <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder">
+            <input type="hidden" name="teilnehmer_id" value="{{ t.id }}">
+            <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Keine Teilnehmer:innen in der Abteilung dieses Handlungsfelds.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<h2>Bestehende Arbeitsgruppen</h2>
+{% if gruppen %}
+<table>
+  <thead><tr><th>Gruppe</th><th>Handlungsfeld</th><th>Mitglieder</th></tr></thead>
+  <tbody>
+  {% for g in gruppen %}
+    <tr>
+      <td>{{ g.name }}</td>
+      <td>{{ handlungsfeld_by_id[g.handlungsfeld_id].name }}</td>
+      <td>
+        {% for tid in mitglieder_by_gruppe.get(g.id, []) %}
+          {{ teilnehmer_by_id[tid].name }}{% if not loop.last %}, {% endif %}
+        {% else %}
+          <span class="empty-state">keine Mitglieder</span>
+        {% endfor %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty-state">Noch keine Gruppen angelegt.</p>
+{% endif %}
+
+{% if ausgewaehltes_handlungsfeld_id %}
+<h2>Neue Arbeitsgruppe</h2>
+<div class="card">
+  <form method="post" action="/kanban/gruppen">
+    <input type="hidden" name="handlungsfeld_id" value="{{ ausgewaehltes_handlungsfeld_id }}">
+    <div class="field">
+      <label for="name">Gruppenname</label>
+      <input type="text" id="name" name="name" required>
+    </div>
+    <div class="field">
+      <label>Mitglieder ({{ handlungsfeld_by_id[ausgewaehltes_handlungsfeld_id].name }})</label>
+      {% if auswahl_teilnehmer %}
+      <div class="checkbox-list">
+        {% for t in auswahl_teilnehmer %}
+        <label><input type="checkbox" name="mitglieder" value="{{ t.id }}"> {{ t.name }}</label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty-state">Noch keine Mitglieder in diesem Handlungsfeld – oben zuerst hinzufügen.</p>
+      {% endif %}
+    </div>
+    <button type="submit" class="btn btn-primary">Gruppe anlegen</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

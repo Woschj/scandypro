@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}PSM-Zuordnungen – ScandyPro{% endblock %}
+{% block content %}
+<h1>PSM-Zuordnungen</h1>
+<p class="visibility-hint">Rein organisatorisch: legt fest, wer als PSM-Kontaktperson angezeigt wird.
+  Gewährt keinen automatischen Zugriff auf Wohlbefinden-Daten – das bleibt bei den Teilnehmer:innen selbst.</p>
+
+<div class="card">
+  <h3>Neue Zuordnung</h3>
+  <form method="post" action="/admin/psm-zuordnungen" class="form-row">
+    <div class="field">
+      <label for="psm_id">Psychosoziale Mitarbeit</label>
+      <select id="psm_id" name="psm_id" required>
+        {% for p in alle_psm %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="teilnehmer_id">Teilnehmer:in</label>
+      <select id="teilnehmer_id" name="teilnehmer_id" required>
+        {% for t in alle_teilnehmer %}
+        <option value="{{ t.id }}">{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Zuordnen</button>
+  </form>
+</div>
+
+<h2>Bestehende Zuordnungen</h2>
+{% if zuordnungen %}
+<table>
+  <thead><tr><th>Psychosoziale Mitarbeit</th><th>Teilnehmer:in</th><th></th></tr></thead>
+  <tbody>
+  {% for z in zuordnungen %}
+    <tr>
+      <td>{{ user_by_id[z.psm_id].name }}</td>
+      <td>{{ user_by_id[z.teilnehmer_id].name }}</td>
+      <td>
+        <form method="post" action="/admin/psm-zuordnungen/{{ z.id }}/entfernen">
+          <button type="submit" class="btn btn-ghost btn-sm">Entfernen</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty-state">Noch keine Zuordnungen.</p>
+{% endif %}
+{% endblock %}

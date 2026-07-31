@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Bewerbungen – {{ teilnehmer.name }} – ScandyPro{% endblock %}
+{% block content %}
+<p><a href="/">&larr; Zurück</a></p>
+<h1>Bewerbungen von {{ teilnehmer.name }}</h1>
+<p class="visibility-hint">Freigegebene Ansicht - nur lesend. {{ teilnehmer.name }} kann diese Freigabe
+  jederzeit widerrufen. Dokumente bleiben in dieser Version bei {{ teilnehmer.name }}.</p>
+
+{% if bewerbungen %}
+{% for b in bewerbungen %}
+<div class="card">
+  <h3 style="margin: 0;">{{ b.firma }} — {{ b.position }}</h3>
+  <span class="chip">{{ b.status.value }}</span>
+  <p class="karte-meta" style="margin-top: var(--space-3);">
+    Beworben am {{ b.beworben_am or "–" }} · Nächster Termin: {{ b.naechster_termin or "–" }}
+  </p>
+  {% if b.notizen %}<p>{{ b.notizen }}</p>{% endif %}
+</div>
+{% endfor %}
+{% else %}
+<p class="empty-state">Keine freigegebenen Bewerbungen.</p>
+{% endif %}
+{% endblock %}

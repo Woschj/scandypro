@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Trainer-Zuordnungen – ScandyPro{% endblock %}
+{% block content %}
+<h1>Berufstrainer-Zuordnungen</h1>
+<p class="visibility-hint">Rein organisatorisch: legt fest, wer als persönlicher Berufstrainer-Kontakt angezeigt wird
+  und wer persönliche Kanban-Aufgaben für diese:n Teilnehmer:in anlegen darf.
+  Gewährt keinen automatischen Zugriff auf Wohlbefinden- oder Bewerbungsdaten.</p>
+
+<div class="card">
+  <h3>Neue Zuordnung</h3>
+  <form method="post" action="/admin/trainer-zuordnungen" class="form-row">
+    <div class="field">
+      <label for="berufstrainer_id">Berufstrainer:in</label>
+      <select id="berufstrainer_id" name="berufstrainer_id" required>
+        {% for t in alle_trainer %}
+        <option value="{{ t.id }}">{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="teilnehmer_id">Teilnehmer:in</label>
+      <select id="teilnehmer_id" name="teilnehmer_id" required>
+        {% for t in alle_teilnehmer %}
+        <option value="{{ t.id }}">{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Zuordnen</button>
+  </form>
+</div>
+
+<h2>Bestehende Zuordnungen</h2>
+{% if zuordnungen %}
+<table>
+  <thead><tr><th>Berufstrainer:in</th><th>Teilnehmer:in</th><th></th></tr></thead>
+  <tbody>
+  {% for z in zuordnungen %}
+    <tr>
+      <td>{{ user_by_id[z.berufstrainer_id].name }}</td>
+      <td>{{ user_by_id[z.teilnehmer_id].name }}</td>
+      <td>
+        <form method="post" action="/admin/trainer-zuordnungen/{{ z.id }}/entfernen">
+          <button type="submit" class="btn btn-ghost btn-sm">Entfernen</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty-state">Noch keine Zuordnungen.</p>
+{% endif %}
+{% endblock %}

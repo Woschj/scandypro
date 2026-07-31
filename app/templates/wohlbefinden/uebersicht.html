@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Wohlbefinden – ScandyPro{% endblock %}
+{% block content %}
+<h1>Wohlbefinden</h1>
+<p class="visibility-hint">Nur für dich sichtbar, außer du gibst gezielt frei.</p>
+
+<div class="card">
+  <div class="wochen-nav">
+    <a class="btn btn-ghost btn-sm" href="/wohlbefinden?woche_start={{ vorherige_woche }}">&larr; Vorherige Woche</a>
+    <span class="wochen-label">{{ wochenbereich }}{% if ist_aktuelle_woche %} <span class="chip chip-brand">diese Woche</span>{% endif %}</span>
+    <a class="btn btn-ghost btn-sm" href="/wohlbefinden?woche_start={{ naechste_woche }}">Nächste Woche &rarr;</a>
+  </div>
+
+  <div class="zeitlinie-legende">
+    <span><span class="swatch" style="background: var(--brand);"></span> Wohlbefinden</span>
+    <span><span class="swatch" style="background: var(--accent);"></span> Energie</span>
+    <span>Zieh die Punkte dahin, wo dein Tag gerade steht. Tipp auf 💬 für eine kurze Notiz.</span>
+  </div>
+
+  <div class="zeitlinie-widget">
+    <svg id="zeitlinie-svg" viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="zeitlinie-toast" class="zeitlinie-toast"></div>
+
+    <div id="kommentar-panel" class="kommentar-panel">
+      <div class="kommentar-panel-box">
+        <h3 id="kommentar-titel">Kommentar</h3>
+        <div class="field">
+          <textarea id="kommentar-text" rows="4" placeholder="Was war an diesem Tag los?"></textarea>
+        </div>
+        <div style="display:flex; gap: var(--space-2); justify-content: flex-end;">
+          <button type="button" id="kommentar-schliessen" class="btn btn-ghost btn-sm">Abbrechen</button>
+          <button type="button" id="kommentar-speichern" class="btn btn-primary btn-sm">Speichern</button>
+        </div>
+      </div>
+    </div>
+
+    <script id="wochendaten-data" type="application/json">{{ wochendaten_json | safe }}</script>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Deine Woche im Rückblick</h3>
+  <div class="auswertung-grid">
+    <div class="auswertung-stat">
+      <div class="eyebrow">Wohlbefinden im Schnitt</div>
+      <div class="wert">{{ auswertung.stimmung_avg if auswertung.stimmung_avg is not none else "–" }}</div>
+      {% if auswertung.stimmung_avg is not none and auswertung.stimmung_avg_vorwoche is not none %}
+      {% set delta = (auswertung.stimmung_avg - auswertung.stimmung_avg_vorwoche) | round(1) %}
+      <div class="delta">
+        {% if delta > 0 %}etwas mehr als letzte Woche{% elif delta < 0 %}etwas weniger als letzte Woche{% else %}wie letzte Woche{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="auswertung-stat">
+      <div class="eyebrow">Energie im Schnitt</div>
+      <div class="wert">{{ auswertung.belastbarkeit_avg if auswertung.belastbarkeit_avg is not none else "–" }}</div>
+      {% if auswertung.belastbarkeit_avg is not none and auswertung.belastbarkeit_avg_vorwoche is not none %}
+      {% set delta = (auswertung.belastbarkeit_avg - auswertung.belastbarkeit_avg_vorwoche) | round(1) %}
+      <div class="delta">
+        {% if delta > 0 %}etwas mehr als letzte Woche{% elif delta < 0 %}etwas weniger als letzte Woche{% else %}wie letzte Woche{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Dein Verlauf</h3>
+  <p class="karte-meta">{{ monat_start }} – {{ monat_ende }}</p>
+  {% if monat_chart.hat_daten %}
+  <svg viewBox="0 0 {{ monat_chart.breite }} {{ monat_chart.hoehe }}" style="width:100%; height:auto;">
+    <polyline points="{{ monat_chart.belastbarkeit_punkte }}" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0.85"></polyline>
+    <polyline points="{{ monat_chart.stimmung_punkte }}" fill="none" stroke="var(--brand)" stroke-width="2"></polyline>
+  </svg>
+  {% else %}
+  <p class="empty-state">Hier zeigt sich mit der Zeit dein Verlauf – trag einfach ein paar Tage oben in der Zeitlinie ein.</p>
+  {% endif %}
+</div>
+
+<details class="card">
+  <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Für wen freigeben</h3></summary>
+  <div style="margin-top: var(--space-4);">
+    {% if psm_kontakt %}
+    <p class="karte-meta">Deine PSM-Kontaktperson <strong>{{ psm_kontakt.name }}</strong> sieht deine Daten erst,
+      wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
+    <form method="post" action="/wohlbefinden/freigaben" class="form-row">
+      <input type="hidden" name="empfaenger_id" value="{{ psm_kontakt.id }}">
+      <div class="field">
+        <label for="umfang">Umfang</label>
+        <select id="umfang" name="umfang">
+          <option value="alle">Gesamter Verlauf</option>
+          <option value="zeitraum">Bis zu einem Datum</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="gueltig_bis">Gültig bis (optional)</label>
+        <input type="date" id="gueltig_bis" name="gueltig_bis">
+      </div>
+      <button type="submit" class="btn btn-primary">Freigeben</button>
+    </form>
+    {% else %}
+    <p class="empty-state">Dir ist noch keine psychosoziale Mitarbeit zugeordnet - sprich deine Einrichtung an.</p>
+    {% endif %}
+
+    {% if freigaben %}
+    <table style="margin-top: var(--space-4);">
+      <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
+      <tbody>
+      {% for f in freigaben %}
+      <tr>
+        <td>{{ psm_kontakt.name if psm_kontakt and psm_kontakt.id == f.empfaenger_id else "PSM #" ~ f.empfaenger_id }}</td>
+        <td>{{ "Gesamter Verlauf" if f.umfang.value == "alle" else "Befristet" }}</td>
+        <td>{{ f.gueltig_bis or "unbefristet" }}</td>
+        <td>
+          <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">
+            <button type="submit" class="btn btn-ghost btn-sm">Widerrufen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</details>
+
+<script src="/static/js/wohlbefinden.js" defer></script>
+{% endblock %}

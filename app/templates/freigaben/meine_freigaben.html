@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Meine Freigaben – ScandyPro{% endblock %}
+{% block content %}
+<h1>Meine Freigaben</h1>
+<p class="visibility-hint">Alles an einem Ort: wer gerade auf deine Wohlbefinden-/Bewerbungsdaten zugreifen darf,
+  und wer wann tatsächlich reingeschaut hat.</p>
+
+<div class="card">
+  <h3>Wohlbefinden</h3>
+  {% if wohlbefinden_freigaben %}
+  <table>
+    <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
+    <tbody>
+    {% for f in wohlbefinden_freigaben %}
+    <tr>
+      <td>{{ empfaenger_by_id[f.empfaenger_id].name if f.empfaenger_id in empfaenger_by_id else "?" }}</td>
+      <td>{{ "Gesamter Verlauf" if f.umfang.value == "alle" else "Befristet" }}</td>
+      <td>{{ f.gueltig_bis or "unbefristet" }}</td>
+      <td>
+        <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">
+          <button type="submit" class="btn btn-ghost btn-sm">Widerrufen</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Aktuell keine aktive Freigabe.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Bewerbungen</h3>
+  {% if bewerbungs_freigaben %}
+  <table>
+    <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
+    <tbody>
+    {% for f in bewerbungs_freigaben %}
+    <tr>
+      <td>{{ empfaenger_by_id[f.empfaenger_id].name if f.empfaenger_id in empfaenger_by_id else "?" }}</td>
+      <td>
+        {% if f.umfang.value == "alle" %}Alle Bewerbungen
+        {% elif f.bewerbung_id in bewerbung_by_id %}{{ bewerbung_by_id[f.bewerbung_id].firma }}
+        {% else %}Einzelne Bewerbung{% endif %}
+      </td>
+      <td>{{ f.gueltig_bis or "unbefristet" }}</td>
+      <td>
+        <form method="post" action="/bewerbungen/freigaben/{{ f.id }}/widerrufen">
+          <button type="submit" class="btn btn-ghost btn-sm">Widerrufen</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Aktuell keine aktive Freigabe.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Wer hat auf deine Daten zugegriffen</h3>
+  {% if audit_eintraege %}
+  <table>
+    <thead><tr><th>Zeitpunkt</th><th>Wer</th><th>Was</th></tr></thead>
+    <tbody>
+    {% for e in audit_eintraege %}
+    <tr>
+      <td>{{ e.zeitpunkt.strftime("%d.%m.%Y %H:%M") }}</td>
+      <td>{{ akteur_by_id[e.akteur_id].name if e.akteur_id in akteur_by_id else "?" }}</td>
+      <td>{{ "Wohlbefinden gelesen" if e.zieltyp.value == "wohlbefinden" else "Bewerbung gelesen" }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Noch niemand hat auf deine freigegebenen Daten zugegriffen.</p>
+  {% endif %}
+</div>
+
+<details class="card">
+  <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Alle Daten in einem Bereich löschen</h3></summary>
+  <div style="margin-top: var(--space-4);">
+    <p class="karte-meta">Das entfernt deine Einträge unwiderruflich (inkl. Dateien und Freigaben) - dein
+      Zugang zu ScandyPro bleibt bestehen. Zur Bestätigung bitte "LÖSCHEN" eintippen.</p>
+
+    <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" onsubmit="return confirm('Wirklich alle Wohlbefinden-Einträge unwiderruflich löschen?');" class="form-row" style="margin-bottom: var(--space-4);">
+      <div class="field">
+        <label for="bestaetigung-wb">Alle Wohlbefinden-Daten löschen</label>
+        <input type="text" id="bestaetigung-wb" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
+      </div>
+      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+    </form>
+
+    <form method="post" action="/freigaben/konto/bewerbungen-loeschen" onsubmit="return confirm('Wirklich alle Bewerbungsdaten unwiderruflich löschen?');" class="form-row">
+      <div class="field">
+        <label for="bestaetigung-bw">Alle Bewerbungsdaten löschen</label>
+        <input type="text" id="bestaetigung-bw" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
+      </div>
+      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+    </form>
+  </div>
+</details>
+{% endblock %}
