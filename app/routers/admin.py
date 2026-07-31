@@ -167,7 +167,7 @@ async def psm_zuordnung_erstellen(
     psm = await session.get(User, psm_id)
     teilnehmer = await session.get(User, teilnehmer_id)
     if psm is None or psm.role != RoleEnum.psychosoziale_mitarbeit:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Auswahl bei der psychosozialen Mitarbeit.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Auswahl der psychosozialen Mitarbeiter:in.")
     if teilnehmer is None or teilnehmer.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Teilnehmer-Auswahl.")
 

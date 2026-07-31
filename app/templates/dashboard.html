@@ -5,7 +5,7 @@
 <p class="visibility-hint">Deine Rolle: {{ current_user.role.value | rollenname }}</p>
 
 {% if psm_kontakt %}
-<p class="visibility-hint">Zuständige psychosoziale Mitarbeit: <strong>{{ psm_kontakt.name }}</strong></p>
+<p class="visibility-hint">Zuständige psychosoziale Mitarbeiter:in: <strong>{{ psm_kontakt.name }}</strong></p>
 {% endif %}
 {% if trainer_kontakt %}
 <p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong></p>
@@ -13,7 +13,7 @@
 
 <div class="card-grid">
   <div class="card">
-    <h3>Kanban</h3>
+    <h3>Projekte</h3>
     <p>Projekte deiner Handlungsfelder, gemeinsam mit anderen Teilnehmenden.</p>
     <a class="btn btn-primary" href="/kanban">Öffnen</a>
   </div>
@@ -94,7 +94,7 @@
     <a class="btn btn-primary" href="/admin/abteilungen">Öffnen</a>
   </div>
   <div class="card">
-    <h3>Zuordnungen Psychosoziale Mitarbeit</h3>
+    <h3>Zuordnungen Psychosoziale Mitarbeiter:innen</h3>
     <p>Wer betreut wen (organisatorisch, ohne Dateneinblick).</p>
     <a class="btn btn-primary" href="/admin/psm-zuordnungen">Öffnen</a>
   </div>

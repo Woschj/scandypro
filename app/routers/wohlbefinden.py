@@ -173,12 +173,12 @@ async def teilnehmer_ansicht(
     session: SessionDep,
     woche_start: str | None = None,
 ):
-    """Rein lesende Ansicht für psychosoziale Mitarbeit - erfordert sowohl
+    """Rein lesende Ansicht für psychosoziale Mitarbeiter:innen - erfordert sowohl
     eine organisatorische PsmZuordnung als auch eine aktive, von der/dem
     Teilnehmer:in selbst erteilte Freigabe. Jeder Aufruf wird protokolliert
     (siehe app/core/audit.py)."""
     if current_user.role != RoleEnum.psychosoziale_mitarbeit:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur psychosoziale Mitarbeit nutzt diese Ansicht.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur psychosoziale Mitarbeiter:innen nutzen diese Ansicht.")
 
     zuordnung_result = await session.execute(
         select(PsmZuordnung).where(

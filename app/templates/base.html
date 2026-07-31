@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ScandyPro{% endblock %}</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="{{ static_version('css/style.css') }}">
 </head>
 <body>
   <div class="app-shell">
@@ -12,7 +12,7 @@
     <header class="topnav">
       <a class="wordmark" href="/">SCANDY<span class="dot">//</span>PRO</a>
       <nav class="topnav-links">
-        <a href="/kanban" class="{% if request.url.path.startswith('/kanban') %}active{% endif %}">Kanban</a>
+        <a href="/kanban" class="{% if request.url.path.startswith('/kanban') %}active{% endif %}">Projekte</a>
         {% if current_user.role.value == "berufstrainer" %}
         <a href="/kanban/gruppen" class="{% if request.url.path.startswith('/kanban/gruppen') %}active{% endif %}">Handlungsfeld-Team</a>
         {% endif %}
@@ -26,7 +26,7 @@
         {% endif %}
         {% if current_user.role.value == "einrichtungs_admin" %}
         <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Abteilungen</a>
-        <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeit</a>
+        <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeiter:innen</a>
         <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
         {% endif %}
       </nav>

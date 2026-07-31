@@ -3,6 +3,22 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent.parent / "templates")
+_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
+def static_version(pfad: str) -> str:
+    """Cache-Busting-Query anhand der mtime der Datei unter app/static, damit
+    CSS/JS-Änderungen nach einem Deploy nicht durch Browser-Caching verdeckt
+    werden (siehe app/templates/base.html)."""
+    voller_pfad = _STATIC_DIR / pfad
+    try:
+        mtime = int(voller_pfad.stat().st_mtime)
+    except OSError:
+        mtime = 0
+    return f"/static/{pfad}?v={mtime}"
+
+
+templates.env.globals["static_version"] = static_version
 
 
 def initialen(name: str) -> str:
@@ -21,7 +37,7 @@ templates.env.filters["initialen"] = initialen
 ROLLENNAMEN = {
     "teilnehmer": "Teilnehmer:in",
     "berufstrainer": "Berufstrainer:in",
-    "psychosoziale_mitarbeit": "Psychosoziale Mitarbeit",
+    "psychosoziale_mitarbeit": "Psychosoziale Mitarbeiter:in",
     "einrichtungs_admin": "Einrichtungs-Admin",
 }
 

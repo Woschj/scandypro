@@ -4,7 +4,9 @@
    Feldern board, spalten, karten_by_spalte, zuweisungen_by_karte,
    unteraufgaben_by_karte, boardmitglieder, darf_sichtbarkeit_aendern, heute
    (siehe app/routers/kanban.py, _board_kontext). #}
-<div class="board-columns">
+<div class="board-columns-wrap" data-board-scroll>
+  <button type="button" class="board-scroll-btn board-scroll-btn--left" data-scroll-dir="-1" aria-label="Spalten nach links scrollen">‹</button>
+  <div class="board-columns">
   {% for spalte in k.spalten %}
   {% set karten = k.karten_by_spalte.get(spalte.id, []) %}
   <div class="board-column">
@@ -86,7 +88,7 @@
               <label for="sichtbarkeit-{{ karte.id }}">Sichtbarkeit</label>
               <select id="sichtbarkeit-{{ karte.id }}" name="sichtbarkeit">
                 <option value="privat" {% if karte.sichtbarkeit.value == "privat" %}selected{% endif %}>Nur für mich</option>
-                <option value="team" {% if karte.sichtbarkeit.value == "team" %}selected{% endif %}>Auch für zuständige Trainer:innen</option>
+                <option value="team" {% if karte.sichtbarkeit.value == "team" %}selected{% endif %}>Auch für zuständige Berufstrainer:innen</option>
               </select>
             </div>
             {% endif %}
@@ -112,16 +114,18 @@
           {% set zugewiesene_ids = zuweisungen | map(attribute="teilnehmer_id") | list %}
           {% set freie_mitglieder = k.boardmitglieder.values() | rejectattr("id", "in", zugewiesene_ids) | list %}
           {% if freie_mitglieder %}
-          <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen" class="form-row">
-            <div class="field">
-              <select name="teilnehmer_id">
-                {% for m in freie_mitglieder %}
-                <option value="{{ m.id }}">{{ m.name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <button type="submit" class="btn btn-ghost btn-sm">Zuweisen</button>
-          </form>
+          <div class="eyebrow" style="margin-top: var(--space-2);">Antippen zum Zuweisen</div>
+          <div class="zuweisen-chips">
+            {% for m in freie_mitglieder %}
+            <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen">
+              <input type="hidden" name="teilnehmer_id" value="{{ m.id }}">
+              <button type="submit" class="zuweisen-chip" title="{{ m.name }} zuweisen">
+                <span class="avatar avatar-{{ m.id % 5 }}">{{ m.name | initialen }}</span>
+                {{ m.name }}
+              </button>
+            </form>
+            {% endfor %}
+          </div>
           {% endif %}
           {% endif %}
 
@@ -194,7 +198,7 @@
           <label for="neue-sichtbarkeit-{{ spalte.id }}">Sichtbarkeit</label>
           <select id="neue-sichtbarkeit-{{ spalte.id }}" name="sichtbarkeit">
             <option value="privat">Nur für mich</option>
-            <option value="team">Auch für zuständige Trainer:innen</option>
+            <option value="team">Auch für zuständige Berufstrainer:innen</option>
           </select>
         </div>
         {% endif %}
@@ -217,4 +221,6 @@
     </details>
   </div>
   {% endif %}
+  </div>
+  <button type="button" class="board-scroll-btn board-scroll-btn--right" data-scroll-dir="1" aria-label="Spalten nach rechts scrollen">›</button>
 </div>

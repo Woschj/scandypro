@@ -81,7 +81,7 @@
   <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Für wen freigeben</h3></summary>
   <div style="margin-top: var(--space-4);">
     {% if psm_kontakt %}
-    <p class="karte-meta">Die zuständige psychosoziale Mitarbeit (<strong>{{ psm_kontakt.name }}</strong>) sieht deine
+    <p class="karte-meta">Die zuständige psychosoziale Mitarbeiter:in (<strong>{{ psm_kontakt.name }}</strong>) sieht deine
       Einträge erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
     <form method="post" action="/wohlbefinden/freigaben" class="form-row">
       <input type="hidden" name="empfaenger_id" value="{{ psm_kontakt.id }}">
@@ -99,7 +99,7 @@
       <button type="submit" class="btn btn-primary">Freigeben</button>
     </form>
     {% else %}
-    <p class="empty-state">Dir ist noch keine psychosoziale Mitarbeit zugeordnet - sprich deine Einrichtung an.</p>
+    <p class="empty-state">Dir ist noch keine psychosoziale Mitarbeiter:in zugeordnet - sprich deine Einrichtung an.</p>
     {% endif %}
 
     {% if freigaben %}
@@ -108,7 +108,7 @@
       <tbody>
       {% for f in freigaben %}
       <tr>
-        <td>{{ psm_kontakt.name if psm_kontakt and psm_kontakt.id == f.empfaenger_id else "Psychosoziale Mitarbeit #" ~ f.empfaenger_id }}</td>
+        <td>{{ psm_kontakt.name if psm_kontakt and psm_kontakt.id == f.empfaenger_id else "Psychosoziale Mitarbeiter:in #" ~ f.empfaenger_id }}</td>
         <td>{{ "Gesamter Verlauf" if f.umfang.value == "alle" else "Befristet" }}</td>
         <td>{{ f.gueltig_bis or "unbefristet" }}</td>
         <td>
@@ -124,5 +124,5 @@
   </div>
 </details>
 
-<script src="/static/js/wohlbefinden.js" defer></script>
+<script src="{{ static_version('js/wohlbefinden.js') }}" defer></script>
 {% endblock %}

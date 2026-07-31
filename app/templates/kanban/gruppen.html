@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Handlungsfeld-Team – ScandyPro{% endblock %}
 {% block content %}
-<p><a href="/kanban">&larr; Kanban</a></p>
+<p><a href="/kanban">&larr; Projekte</a></p>
 <h1>Handlungsfeld-Team</h1>
 <p class="visibility-hint">Boards werden für Arbeitsgruppen freigegeben, nicht für einzelne Personen.
   Du siehst nur Handlungsfelder, die du leitest.</p>
@@ -29,7 +29,7 @@
 <h2>Mitglieder des Handlungsfelds</h2>
 <div class="card">
   <p class="karte-meta">Nur Mitglieder eines Handlungsfelds können in eine Arbeitsgruppe aufgenommen oder
-    persönlich mit Kanban-Aufgaben bedacht werden.</p>
+    persönlich mit Projekt-Aufgaben bedacht werden.</p>
   {% if abteilungs_teilnehmer %}
   <table>
     <thead><tr><th>Teilnehmer:in</th><th></th></tr></thead>

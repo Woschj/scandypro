@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Zuordnungen Psychosoziale Mitarbeit – ScandyPro{% endblock %}
+{% block title %}Zuordnungen Psychosoziale Mitarbeiter:innen – ScandyPro{% endblock %}
 {% block content %}
-<h1>Zuordnungen Psychosoziale Mitarbeit</h1>
-<p class="visibility-hint">Rein organisatorisch: legt fest, welche psychosoziale Mitarbeit als zuständig angezeigt wird.
+<h1>Zuordnungen Psychosoziale Mitarbeiter:innen</h1>
+<p class="visibility-hint">Rein organisatorisch: legt fest, welche psychosoziale Mitarbeiter:in als zuständig angezeigt wird.
   Gewährt keinen automatischen Zugriff auf Einträge zu "Mein Tag" – das bleibt bei den Teilnehmer:innen selbst.</p>
 
 <div class="card">
   <h3>Neue Zuordnung</h3>
   <form method="post" action="/admin/psm-zuordnungen" class="form-row">
     <div class="field">
-      <label for="psm_id">Psychosoziale Mitarbeit</label>
+      <label for="psm_id">Psychosoziale Mitarbeiter:in</label>
       <select id="psm_id" name="psm_id" required>
         {% for p in alle_psm %}
         <option value="{{ p.id }}">{{ p.name }}</option>
@@ -31,7 +31,7 @@
 <h2>Bestehende Zuordnungen</h2>
 {% if zuordnungen %}
 <table>
-  <thead><tr><th>Psychosoziale Mitarbeit</th><th>Teilnehmer:in</th><th></th></tr></thead>
+  <thead><tr><th>Psychosoziale Mitarbeiter:in</th><th>Teilnehmer:in</th><th></th></tr></thead>
   <tbody>
   {% for z in zuordnungen %}
     <tr>
