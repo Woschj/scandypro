@@ -1,13 +1,15 @@
 /*
- * "Mein Tag": antippbare Emoji-Skala (1-10) statt Ziehen auf einer Linie.
- * Jeder Tag hat zwei Emoji-Reihen (Stimmung, Energie); ein Klick markiert
- * die Kachel sofort und speichert im Hintergrund - kein Neuladen nötig.
+ * "Mein Tag": ein Regler pro Feld (Stimmung/Energie) mit genau einer
+ * großen Emoji-Vorschau statt einer Reihe aus 10 Buttons - bewusst
+ * reduziert, damit die Seite auch mit zwei Reglern pro Tag nicht
+ * überladen wirkt (Zielgruppe: möglichst wenig kognitive Last).
  */
 (function () {
   function init(root) {
     const dataScript = root.querySelector("#wochendaten-data");
     const daten = JSON.parse(dataScript.textContent);
     const datenByDatum = Object.fromEntries(daten.map((tag) => [tag.datum, tag]));
+    const emojiListen = JSON.parse(root.querySelector("#emoji-daten").textContent);
     const toast = root.querySelector("#zeitlinie-toast");
     const kommentarPanel = root.querySelector("#kommentar-panel");
     const kommentarTitel = root.querySelector("#kommentar-titel");
@@ -40,20 +42,22 @@
       }
     }
 
-    root.querySelectorAll(".emoji-picker-reihe").forEach((reihe) => {
-      const tagEintrag = reihe.closest("[data-datum]");
+    root.querySelectorAll(".emoji-slider").forEach((slider) => {
+      const tagEintrag = slider.closest("[data-datum]");
       const datum = tagEintrag.dataset.datum;
-      const feld = reihe.dataset.feld;
+      const feld = slider.dataset.feld;
+      const preview = tagEintrag.querySelector(`[data-preview="${feld}"]`);
+      const emojis = emojiListen[feld];
 
-      reihe.querySelectorAll(".emoji-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const wert = parseInt(btn.dataset.wert, 10);
-          datenByDatum[datum][feld] = wert;
-          datenByDatum[datum].gesetzt = true;
-          reihe.querySelectorAll(".emoji-btn").forEach((b) => b.classList.remove("emoji-btn--aktiv"));
-          btn.classList.add("emoji-btn--aktiv");
-          speichereTag(datum);
-        });
+      slider.addEventListener("input", () => {
+        const wert = parseInt(slider.value, 10);
+        preview.textContent = emojis[wert - 1];
+      });
+      slider.addEventListener("change", () => {
+        const wert = parseInt(slider.value, 10);
+        datenByDatum[datum][feld] = wert;
+        datenByDatum[datum].gesetzt = true;
+        speichereTag(datum);
       });
     });
 

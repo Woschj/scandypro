@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
@@ -57,3 +58,12 @@ templates.env.filters["energie_emoji"] = energie_emoji
 templates.env.filters["heatmap_farbe"] = heatmap_farbe
 templates.env.globals["STIMMUNG_EMOJI"] = STIMMUNG_EMOJI
 templates.env.globals["ENERGIE_EMOJI"] = ENERGIE_EMOJI
+
+
+def tojson(value) -> str:
+    """Minimaler tojson-Filter (Jinja2 bringt ihn ohne Flask nicht mit) -
+    für kleine, sichere JSON-Snippets direkt im Template."""
+    return json.dumps(value).replace("</", "<\\/")
+
+
+templates.env.filters["tojson"] = tojson

@@ -34,7 +34,10 @@ def _mittelwert(eintraege: list[WohlbefindenEintrag], feld: str) -> float | None
 def _heatmap_wochen(eintraege: list[WohlbefindenEintrag], erster_montag: date, heute: date) -> list[list[dict]]:
     """Baut das Wochen-Raster für die Verlaufs-Heatmap ("Mood-Heatmap"):
     eine Zeile pro Woche, sieben Tageskacheln je Zeile, eingefärbt nach
-    Stimmungswert (siehe app/core/skala.py:HEATMAP_FARBEN)."""
+    Stimmungswert (siehe app/core/skala.py:HEATMAP_FARBEN).
+
+    Neueste Woche zuerst (oben) - alles andere liest sich von oben nach
+    unten wie "rückwärts in der Zeit", was unintuitiv wäre."""
     eintrag_by_datum = {e.datum: e for e in eintraege}
     wochen = []
     for w in range(HEATMAP_WOCHEN_ANZAHL):
@@ -53,6 +56,7 @@ def _heatmap_wochen(eintraege: list[WohlbefindenEintrag], erster_montag: date, h
                 }
             )
         wochen.append(tage)
+    wochen.reverse()
     return wochen
 
 

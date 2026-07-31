@@ -32,12 +32,24 @@
   <h3>Woche im Rückblick</h3>
   <div class="auswertung-grid">
     <div class="auswertung-stat">
-      <div class="eyebrow">Stimmung im Schnitt</div>
-      <div class="wert">{{ auswertung.stimmung_avg if auswertung.stimmung_avg is not none else "–" }}</div>
+      <div class="eyebrow">Stimmung</div>
+      <div class="auswertung-emoji">{{ auswertung.stimmung_avg | stimmung_emoji if auswertung.stimmung_avg is not none else "–" }}</div>
+      {% if auswertung.stimmung_avg is not none and auswertung.stimmung_avg_vorwoche is not none %}
+      {% set delta = auswertung.stimmung_avg - auswertung.stimmung_avg_vorwoche %}
+      <div class="auswertung-trend">
+        {% if delta > 0.3 %}📈 im Aufwind{% elif delta < -0.3 %}📉 etwas schwerer als zuletzt{% else %}➡️ ähnlich wie zuletzt{% endif %}
+      </div>
+      {% endif %}
     </div>
     <div class="auswertung-stat">
-      <div class="eyebrow">Energie im Schnitt</div>
-      <div class="wert">{{ auswertung.belastbarkeit_avg if auswertung.belastbarkeit_avg is not none else "–" }}</div>
+      <div class="eyebrow">Energie</div>
+      <div class="auswertung-emoji">{{ auswertung.belastbarkeit_avg | energie_emoji if auswertung.belastbarkeit_avg is not none else "–" }}</div>
+      {% if auswertung.belastbarkeit_avg is not none and auswertung.belastbarkeit_avg_vorwoche is not none %}
+      {% set delta = auswertung.belastbarkeit_avg - auswertung.belastbarkeit_avg_vorwoche %}
+      <div class="auswertung-trend">
+        {% if delta > 0.3 %}📈 im Aufwind{% elif delta < -0.3 %}📉 etwas schwerer als zuletzt{% else %}➡️ ähnlich wie zuletzt{% endif %}
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>
