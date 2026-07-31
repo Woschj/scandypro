@@ -19,8 +19,8 @@
     {% for tag in wochendaten %}
     <tr>
       <td>{{ tag.label }}</td>
-      <td>{{ tag.stimmung if tag.gesetzt else "–" }}</td>
-      <td>{{ tag.belastbarkeit if tag.gesetzt else "–" }}</td>
+      <td>{{ tag.stimmung | stimmung_emoji if tag.gesetzt else "–" }}</td>
+      <td>{{ tag.belastbarkeit | energie_emoji if tag.gesetzt else "–" }}</td>
       <td>{{ tag.kommentar or "" }}</td>
     </tr>
     {% endfor %}
@@ -44,14 +44,17 @@
 
 <div class="card">
   <h3>Verlauf</h3>
-  <p class="karte-meta">{{ monat_start }} – {{ monat_ende }}</p>
-  {% if monat_chart.hat_daten %}
-  <svg viewBox="0 0 {{ monat_chart.breite }} {{ monat_chart.hoehe }}" style="width:100%; height:auto;">
-    <polyline points="{{ monat_chart.belastbarkeit_punkte }}" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0.85"></polyline>
-    <polyline points="{{ monat_chart.stimmung_punkte }}" fill="none" stroke="var(--brand)" stroke-width="2"></polyline>
-  </svg>
-  {% else %}
-  <p class="empty-state">Noch keine Daten für einen Verlauf.</p>
-  {% endif %}
+  <p class="karte-meta">{{ heatmap_start }} – {{ heatmap_ende }} · Stimmung als Farbe je Tag</p>
+  <div class="heatmap-wochen">
+    {% for woche in heatmap_wochen %}
+    <div class="heatmap-woche">
+      {% for tag in woche %}
+      <div class="heatmap-tag {% if tag.zukunft %}heatmap-tag--zukunft{% endif %}"
+        {% if tag.farbe %}style="background: {{ tag.farbe }}; border-color: transparent;"{% endif %}
+        title="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else '' }}">{{ tag.emoji or "" }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

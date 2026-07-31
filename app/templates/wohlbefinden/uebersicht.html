@@ -11,14 +11,40 @@
     <a class="btn btn-ghost btn-sm" href="/wohlbefinden?woche_start={{ naechste_woche }}">Nächste Woche &rarr;</a>
   </div>
 
-  <div class="zeitlinie-legende">
-    <span><span class="swatch" style="background: var(--brand);"></span> Stimmung</span>
-    <span><span class="swatch" style="background: var(--accent);"></span> Energie</span>
-    <span>Zieh die Punkte dahin, wo dein Tag gerade steht. Tipp auf 💬 für eine kurze Notiz.</span>
-  </div>
+  <p class="karte-meta" style="margin-bottom: var(--space-4);">Tipp auf ein Emoji, um Stimmung und Energie für den Tag festzuhalten. Tipp auf 💬 für eine kurze Notiz.</p>
 
-  <div class="zeitlinie-widget">
-    <svg id="zeitlinie-svg" viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="tage-widget">
+    <div class="tage-liste">
+      {% for tag in wochendaten %}
+      <div class="tag-eintrag" data-datum="{{ tag.datum }}">
+        <div class="tag-eintrag-kopf">
+          <span class="tag-eintrag-label">{{ tag.label }}</span>
+          <button type="button" class="tag-kommentar-btn {% if tag.kommentar %}tag-kommentar-btn--gesetzt{% endif %}"
+            data-kommentar-btn="{{ tag.datum }}"
+            title="{{ 'Kommentar: ' ~ tag.kommentar if tag.kommentar else 'Kommentar hinzufügen' }}">💬</button>
+        </div>
+        <div class="emoji-picker" data-feld="stimmung">
+          <span class="emoji-picker-label">Stimmung</span>
+          <div class="emoji-picker-reihe" data-feld="stimmung">
+            {% for emoji in STIMMUNG_EMOJI %}
+            <button type="button" class="emoji-btn {% if tag.gesetzt and tag.stimmung == loop.index %}emoji-btn--aktiv{% endif %}"
+              data-wert="{{ loop.index }}" title="Stufe {{ loop.index }} von 10">{{ emoji }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="emoji-picker" data-feld="belastbarkeit">
+          <span class="emoji-picker-label">Energie</span>
+          <div class="emoji-picker-reihe" data-feld="belastbarkeit">
+            {% for emoji in ENERGIE_EMOJI %}
+            <button type="button" class="emoji-btn {% if tag.gesetzt and tag.belastbarkeit == loop.index %}emoji-btn--aktiv{% endif %}"
+              data-wert="{{ loop.index }}" title="Stufe {{ loop.index }} von 10">{{ emoji }}</button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
     <div id="zeitlinie-toast" class="zeitlinie-toast"></div>
 
     <div id="kommentar-panel" class="kommentar-panel">
@@ -66,15 +92,27 @@
 
 <div class="card">
   <h3>Dein Verlauf</h3>
-  <p class="karte-meta">{{ monat_start }} – {{ monat_ende }}</p>
-  {% if monat_chart.hat_daten %}
-  <svg viewBox="0 0 {{ monat_chart.breite }} {{ monat_chart.hoehe }}" style="width:100%; height:auto;">
-    <polyline points="{{ monat_chart.belastbarkeit_punkte }}" fill="none" stroke="var(--accent)" stroke-width="2" opacity="0.85"></polyline>
-    <polyline points="{{ monat_chart.stimmung_punkte }}" fill="none" stroke="var(--brand)" stroke-width="2"></polyline>
-  </svg>
-  {% else %}
-  <p class="empty-state">Hier zeigt sich mit der Zeit dein Verlauf – trag einfach ein paar Tage oben in der Zeitlinie ein.</p>
-  {% endif %}
+  <p class="karte-meta">{{ heatmap_start }} – {{ heatmap_ende }} · Stimmung als Farbe je Tag</p>
+  <div class="heatmap-wochen">
+    {% for woche in heatmap_wochen %}
+    <div class="heatmap-woche">
+      {% for tag in woche %}
+      <div class="heatmap-tag {% if tag.zukunft %}heatmap-tag--zukunft{% endif %}"
+        {% if tag.farbe %}style="background: {{ tag.farbe }}; border-color: transparent;"{% endif %}
+        title="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else '' }}">{{ tag.emoji or "" }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="heatmap-legende">
+    <span>eher schwer</span>
+    <span class="heatmap-legende-farben">
+      {% for farbe in ["#e8a33d", "#ba9443", "#8d844a", "#5f7550", "#326657", "#1b5e5a"] %}
+      <span class="heatmap-legende-swatch" style="background: {{ farbe }};"></span>
+      {% endfor %}
+    </span>
+    <span>eher leicht</span>
+  </div>
 </div>
 
 <details class="card">

@@ -10,8 +10,8 @@ from app.core.crypto import VerschluesselterText
 class WohlbefindenEintrag(SQLModel, table=True):
     """Hochsensibel (Art. 9 DSGVO).
 
-    Ein Eintrag pro Tag mit zwei Werten (1.0-5.0, in 0.5-Schritten über die
-    Zeitlinie einstellbar):
+    Ein Eintrag pro Tag mit zwei Werten (1-10, per Emoji-Kachel antippbar -
+    siehe app/core/skala.py für die Emoji-Zuordnung):
     - stimmung: die "Wohlbefinden"-Linie
     - belastbarkeit: wie viel Kapazität an diesem Tag gefühlt vorhanden war
 
@@ -25,8 +25,8 @@ class WohlbefindenEintrag(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     teilnehmer_id: int = Field(foreign_key="user.id", index=True)
     datum: date = Field(index=True)
-    stimmung: float = Field(ge=1.0, le=5.0)
-    belastbarkeit: float = Field(ge=1.0, le=5.0)
+    stimmung: int = Field(ge=1, le=10)
+    belastbarkeit: int = Field(ge=1, le=10)
     kommentar: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)
     aktualisiert_am: datetime = Field(default_factory=datetime.utcnow)

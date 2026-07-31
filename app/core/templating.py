@@ -2,6 +2,8 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
+from app.core.skala import ENERGIE_EMOJI, STIMMUNG_EMOJI, energie_emoji, heatmap_farbe, stimmung_emoji
+
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent.parent / "templates")
 _STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -49,3 +51,9 @@ def rollenname(rolle: str) -> str:
 
 
 templates.env.filters["rollenname"] = rollenname
+
+templates.env.filters["stimmung_emoji"] = stimmung_emoji
+templates.env.filters["energie_emoji"] = energie_emoji
+templates.env.filters["heatmap_farbe"] = heatmap_farbe
+templates.env.globals["STIMMUNG_EMOJI"] = STIMMUNG_EMOJI
+templates.env.globals["ENERGIE_EMOJI"] = ENERGIE_EMOJI

@@ -563,33 +563,86 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 
 .section-divider { border: none; border-top: 1px solid var(--line); margin: var(--space-6) 0; }
 
-/* Wohlbefinden-Zeitlinie */
+/* Mein Tag - Emoji-Skala */
 .wochen-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
 .wochen-nav .wochen-label { font-family: var(--font-display); font-weight: 600; }
 
-.zeitlinie-widget { position: relative; }
-.zeitlinie-widget svg { width: 100%; height: auto; touch-action: none; }
+.tage-widget { position: relative; }
 
-.zeitlinie-achse { font-size: 11px; fill: var(--ink-soft); }
-.zeitlinie-tag-label { font-size: 12px; fill: var(--ink-soft); font-family: var(--font-display); }
+.tage-liste { display: flex; flex-direction: column; gap: var(--space-4); }
+.tag-eintrag { padding-bottom: var(--space-4); border-bottom: 1px solid var(--line); }
+.tag-eintrag:last-child { border-bottom: none; padding-bottom: 0; }
+.tag-eintrag-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2); }
+.tag-eintrag-label { font-family: var(--font-display); font-weight: 600; font-size: 0.875rem; }
 
-.zeitlinie-punkt { cursor: grab; transition: r 0.1s ease; }
-.zeitlinie-punkt:hover { r: 14; }
-.zeitlinie-punkt--aktiv { cursor: grabbing; r: 16; }
-.zeitlinie-punkt--stimmung { fill: var(--brand); stroke: var(--brand-ink); stroke-width: 1.5; }
-.zeitlinie-punkt--belastbarkeit { fill: var(--accent); stroke: #8a5a10; stroke-width: 1.5; }
-.zeitlinie-punkt--unset { opacity: 0.4; stroke-dasharray: 2 2; }
+.tag-kommentar-btn {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 999px;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tag-kommentar-btn:hover { background: var(--bg-raised); border-color: var(--brand); }
+.tag-kommentar-btn--gesetzt { border-color: var(--accent); background: #fbf0dd; }
 
-.zeitlinie-pin { cursor: pointer; }
-.zeitlinie-pin circle { transition: r 0.1s ease, stroke 0.15s ease; }
-.zeitlinie-pin:hover circle { stroke: var(--brand); r: 17; }
-.zeitlinie-pin--gesetzt circle { stroke: #8a5a10; }
-.zeitlinie-pin-icon { font-size: 15px; pointer-events: none; }
-.zeitlinie-pin-kopf { font-size: 12px; font-weight: 600; fill: var(--ink-soft); }
+.emoji-picker { margin-bottom: var(--space-2); }
+.emoji-picker:last-child { margin-bottom: 0; }
+.emoji-picker-label {
+  display: block;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.3rem;
+}
+.emoji-picker-reihe {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.emoji-btn {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 1.25rem;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 0.1s ease, transform 0.1s ease, background 0.1s ease;
+}
+.emoji-btn:hover { opacity: 0.85; background: var(--bg); }
+.emoji-btn--aktiv { opacity: 1; background: var(--bg); border-color: var(--line-strong); transform: scale(1.15); }
 
-.zeitlinie-legende { display: flex; gap: var(--space-4); margin-bottom: var(--space-3); font-size: 0.8125rem; color: var(--ink-soft); }
-.zeitlinie-legende span { display: inline-flex; align-items: center; gap: 0.4rem; }
-.zeitlinie-legende .swatch { width: 12px; height: 12px; border-radius: 999px; display: inline-block; }
+/* Mood-Heatmap ("Dein Verlauf") */
+.heatmap-wochen { display: flex; flex-direction: column; gap: 4px; }
+.heatmap-woche { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.heatmap-tag {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9375rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.heatmap-tag--zukunft { visibility: hidden; }
+.heatmap-legende { display: flex; align-items: center; gap: 0.3rem; margin-top: var(--space-3); font-size: 0.75rem; color: var(--ink-soft); }
+.heatmap-legende-farben { display: flex; gap: 2px; }
+.heatmap-legende-swatch { width: 14px; height: 14px; border-radius: 3px; }
 
 .zeitlinie-toast {
   position: absolute;

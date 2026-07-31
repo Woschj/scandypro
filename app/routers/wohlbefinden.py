@@ -9,6 +9,7 @@ from sqlmodel import select
 from app.core.access import hat_wohlbefinden_freigabe, require_owner
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep
+from app.core.skala import heatmap_farbe, stimmung_emoji
 from app.core.templating import templates
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.organisation import PsmZuordnung
@@ -18,6 +19,7 @@ from app.models.wohlbefinden import WohlbefindenEintrag, WohlbefindenFreigabe, W
 router = APIRouter(prefix="/wohlbefinden", tags=["wohlbefinden"])
 
 WOCHENTAG_NAMEN = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+HEATMAP_WOCHEN_ANZAHL = 8
 
 
 def _wochenstart(bezugsdatum: date) -> date:
@@ -29,26 +31,29 @@ def _mittelwert(eintraege: list[WohlbefindenEintrag], feld: str) -> float | None
     return round(sum(werte) / len(werte), 1) if werte else None
 
 
-def _monats_chart(eintraege: list[WohlbefindenEintrag], monat_start: date, tage_gesamt: int) -> dict:
-    breite, hoehe = 640, 120
-    if not eintraege:
-        return {"hat_daten": False, "breite": breite, "hoehe": hoehe}
-
-    def x_fuer(d: date) -> float:
-        return (d - monat_start).days / max(tage_gesamt - 1, 1) * breite
-
-    def y_fuer(wert: float) -> float:
-        return hoehe - 10 - (wert - 1) / 4 * (hoehe - 20)
-
-    stimmung_punkte = " ".join(f"{x_fuer(e.datum):.1f},{y_fuer(e.stimmung):.1f}" for e in eintraege)
-    belastbarkeit_punkte = " ".join(f"{x_fuer(e.datum):.1f},{y_fuer(e.belastbarkeit):.1f}" for e in eintraege)
-    return {
-        "hat_daten": True,
-        "breite": breite,
-        "hoehe": hoehe,
-        "stimmung_punkte": stimmung_punkte,
-        "belastbarkeit_punkte": belastbarkeit_punkte,
-    }
+def _heatmap_wochen(eintraege: list[WohlbefindenEintrag], erster_montag: date, heute: date) -> list[list[dict]]:
+    """Baut das Wochen-Raster für die Verlaufs-Heatmap ("Mood-Heatmap"):
+    eine Zeile pro Woche, sieben Tageskacheln je Zeile, eingefärbt nach
+    Stimmungswert (siehe app/core/skala.py:HEATMAP_FARBEN)."""
+    eintrag_by_datum = {e.datum: e for e in eintraege}
+    wochen = []
+    for w in range(HEATMAP_WOCHEN_ANZAHL):
+        wochen_start = erster_montag + timedelta(weeks=w)
+        tage = []
+        for d in range(7):
+            tag = wochen_start + timedelta(days=d)
+            eintrag = eintrag_by_datum.get(tag)
+            tage.append(
+                {
+                    "datum": tag.isoformat(),
+                    "label": tag.strftime("%d.%m."),
+                    "emoji": stimmung_emoji(eintrag.stimmung) if eintrag else None,
+                    "farbe": heatmap_farbe(eintrag.stimmung) if eintrag else None,
+                    "zukunft": tag > heute,
+                }
+            )
+        wochen.append(tage)
+    return wochen
 
 
 async def _wochenansicht_kontext(session: SessionDep, teilnehmer_id: int, woche_start: str | None) -> dict:
@@ -79,8 +84,8 @@ async def _wochenansicht_kontext(session: SessionDep, teilnehmer_id: int, woche_
             {
                 "datum": tag.isoformat(),
                 "label": f"{WOCHENTAG_NAMEN[i]} {tag.strftime('%d.%m.')}",
-                "stimmung": eintrag.stimmung if eintrag else 3.0,
-                "belastbarkeit": eintrag.belastbarkeit if eintrag else 3.0,
+                "stimmung": eintrag.stimmung if eintrag else 5,
+                "belastbarkeit": eintrag.belastbarkeit if eintrag else 5,
                 "kommentar": eintrag.kommentar if eintrag else None,
                 "gesetzt": eintrag is not None,
             }
@@ -103,14 +108,15 @@ async def _wochenansicht_kontext(session: SessionDep, teilnehmer_id: int, woche_
         "belastbarkeit_avg_vorwoche": _mittelwert(vorwoche_eintraege, "belastbarkeit"),
     }
 
-    monat_tage_gesamt = 30
-    monat_start = date.today() - timedelta(days=monat_tage_gesamt - 1)
-    monat_result = await session.execute(
-        select(WohlbefindenEintrag)
-        .where(WohlbefindenEintrag.teilnehmer_id == teilnehmer_id, WohlbefindenEintrag.datum >= monat_start)
-        .order_by(WohlbefindenEintrag.datum)
+    heute = date.today()
+    erster_montag_heatmap = _wochenstart(heute) - timedelta(weeks=HEATMAP_WOCHEN_ANZAHL - 1)
+    heatmap_result = await session.execute(
+        select(WohlbefindenEintrag).where(
+            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id,
+            WohlbefindenEintrag.datum >= erster_montag_heatmap,
+        )
     )
-    monat_chart = _monats_chart(list(monat_result.scalars().all()), monat_start, monat_tage_gesamt)
+    heatmap_wochen = _heatmap_wochen(list(heatmap_result.scalars().all()), erster_montag_heatmap, heute)
 
     wochendaten_json = json.dumps(wochendaten).replace("</", "<\\/")
 
@@ -123,9 +129,9 @@ async def _wochenansicht_kontext(session: SessionDep, teilnehmer_id: int, woche_
         "ist_aktuelle_woche": start == _wochenstart(date.today()),
         "wochenbereich": f"{start.strftime('%d.%m.')} – {(start + timedelta(days=6)).strftime('%d.%m.%Y')}",
         "auswertung": auswertung,
-        "monat_chart": monat_chart,
-        "monat_start": monat_start.strftime("%d.%m."),
-        "monat_ende": date.today().strftime("%d.%m."),
+        "heatmap_wochen": heatmap_wochen,
+        "heatmap_start": erster_montag_heatmap.strftime("%d.%m."),
+        "heatmap_ende": heute.strftime("%d.%m."),
     }
 
 
@@ -258,8 +264,8 @@ async def freigabe_widerrufen(freigabe_id: int, current_user: CurrentUser, sessi
 
 class TagWertePayload(BaseModel):
     datum: date
-    stimmung: float = PydanticField(ge=1.0, le=5.0)
-    belastbarkeit: float = PydanticField(ge=1.0, le=5.0)
+    stimmung: int = PydanticField(ge=1, le=10)
+    belastbarkeit: int = PydanticField(ge=1, le=10)
 
 
 class TagKommentarPayload(BaseModel):
@@ -280,7 +286,7 @@ async def _hole_oder_erstelle(session: SessionDep, current_user, datum: date) ->
     eintrag = result.scalar_one_or_none()
     if eintrag is None:
         eintrag = WohlbefindenEintrag(
-            teilnehmer_id=current_user.id, datum=datum, stimmung=3.0, belastbarkeit=3.0
+            teilnehmer_id=current_user.id, datum=datum, stimmung=5, belastbarkeit=5
         )
     return eintrag
 

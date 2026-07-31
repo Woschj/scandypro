@@ -225,13 +225,13 @@ async def seed_demo_data(session: AsyncSession) -> None:
     )
 
     demo_werte = [
-        (6, 3.0, 3.5, None),
-        (5, 3.5, 3.0, None),
-        (4, 2.5, 2.0, "Anstrengender Tag im Praktikum, aber gut durchgehalten."),
-        (3, 3.5, 3.5, None),
-        (2, 4.0, 3.5, None),
-        (1, 4.5, 4.0, "Gutes Gespräch mit dem Berufstrainer."),
-        (0, 4.0, 4.5, None),
+        (6, 5, 6, None),
+        (5, 6, 5, None),
+        (4, 3, 2, "Anstrengender Tag im Praktikum, aber gut durchgehalten."),
+        (3, 6, 6, None),
+        (2, 7, 6, None),
+        (1, 8, 7, "Gutes Gespräch mit dem Berufstrainer."),
+        (0, 7, 8, None),
     ]
     for tage_zurueck, stimmung, belastbarkeit, kommentar in demo_werte:
         session.add(
