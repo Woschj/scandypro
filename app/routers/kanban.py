@@ -397,9 +397,15 @@ async def freigabe_entfernen(board_id: int, freigabe_id: int, current_user: Curr
 
 @router.get("/gruppen", response_class=HTMLResponse)
 async def gruppen_liste(
-    request: Request, current_user: CurrentUser, session: SessionDep, handlungsfeld_id: int | None = None
+    request: Request, current_user: CurrentUser, session: SessionDep, handlungsfeld_id: str | None = None
 ):
+    """`handlungsfeld_id` kommt als Query-Parameter aus einem <select> im
+    Template (siehe kanban/gruppen.html) - bei der leeren Platzhalter-Option
+    wird ein leerer String statt gar keinem Parameter gesendet, daher hier
+    als str entgegennehmen und selbst zu int|None konvertieren, statt
+    FastAPI direkt int|None parsen zu lassen (das wirft bei "" einen 422)."""
     require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer verwalten Handlungsfeld-Teams.")
+    handlungsfeld_id = int(handlungsfeld_id) if handlungsfeld_id else None
 
     geleitete_ids = await geleitete_handlungsfeld_ids(session, current_user.id)
     handlungsfelder_result = await session.execute(select(Handlungsfeld).where(Handlungsfeld.id.in_(geleitete_ids)))
