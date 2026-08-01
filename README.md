@@ -59,8 +59,15 @@ IP, keine Port-Kollision).
 Ohne `SEED_DEMO_DATA` legt die App beim ersten Start automatisch einen
 Einrichtungs-Admin an, falls `ADMIN_EMAIL`/`ADMIN_PASSWORD` in der `.env`
 gesetzt sind (siehe `app/core/seed.py:seed_admin`) - beide Installationswege
-oben setzen das automatisch. Nach dem ersten erfolgreichen Login
-`ADMIN_PASSWORD` aus der `.env` entfernen (liegt bis dahin im Klartext).
+oben setzen das automatisch. Nach dem ersten erfolgreichen Login das
+Passwort über **Mein Konto** (`/konto`, verlinkt im User-Chip oben rechts)
+ändern und `ADMIN_PASSWORD` aus der `.env` entfernen (liegt bis dahin im
+Klartext).
+
+Weitere Accounts legt der Admin unter **Benutzerverwaltung**
+(`/admin/benutzer`) an - Name, E-Mail, Passwort und Rolle festlegen; die
+Rolle bestehender Accounts lässt sich dort ebenfalls jederzeit ändern
+(außer der eigenen, aus Sicherheitsgründen).
 
 ### Demo-Daten (nur Bewertungs-/Testphase)
 

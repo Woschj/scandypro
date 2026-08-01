@@ -2,8 +2,8 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 
-from app.core.deps import SessionDep
-from app.core.security import verify_password
+from app.core.deps import CurrentUser, SessionDep
+from app.core.security import hash_password, verify_password
 from app.core.templating import templates
 from app.models.user import User
 
@@ -40,3 +40,38 @@ async def login_submit(
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
+
+
+@router.get("/konto", response_class=HTMLResponse)
+async def konto_form(request: Request, current_user: CurrentUser):
+    return templates.TemplateResponse(request, "auth/konto.html", {"current_user": current_user, "error": None})
+
+
+@router.post("/konto/passwort", response_class=HTMLResponse)
+async def passwort_aendern(
+    request: Request,
+    current_user: CurrentUser,
+    session: SessionDep,
+    aktuelles_passwort: str = Form(...),
+    neues_passwort: str = Form(...),
+    neues_passwort_wiederholen: str = Form(...),
+):
+    fehler = None
+    if not verify_password(aktuelles_passwort, current_user.password_hash):
+        fehler = "Aktuelles Passwort ist falsch."
+    elif len(neues_passwort) < 8:
+        fehler = "Neues Passwort muss mindestens 8 Zeichen haben."
+    elif neues_passwort != neues_passwort_wiederholen:
+        fehler = "Die Wiederholung stimmt nicht mit dem neuen Passwort überein."
+
+    if fehler:
+        return templates.TemplateResponse(
+            request, "auth/konto.html", {"current_user": current_user, "error": fehler}, status_code=400
+        )
+
+    current_user.password_hash = hash_password(neues_passwort)
+    session.add(current_user)
+    await session.commit()
+    return templates.TemplateResponse(
+        request, "auth/konto.html", {"current_user": current_user, "error": None, "erfolg": True}
+    )

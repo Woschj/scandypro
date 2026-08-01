@@ -4,6 +4,7 @@ from sqlmodel import select
 
 from app.core.access import require_role
 from app.core.deps import CurrentUser, SessionDep
+from app.core.security import hash_password
 from app.core.templating import templates
 from app.models.organisation import (
     Abteilung,
@@ -240,3 +241,87 @@ async def trainer_zuordnung_entfernen(zuordnung_id: int, current_user: CurrentUs
     await session.delete(zuordnung)
     await session.commit()
     return RedirectResponse(url="/admin/trainer-zuordnungen", status_code=303)
+
+
+@router.get("/benutzer", response_class=HTMLResponse)
+async def benutzer_uebersicht(request: Request, current_user: CurrentUser, session: SessionDep):
+    await _require_admin(current_user)
+
+    benutzer_result = await session.execute(select(User).order_by(User.name))
+    benutzer = list(benutzer_result.scalars().all())
+
+    abteilungen_result = await session.execute(select(Abteilung).order_by(Abteilung.name))
+    abteilungen = list(abteilungen_result.scalars().all())
+    abteilung_by_id = {a.id: a for a in abteilungen}
+
+    return templates.TemplateResponse(
+        request,
+        "admin/benutzer.html",
+        {
+            "current_user": current_user,
+            "benutzer": benutzer,
+            "abteilungen": abteilungen,
+            "abteilung_by_id": abteilung_by_id,
+        },
+    )
+
+
+@router.post("/benutzer")
+async def benutzer_erstellen(
+    current_user: CurrentUser,
+    session: SessionDep,
+    name: str = Form(...),
+    email: str = Form(...),
+    passwort: str = Form(...),
+    rolle: RoleEnum = Form(...),
+    abteilung_id: str = Form(""),
+):
+    await _require_admin(current_user)
+
+    name = name.strip()
+    email_norm = email.strip().lower()
+    if not name or not email_norm:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Name und E-Mail sind Pflichtfelder.")
+    if len(passwort) < 8:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Passwort muss mindestens 8 Zeichen haben.")
+
+    existing = await session.execute(select(User).where(User.email == email_norm))
+    if existing.first() is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Diese E-Mail wird bereits verwendet.")
+
+    abteilung_id_wert: int | None = None
+    if abteilung_id:
+        abteilung = await session.get(Abteilung, int(abteilung_id))
+        if abteilung is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Abteilung.")
+        abteilung_id_wert = abteilung.id
+
+    session.add(
+        User(
+            name=name,
+            email=email_norm,
+            password_hash=hash_password(passwort),
+            role=rolle,
+            abteilung_id=abteilung_id_wert,
+        )
+    )
+    await session.commit()
+    return RedirectResponse(url="/admin/benutzer", status_code=303)
+
+
+@router.post("/benutzer/{benutzer_id}/rolle")
+async def benutzer_rolle_aendern(
+    benutzer_id: int, current_user: CurrentUser, session: SessionDep, rolle: RoleEnum = Form(...)
+):
+    await _require_admin(current_user)
+    if benutzer_id == current_user.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst deine eigene Rolle nicht ändern.")
+
+    benutzer = await session.get(User, benutzer_id)
+    if benutzer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    benutzer.role = rolle
+    session.add(benutzer)
+    await session.commit()
+    return RedirectResponse(url="/admin/benutzer", status_code=303)

@@ -110,9 +110,9 @@ echo "App erreichbar unter:  http://localhost:${APP_PORT:-8080}"
 if [ "$NEUE_ENV" -eq 1 ]; then
   echo "Login:                 ${ADMIN_EMAIL:-admin@scandypro.local} / ${ADMIN_PASSWORD}"
   echo ""
-  echo "Zugangsdaten stehen auch in .env - ADMIN_PASSWORD danach am besten dort"
-  echo "entfernen (liegt aktuell im Klartext, wird beim nächsten Start nicht erneut"
-  echo "gebraucht - das Admin-Konto existiert dann schon)."
+  echo "Passwort danach über \"Mein Konto\" (/konto) ändern und ADMIN_PASSWORD aus"
+  echo ".env entfernen (liegt aktuell im Klartext, wird beim nächsten Start nicht"
+  echo "erneut gebraucht - das Admin-Konto existiert dann schon)."
 else
   echo "Login mit den Zugangsdaten aus der bestehenden .env (ADMIN_EMAIL/ADMIN_PASSWORD)."
 fi

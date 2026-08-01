@@ -159,9 +159,9 @@ if ($neueEnv) {
     $adminPasswordDisplay = $envValues["ADMIN_PASSWORD"]
     Write-Host "Login:                 $adminEmail / $adminPasswordDisplay"
     Write-Host ""
-    Write-Host "Zugangsdaten stehen auch in .env - ADMIN_PASSWORD danach am besten dort entfernen"
-    Write-Host "(liegt aktuell im Klartext, wird beim naechsten Start nicht erneut gebraucht -"
-    Write-Host "das Admin-Konto existiert dann schon)."
+    Write-Host "Passwort danach ueber `"Mein Konto`" (/konto) aendern und ADMIN_PASSWORD aus"
+    Write-Host ".env entfernen (liegt aktuell im Klartext, wird beim naechsten Start nicht"
+    Write-Host "erneut gebraucht - das Admin-Konto existiert dann schon)."
 } else {
     Write-Host "Login mit den Zugangsdaten aus der bestehenden .env (ADMIN_EMAIL/ADMIN_PASSWORD)."
 }

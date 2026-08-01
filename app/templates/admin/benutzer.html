@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Benutzerverwaltung – ScandyPro{% endblock %}
+{% block content %}
+<h1>Benutzerverwaltung</h1>
+<p class="visibility-hint">Accounts anlegen und Rollen zuweisen. Die eigene Rolle lässt sich hier aus
+  Sicherheitsgründen nicht ändern.</p>
+
+<div class="card">
+  <h3>Neuer Account</h3>
+  <form method="post" action="/admin/benutzer" class="form-row">
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required>
+    </div>
+    <div class="field">
+      <label for="email">E-Mail</label>
+      <input type="email" id="email" name="email" required>
+    </div>
+    <div class="field">
+      <label for="passwort">Passwort (mind. 8 Zeichen)</label>
+      <input type="text" id="passwort" name="passwort" minlength="8" required>
+    </div>
+    <div class="field">
+      <label for="rolle">Rolle</label>
+      <select id="rolle" name="rolle" required>
+        <option value="teilnehmer">Teilnehmer:in</option>
+        <option value="berufstrainer">Berufstrainer:in</option>
+        <option value="psychosoziale_mitarbeit">Psychosoziale Mitarbeiter:in</option>
+        <option value="einrichtungs_admin">Einrichtungs-Admin</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="abteilung_id">Abteilung (nur für Teilnehmer:innen relevant)</label>
+      <select id="abteilung_id" name="abteilung_id">
+        <option value="">– keine –</option>
+        {% for a in abteilungen %}
+        <option value="{{ a.id }}">{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Anlegen</button>
+  </form>
+</div>
+
+<h2>Bestehende Accounts</h2>
+<table>
+  <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Abteilung</th><th></th></tr></thead>
+  <tbody>
+  {% for b in benutzer %}
+  <tr>
+    <td>{{ b.name }}</td>
+    <td>{{ b.email }}</td>
+    <td>
+      {% if b.id == current_user.id %}
+      {{ b.role.value | rollenname }}
+      {% else %}
+      <form method="post" action="/admin/benutzer/{{ b.id }}/rolle" class="form-row" style="gap: var(--space-2);">
+        <select name="rolle" onchange="this.form.submit()">
+          <option value="teilnehmer" {% if b.role.value == "teilnehmer" %}selected{% endif %}>Teilnehmer:in</option>
+          <option value="berufstrainer" {% if b.role.value == "berufstrainer" %}selected{% endif %}>Berufstrainer:in</option>
+          <option value="psychosoziale_mitarbeit" {% if b.role.value == "psychosoziale_mitarbeit" %}selected{% endif %}>Psychosoziale Mitarbeiter:in</option>
+          <option value="einrichtungs_admin" {% if b.role.value == "einrichtungs_admin" %}selected{% endif %}>Einrichtungs-Admin</option>
+        </select>
+      </form>
+      {% endif %}
+    </td>
+    <td>{{ abteilung_by_id[b.abteilung_id].name if b.abteilung_id in abteilung_by_id else "–" }}</td>
+    <td>{% if b.id == current_user.id %}<span class="chip chip-neutral">du</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

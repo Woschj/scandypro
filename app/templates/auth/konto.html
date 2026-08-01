@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Mein Konto – ScandyPro{% endblock %}
+{% block content %}
+<h1>Mein Konto</h1>
+<p class="visibility-hint">Angemeldet als {{ current_user.name }} ({{ current_user.email }}).</p>
+
+<div class="card" style="max-width: 420px;">
+  <h3>Passwort ändern</h3>
+  {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+  {% if erfolg %}<div class="form-success">Passwort geändert.</div>{% endif %}
+  <form method="post" action="/konto/passwort">
+    <div class="field">
+      <label for="aktuelles_passwort">Aktuelles Passwort</label>
+      <input type="password" id="aktuelles_passwort" name="aktuelles_passwort" required>
+    </div>
+    <div class="field">
+      <label for="neues_passwort">Neues Passwort (mind. 8 Zeichen)</label>
+      <input type="password" id="neues_passwort" name="neues_passwort" minlength="8" required>
+    </div>
+    <div class="field">
+      <label for="neues_passwort_wiederholen">Neues Passwort wiederholen</label>
+      <input type="password" id="neues_passwort_wiederholen" name="neues_passwort_wiederholen" minlength="8" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Passwort ändern</button>
+  </form>
+</div>
+{% endblock %}

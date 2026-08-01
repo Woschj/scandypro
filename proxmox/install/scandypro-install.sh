@@ -108,9 +108,10 @@ URL: http://<container-ip>:8000
 E-Mail:   admin@scandypro.local
 Passwort: $ADMIN_PASSWORD
 
-Passwort danach über die Benutzerverwaltung ändern und ADMIN_PASSWORD aus
-/opt/scandypro/.env entfernen (liegt aktuell im Klartext, wird nach dem
-ersten Start nicht erneut gebraucht - das Admin-Konto existiert dann schon).
+Passwort danach über "Mein Konto" (http://<container-ip>:8000/konto) ändern
+und ADMIN_PASSWORD aus /opt/scandypro/.env entfernen (liegt aktuell im
+Klartext, wird nach dem ersten Start nicht erneut gebraucht - das
+Admin-Konto existiert dann schon).
 Diese Datei danach löschen (rm /root/scandypro.creds).
 EOF
 chmod 600 /root/scandypro.creds

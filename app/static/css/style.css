@@ -147,6 +147,15 @@ button:not(.btn) {
   font-size: 0.875rem;
   margin-bottom: var(--space-4);
 }
+.form-success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-4);
+}
 
 .form-row { display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: end; }
 .form-row .field { flex: 1; min-width: 180px; margin-bottom: 0; }
@@ -239,6 +248,8 @@ button:not(.btn) {
 .topnav-links a.active, .topnav-links a:hover { color: var(--ink); border-bottom-color: var(--accent); }
 
 .user-chip { display: flex; align-items: center; gap: var(--space-3); font-size: 0.8125rem; color: var(--ink-soft); }
+.user-chip a { color: inherit; text-decoration: none; }
+.user-chip a:hover, .user-chip a.active { color: var(--brand); }
 
 .main-content { flex: 1; width: 100%; max-width: 1000px; margin: 0 auto; padding: var(--space-6); }
 .main-content--wide { max-width: 1440px; }
