@@ -9,20 +9,64 @@ siehe [CLAUDE.md](CLAUDE.md) und [docs/](docs/).
 
 ## Starten
 
+Zwei Wege - beide analog zu [Scandy-Lite](https://github.com/Woschj/scandy-lite),
+gedacht für Parallelbetrieb auf demselben Host mit derselben Bedienung.
+
+### Docker (Kurzstart)
+
 ```bash
-cp .env.example .env   # ggf. Werte anpassen
-# SECRET_KEY:            python3 -c "import secrets; print(secrets.token_hex(32))"
-# FIELD_ENCRYPTION_KEY:  python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+git clone https://github.com/Woschj/scandypro.git && cd scandypro
+./install.sh          # Linux/Mac
+# oder: .\install.ps1   # Windows (PowerShell)
+```
+
+Erzeugt automatisch eine `.env` mit sicheren, zufällig generierten Werten
+(`SECRET_KEY`, `FIELD_ENCRYPTION_KEY`, `POSTGRES_PASSWORD`, `ADMIN_PASSWORD`),
+baut und startet den Stack, wartet auf den ersten erfolgreichen Start und
+zeigt danach URL + Admin-Zugangsdaten an. Erneutes Ausführen ist gefahrlos
+(eine bereits vorhandene `.env` wird nicht überschrieben).
+
+Manuell statt über das Skript:
+
+```bash
+cp .env.example .env   # Werte anpassen, siehe Kommentare in der Datei
 docker compose up -d --build
 ```
 
 Beim ersten Start führt die App automatisch `alembic upgrade head` aus (siehe
-`app/core/database.py`) - kein manueller Migrationsschritt nötig.
+`app/core/database.py`) - kein manueller Migrationsschritt nötig. App läuft
+danach unter **http://localhost:8080** (Port über `APP_PORT` in `.env`
+anpassbar, z. B. für Parallelbetrieb mit weiteren Stacks auf demselben Host).
 
-App läuft danach unter **http://localhost:8080**.
+### Proxmox VE (LXC-Container)
 
-Beim ersten Start (mit `SEED_DEMO_DATA=true` in `.env`) werden Demo-Accounts
-angelegt, Passwort jeweils `demo1234`:
+Auf dem Proxmox-Host (als root):
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandypro/main/proxmox/ct/scandypro.sh)"
+```
+
+Legt einen eigenen, unprivilegierten LXC-Container an (Debian 12,
+PostgreSQL 16, Python-venv, systemd-Dienst `scandypro` auf Port 8000) und
+zeigt am Ende IP + Admin-Zugangsdaten. Erneuter Aufruf des Skripts bietet
+im Menü "Aktualisieren" für eine bestehende Installation an (git pull +
+Migrationen + Dienst-Neustart). Läuft komplett unabhängig von einer
+Scandy-Lite-Installation im selben Proxmox-Host (eigener Container, eigene
+IP, keine Port-Kollision).
+
+### Admin-Zugang (Produktivbetrieb)
+
+Ohne `SEED_DEMO_DATA` legt die App beim ersten Start automatisch einen
+Einrichtungs-Admin an, falls `ADMIN_EMAIL`/`ADMIN_PASSWORD` in der `.env`
+gesetzt sind (siehe `app/core/seed.py:seed_admin`) - beide Installationswege
+oben setzen das automatisch. Nach dem ersten erfolgreichen Login
+`ADMIN_PASSWORD` aus der `.env` entfernen (liegt bis dahin im Klartext).
+
+### Demo-Daten (nur Bewertungs-/Testphase)
+
+Mit `SEED_DEMO_DATA=true` in `.env` werden beim ersten Start zusätzlich feste
+Demo-Accounts angelegt, Passwort jeweils `demo1234` - **niemals in echten
+Einrichtungen aktivieren** (siehe Kommentar in `app/core/config.py`):
 
 | Rolle | E-Mail | Abteilung |
 |---|---|---|

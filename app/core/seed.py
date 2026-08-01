@@ -47,6 +47,28 @@ DEMO_USERS = [
 STANDARD_SPALTEN = ["Offen", "In Arbeit", "Wartet", "Erledigt"]
 
 
+async def seed_admin(session: AsyncSession, email: str, password: str) -> None:
+    """Legt (falls noch nicht vorhanden) einen ersten Einrichtungs-Admin an -
+    für den Produktivbetrieb außerhalb der Demo-Phase (siehe ADMIN_EMAIL/
+    ADMIN_PASSWORD in .env.example). Idempotent: prüft nur auf die E-Mail,
+    überschreibt nie ein bestehendes Passwort."""
+    existing = await session.execute(select(User).where(User.email == email))
+    if existing.first() is not None:
+        logger.info("Admin-Account '%s' existiert bereits - kein Bootstrap nötig.", email)
+        return
+
+    session.add(
+        User(
+            name="Einrichtungs-Admin",
+            email=email,
+            password_hash=hash_password(password),
+            role=RoleEnum.einrichtungs_admin,
+        )
+    )
+    await session.commit()
+    logger.warning("Admin-Account '%s' angelegt.", email)
+
+
 async def seed_demo_data(session: AsyncSession) -> None:
     existing = await session.execute(select(User))
     if existing.first() is not None:

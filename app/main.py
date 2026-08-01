@@ -12,7 +12,7 @@ from app.core.access import hat_wohlbefinden_freigabe
 from app.core.config import settings
 from app.core.database import async_session_factory, init_db
 from app.core.deps import SessionDep, get_current_user_optional
-from app.core.seed import seed_demo_data
+from app.core.seed import seed_admin, seed_demo_data
 from app.core.templating import templates
 from app.models.bewerbung import BewerbungsFreigabe
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
@@ -25,9 +25,12 @@ logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
-    if settings.seed_demo_data:
+    if settings.seed_demo_data or (settings.admin_email and settings.admin_password):
         async with async_session_factory() as session:
-            await seed_demo_data(session)
+            if settings.seed_demo_data:
+                await seed_demo_data(session)
+            if settings.admin_email and settings.admin_password:
+                await seed_admin(session, settings.admin_email, settings.admin_password)
     yield
 
 
