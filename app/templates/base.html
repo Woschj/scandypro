@@ -26,9 +26,14 @@
         {% endif %}
         {% if current_user.role.value == "einrichtungs_admin" %}
         <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Abteilungen</a>
-        <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeiter:innen</a>
-        <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
-        <a href="/admin/benutzer" class="{% if request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Benutzerverwaltung</a>
+        <details class="nav-dropdown">
+          <summary class="{% if request.url.path.startswith('/admin/psm-zuordnungen') or request.url.path.startswith('/admin/trainer-zuordnungen') or request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Verwaltung</summary>
+          <div class="nav-dropdown-body">
+            <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeiter:innen</a>
+            <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
+            <a href="/admin/benutzer" class="{% if request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Benutzerverwaltung</a>
+          </div>
+        </details>
         {% endif %}
       </nav>
       <div class="user-chip">

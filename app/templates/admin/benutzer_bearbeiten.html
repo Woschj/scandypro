@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ benutzer.name }} bearbeiten – ScandyPro{% endblock %}
+{% block content %}
+<p><a href="/admin/benutzer">&larr; Benutzerverwaltung</a></p>
+<h1>{{ benutzer.name }} bearbeiten</h1>
+
+{% if fehler %}<div class="form-error">{{ fehler }}</div>{% endif %}
+{% if erfolg == "passwort" %}<div class="form-success">Passwort zurückgesetzt.</div>{% endif %}
+
+<div class="card" style="max-width: 480px;">
+  <h3>Accountdaten</h3>
+  <form method="post" action="/admin/benutzer/{{ benutzer.id }}/bearbeiten">
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ benutzer.name }}" required>
+    </div>
+    <div class="field">
+      <label for="email">E-Mail</label>
+      <input type="email" id="email" name="email" value="{{ benutzer.email }}" required>
+    </div>
+    <div class="field">
+      <label for="rolle">Rolle</label>
+      <select id="rolle" name="rolle" required {% if ist_eigener_account %}disabled{% endif %}>
+        <option value="teilnehmer" {% if benutzer.role.value == "teilnehmer" %}selected{% endif %}>Teilnehmer:in</option>
+        <option value="berufstrainer" {% if benutzer.role.value == "berufstrainer" %}selected{% endif %}>Berufstrainer:in</option>
+        <option value="psychosoziale_mitarbeit" {% if benutzer.role.value == "psychosoziale_mitarbeit" %}selected{% endif %}>Psychosoziale Mitarbeiter:in</option>
+        <option value="einrichtungs_admin" {% if benutzer.role.value == "einrichtungs_admin" %}selected{% endif %}>Einrichtungs-Admin</option>
+      </select>
+      {% if ist_eigener_account %}
+      <input type="hidden" name="rolle" value="{{ benutzer.role.value }}">
+      <p class="karte-meta">Die eigene Rolle lässt sich aus Sicherheitsgründen nicht ändern.</p>
+      {% endif %}
+    </div>
+    <div class="field">
+      <label for="abteilung_id">Abteilung (nur für Teilnehmer:innen relevant)</label>
+      <select id="abteilung_id" name="abteilung_id">
+        <option value="">– keine –</option>
+        {% for a in abteilungen %}
+        <option value="{{ a.id }}" {% if benutzer.abteilung_id == a.id %}selected{% endif %}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Speichern</button>
+  </form>
+</div>
+
+<div class="card" style="max-width: 480px;">
+  <h3>Passwort zurücksetzen</h3>
+  <p class="karte-meta">Setzt sofort ein neues Passwort, ohne das alte zu kennen - z. B. wenn
+    {{ benutzer.name }} das eigene Passwort vergessen hat.</p>
+  <form method="post" action="/admin/benutzer/{{ benutzer.id }}/passwort-zuruecksetzen">
+    <div class="field">
+      <label for="neues_passwort">Neues Passwort (mind. 8 Zeichen)</label>
+      <input type="text" id="neues_passwort" name="neues_passwort" minlength="8" required>
+    </div>
+    <button type="submit" class="btn btn-ghost">Passwort zurücksetzen</button>
+  </form>
+</div>
+{% endblock %}

@@ -126,7 +126,7 @@ button:not(.btn) {
   color: var(--ink-soft);
   margin-bottom: var(--space-2);
 }
-.field input:not([type="checkbox"]):not([type="radio"]), .field select, .field textarea {
+.field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .field select, .field textarea {
   width: 100%;
   padding: 0.65rem var(--space-3);
   border: 1px solid var(--line-strong);
@@ -137,6 +137,19 @@ button:not(.btn) {
 }
 .field textarea { min-height: 5rem; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--brand); }
+
+/* Datei-Inputs: kein Padding/min-height der Text-Felder übernehmen - das
+   quetscht den nativen "Datei auswählen"-Button auf einen unbrauchbaren
+   Streifen zusammen (Browser rendern Padding auf input[type=file] anders
+   als auf Text-Inputs). */
+.field input[type="file"] {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: #fff;
+  font-size: 0.875rem;
+}
 
 .form-error {
   background: var(--danger-bg);
@@ -168,6 +181,7 @@ button:not(.btn) {
   box-shadow: var(--shadow-card);
   padding: var(--space-6);
   margin-bottom: var(--space-4);
+  overflow-x: auto;
 }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); }
 
@@ -246,6 +260,48 @@ button:not(.btn) {
   white-space: nowrap;
 }
 .topnav-links a.active, .topnav-links a:hover { color: var(--ink); border-bottom-color: var(--accent); }
+
+.nav-dropdown { position: relative; }
+.nav-dropdown > summary {
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding: var(--space-2) 0;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.nav-dropdown > summary::-webkit-details-marker { display: none; }
+.nav-dropdown > summary::after { content: " ▾"; }
+.nav-dropdown > summary.active, .nav-dropdown > summary:hover { color: var(--ink); border-bottom-color: var(--accent); }
+.nav-dropdown-body {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 10;
+  margin-top: var(--space-2);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-2);
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+}
+.nav-dropdown-body a {
+  padding: var(--space-2) var(--space-3) !important;
+  border-bottom: none !important;
+  border-radius: var(--radius);
+  text-transform: none !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.875rem !important;
+  letter-spacing: normal !important;
+}
+.nav-dropdown-body a:hover, .nav-dropdown-body a.active { background: var(--bg); color: var(--ink) !important; }
 
 .user-chip { display: flex; align-items: center; gap: var(--space-3); font-size: 0.8125rem; color: var(--ink-soft); }
 .user-chip a { color: inherit; text-decoration: none; }

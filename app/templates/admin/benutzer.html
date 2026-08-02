@@ -2,8 +2,8 @@
 {% block title %}Benutzerverwaltung – ScandyPro{% endblock %}
 {% block content %}
 <h1>Benutzerverwaltung</h1>
-<p class="visibility-hint">Accounts anlegen und Rollen zuweisen. Die eigene Rolle lässt sich hier aus
-  Sicherheitsgründen nicht ändern.</p>
+<p class="visibility-hint">Accounts anlegen, bearbeiten und Passwörter zurücksetzen. Die eigene Rolle lässt sich
+  aus Sicherheitsgründen nicht ändern.</p>
 
 <div class="card">
   <h3>Neuer Account</h3>
@@ -48,24 +48,11 @@
   <tbody>
   {% for b in benutzer %}
   <tr>
-    <td>{{ b.name }}</td>
+    <td>{{ b.name }}{% if b.id == current_user.id %} <span class="chip chip-neutral">du</span>{% endif %}</td>
     <td>{{ b.email }}</td>
-    <td>
-      {% if b.id == current_user.id %}
-      {{ b.role.value | rollenname }}
-      {% else %}
-      <form method="post" action="/admin/benutzer/{{ b.id }}/rolle" class="form-row" style="gap: var(--space-2);">
-        <select name="rolle" onchange="this.form.submit()">
-          <option value="teilnehmer" {% if b.role.value == "teilnehmer" %}selected{% endif %}>Teilnehmer:in</option>
-          <option value="berufstrainer" {% if b.role.value == "berufstrainer" %}selected{% endif %}>Berufstrainer:in</option>
-          <option value="psychosoziale_mitarbeit" {% if b.role.value == "psychosoziale_mitarbeit" %}selected{% endif %}>Psychosoziale Mitarbeiter:in</option>
-          <option value="einrichtungs_admin" {% if b.role.value == "einrichtungs_admin" %}selected{% endif %}>Einrichtungs-Admin</option>
-        </select>
-      </form>
-      {% endif %}
-    </td>
+    <td>{{ b.role.value | rollenname }}</td>
     <td>{{ abteilung_by_id[b.abteilung_id].name if b.abteilung_id in abteilung_by_id else "–" }}</td>
-    <td>{% if b.id == current_user.id %}<span class="chip chip-neutral">du</span>{% endif %}</td>
+    <td><a href="/admin/benutzer/{{ b.id }}/bearbeiten" class="btn btn-ghost btn-sm">Bearbeiten</a></td>
   </tr>
   {% endfor %}
   </tbody>

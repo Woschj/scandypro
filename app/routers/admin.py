@@ -309,19 +309,111 @@ async def benutzer_erstellen(
     return RedirectResponse(url="/admin/benutzer", status_code=303)
 
 
-@router.post("/benutzer/{benutzer_id}/rolle")
-async def benutzer_rolle_aendern(
-    benutzer_id: int, current_user: CurrentUser, session: SessionDep, rolle: RoleEnum = Form(...)
+@router.get("/benutzer/{benutzer_id}/bearbeiten", response_class=HTMLResponse)
+async def benutzer_bearbeiten_form(
+    request: Request,
+    benutzer_id: int,
+    current_user: CurrentUser,
+    session: SessionDep,
+    fehler: str | None = None,
+    erfolg: str | None = None,
 ):
     await _require_admin(current_user)
-    if benutzer_id == current_user.id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kannst deine eigene Rolle nicht ändern.")
 
     benutzer = await session.get(User, benutzer_id)
     if benutzer is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
 
+    abteilungen_result = await session.execute(select(Abteilung).order_by(Abteilung.name))
+    abteilungen = list(abteilungen_result.scalars().all())
+
+    return templates.TemplateResponse(
+        request,
+        "admin/benutzer_bearbeiten.html",
+        {
+            "current_user": current_user,
+            "benutzer": benutzer,
+            "abteilungen": abteilungen,
+            "ist_eigener_account": benutzer.id == current_user.id,
+            "fehler": fehler,
+            "erfolg": erfolg,
+        },
+    )
+
+
+@router.post("/benutzer/{benutzer_id}/bearbeiten")
+async def benutzer_bearbeiten(
+    request: Request,
+    benutzer_id: int,
+    current_user: CurrentUser,
+    session: SessionDep,
+    name: str = Form(...),
+    email: str = Form(...),
+    rolle: RoleEnum = Form(...),
+    abteilung_id: str = Form(""),
+):
+    await _require_admin(current_user)
+
+    benutzer = await session.get(User, benutzer_id)
+    if benutzer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    if benutzer.id == current_user.id and rolle != benutzer.role:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Du+kannst+deine+eigene+Rolle+nicht+ändern.",
+            status_code=303,
+        )
+
+    name = name.strip()
+    email_norm = email.strip().lower()
+    if not name or not email_norm:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Name+und+E-Mail+sind+Pflichtfelder.",
+            status_code=303,
+        )
+
+    existing = await session.execute(select(User).where(User.email == email_norm, User.id != benutzer_id))
+    if existing.first() is not None:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Diese+E-Mail+wird+bereits+verwendet.",
+            status_code=303,
+        )
+
+    abteilung_id_wert: int | None = None
+    if abteilung_id:
+        abteilung = await session.get(Abteilung, int(abteilung_id))
+        if abteilung is None:
+            return RedirectResponse(
+                url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Ungültige+Abteilung.", status_code=303
+            )
+        abteilung_id_wert = abteilung.id
+
+    benutzer.name = name
+    benutzer.email = email_norm
     benutzer.role = rolle
+    benutzer.abteilung_id = abteilung_id_wert
     session.add(benutzer)
     await session.commit()
     return RedirectResponse(url="/admin/benutzer", status_code=303)
+
+
+@router.post("/benutzer/{benutzer_id}/passwort-zuruecksetzen")
+async def benutzer_passwort_zuruecksetzen(
+    benutzer_id: int, current_user: CurrentUser, session: SessionDep, neues_passwort: str = Form(...)
+):
+    await _require_admin(current_user)
+
+    benutzer = await session.get(User, benutzer_id)
+    if benutzer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    if len(neues_passwort) < 8:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Passwort+muss+mindestens+8+Zeichen+haben.",
+            status_code=303,
+        )
+
+    benutzer.password_hash = hash_password(neues_passwort)
+    session.add(benutzer)
+    await session.commit()
+    return RedirectResponse(url=f"/admin/benutzer/{benutzer_id}/bearbeiten?erfolg=passwort", status_code=303)
