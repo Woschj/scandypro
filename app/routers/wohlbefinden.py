@@ -1,7 +1,10 @@
+import base64
+import binascii
+import io
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
 from app.core.access import hat_wohlbefinden_freigabe, require_owner
@@ -9,6 +12,7 @@ from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
 from app.core.templating import templates
+from app.core.uploads import datei_lesen_entschluesselt, datei_loeschen, datei_speichern
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.organisation import PsmZuordnung
 from app.models.user import RoleEnum, User
@@ -18,6 +22,25 @@ router = APIRouter(prefix="/wohlbefinden", tags=["wohlbefinden"], dependencies=[
 
 WOCHENTAG_NAMEN = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 VERLAUF_TAGE_ANZAHL = 14
+ENERGIE_LEVEL_MIN = 1
+ENERGIE_LEVEL_MAX = 4
+
+
+async def _zeichnung_speichern(teilnehmer_id: int, daten_url: str) -> str:
+    """Speichert eine im Browser gezeichnete PNG-Skizze (Canvas
+    `toDataURL()`-String) genauso verschlüsselt wie Bewerbungsunterlagen
+    (siehe app/core/uploads.py) - auf der Platte liegt nie Klartext-
+    Bilddaten. Wirft HTTPException bei kaputten/zu großen Daten (dieselbe
+    Größenprüfung wie bei normalen Datei-Uploads)."""
+    try:
+        _, _, b64 = daten_url.partition(",")
+        rohdaten = base64.b64decode(b64, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Zeichnung konnte nicht gelesen werden.") from exc
+
+    upload = UploadFile(filename="zeichnung.png", file=io.BytesIO(rohdaten))
+    _, speicherpfad, _ = await datei_speichern(upload, f"tagebuch/{teilnehmer_id}")
+    return speicherpfad
 
 
 def _tag_label(d: date) -> str:
@@ -47,28 +70,42 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
     und "gibt es noch nicht" unterscheiden muss."""
     if eintrag is None:
         return {
+            "eintrag_id": None,
             "datum": datum,
             "label": _tag_label(datum),
             "dankbarkeit": ["", "", ""],
             "morgen_impuls_frage": None,
             "morgen_impuls_antwort": "",
             "morgen_erledigt": False,
+            "energie_level": None,
+            "atemuebung_erledigt": False,
             "highlights": ["", "", ""],
             "abend_impuls_frage": None,
             "abend_impuls_antwort": "",
             "abend_erledigt": False,
+            "hat_zeichnung": False,
+            "check_pause_gemacht": False,
+            "check_jemandem_geholfen": False,
+            "check_kleines_erfolgserlebnis": False,
         }
     return {
+        "eintrag_id": eintrag.id,
         "datum": eintrag.datum,
         "label": _tag_label(eintrag.datum),
         "dankbarkeit": [eintrag.dankbarkeit_1 or "", eintrag.dankbarkeit_2 or "", eintrag.dankbarkeit_3 or ""],
         "morgen_impuls_frage": eintrag.morgen_impuls_frage,
         "morgen_impuls_antwort": eintrag.morgen_impuls_antwort or "",
         "morgen_erledigt": eintrag.morgen_ausgefuellt_am is not None,
+        "energie_level": eintrag.energie_level,
+        "atemuebung_erledigt": eintrag.atemuebung_erledigt_am is not None,
         "highlights": [eintrag.highlight_1 or "", eintrag.highlight_2 or "", eintrag.highlight_3 or ""],
         "abend_impuls_frage": eintrag.abend_impuls_frage,
         "abend_impuls_antwort": eintrag.abend_impuls_antwort or "",
         "abend_erledigt": eintrag.abend_ausgefuellt_am is not None,
+        "hat_zeichnung": eintrag.zeichnung_pfad is not None,
+        "check_pause_gemacht": eintrag.check_pause_gemacht,
+        "check_jemandem_geholfen": eintrag.check_jemandem_geholfen,
+        "check_kleines_erfolgserlebnis": eintrag.check_kleines_erfolgserlebnis,
     }
 
 
@@ -76,8 +113,14 @@ def _hat_inhalt(anzeige: dict) -> bool:
     return (
         any(anzeige["dankbarkeit"])
         or anzeige["morgen_impuls_antwort"]
+        or anzeige["energie_level"] is not None
+        or anzeige["atemuebung_erledigt"]
         or any(anzeige["highlights"])
         or anzeige["abend_impuls_antwort"]
+        or anzeige["hat_zeichnung"]
+        or anzeige["check_pause_gemacht"]
+        or anzeige["check_jemandem_geholfen"]
+        or anzeige["check_kleines_erfolgserlebnis"]
     )
 
 
@@ -253,6 +296,8 @@ async def morgen_speichern(
     dankbarkeit_3: str = Form(""),
     morgen_impuls_frage: str = Form(""),
     morgen_impuls_antwort: str = Form(""),
+    energie_level: str = Form(""),
+    atemuebung_erledigt: str = Form(""),
 ):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
@@ -264,6 +309,13 @@ async def morgen_speichern(
     eintrag.dankbarkeit_3 = dankbarkeit_3 or None
     eintrag.morgen_impuls_frage = morgen_impuls_frage or morgen_impuls_des_tages(current_user.id, tag_datum)
     eintrag.morgen_impuls_antwort = morgen_impuls_antwort or None
+    if energie_level:
+        wert = int(energie_level)
+        if not ENERGIE_LEVEL_MIN <= wert <= ENERGIE_LEVEL_MAX:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültiger Energie-Level.")
+        eintrag.energie_level = wert
+    if atemuebung_erledigt and eintrag.atemuebung_erledigt_am is None:
+        eintrag.atemuebung_erledigt_am = datetime.utcnow()
     eintrag.morgen_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
     await session.commit()
@@ -280,6 +332,11 @@ async def abend_speichern(
     highlight_3: str = Form(""),
     abend_impuls_frage: str = Form(""),
     abend_impuls_antwort: str = Form(""),
+    zeichnung_daten: str = Form(""),
+    zeichnung_entfernen: str = Form(""),
+    check_pause_gemacht: str = Form(""),
+    check_jemandem_geholfen: str = Form(""),
+    check_kleines_erfolgserlebnis: str = Form(""),
 ):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
@@ -291,10 +348,33 @@ async def abend_speichern(
     eintrag.highlight_3 = highlight_3 or None
     eintrag.abend_impuls_frage = abend_impuls_frage or abend_impuls_des_tages(current_user.id, tag_datum)
     eintrag.abend_impuls_antwort = abend_impuls_antwort or None
+    eintrag.check_pause_gemacht = bool(check_pause_gemacht)
+    eintrag.check_jemandem_geholfen = bool(check_jemandem_geholfen)
+    eintrag.check_kleines_erfolgserlebnis = bool(check_kleines_erfolgserlebnis)
+
+    if zeichnung_entfernen and eintrag.zeichnung_pfad:
+        datei_loeschen(eintrag.zeichnung_pfad)
+        eintrag.zeichnung_pfad = None
+    elif zeichnung_daten:
+        if eintrag.zeichnung_pfad:
+            datei_loeschen(eintrag.zeichnung_pfad)
+        eintrag.zeichnung_pfad = await _zeichnung_speichern(current_user.id, zeichnung_daten)
+
     eintrag.abend_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
     await session.commit()
     return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)
+
+
+@router.get("/zeichnung/{eintrag_id}")
+async def zeichnung_anzeigen(eintrag_id: int, current_user: CurrentUser, session: SessionDep):
+    eintrag = await session.get(TagebuchEintrag, eintrag_id)
+    if eintrag is None or not eintrag.zeichnung_pfad:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diese Zeichnung.")
+
+    inhalt = await datei_lesen_entschluesselt(eintrag.zeichnung_pfad)
+    return Response(content=inhalt, media_type="image/png")
 
 
 @router.post("/tag/loeschen")
@@ -303,6 +383,8 @@ async def tag_loeschen(current_user: CurrentUser, session: SessionDep, datum: st
     eintrag = await _hole_eintrag(session, current_user.id, tag_datum)
     if eintrag is not None:
         require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diesen Eintrag.")
+        if eintrag.zeichnung_pfad:
+            datei_loeschen(eintrag.zeichnung_pfad)
         await session.delete(eintrag)
         await session.commit()
     return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)

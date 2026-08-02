@@ -142,3 +142,152 @@ def test_impuls_des_tages_ist_deterministisch_und_stabil():
     heute = date.today()
     assert morgen_impuls_des_tages(1, heute) == morgen_impuls_des_tages(1, heute)
     assert abend_impuls_des_tages(1, heute) == abend_impuls_des_tages(1, heute)
+
+
+# Ein winziges, gültiges 1x1-PNG (base64) als Stand-in für eine im Canvas
+# gezeichnete Skizze - Inhalt ist irrelevant, nur das Format muss stimmen.
+_PNG_1X1_BASE64 = (
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
+
+
+async def test_energie_level_wird_gespeichert_und_angezeigt(client, seed_data):
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+
+    resp = await client.post(
+        "/wohlbefinden/morgen",
+        data={"csrf_token": token, "datum": heute, "energie_level": "3"},
+    )
+    assert resp.status_code == 303
+
+    seite = await client.get("/wohlbefinden")
+    assert 'name="energie_level" value="3"' in seite.text
+
+
+async def test_energie_level_ausserhalb_bereich_wird_abgelehnt(client, seed_data):
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+
+    resp = await client.post(
+        "/wohlbefinden/morgen",
+        data={"csrf_token": token, "datum": heute, "energie_level": "7"},
+    )
+    assert resp.status_code == 400
+
+
+async def test_atemuebung_erledigt_wird_gespeichert(client, seed_data, session_maker):
+    from app.models.wohlbefinden import TagebuchEintrag
+
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+
+    resp = await client.post(
+        "/wohlbefinden/morgen",
+        data={"csrf_token": token, "datum": heute, "atemuebung_erledigt": "true"},
+    )
+    assert resp.status_code == 303
+
+    async with session_maker() as session:
+        from sqlmodel import select
+
+        result = await session.execute(
+            select(TagebuchEintrag).where(TagebuchEintrag.teilnehmer_id == seed_data["teilnehmer_id"])
+        )
+        eintrag = result.scalar_one()
+        assert eintrag.atemuebung_erledigt_am is not None
+
+
+async def test_checkliste_wird_gespeichert_und_angezeigt(client, seed_data):
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+
+    resp = await client.post(
+        "/wohlbefinden/abend",
+        data={"csrf_token": token, "datum": heute, "check_pause_gemacht": "true"},
+    )
+    assert resp.status_code == 303
+
+    seite = await client.get("/wohlbefinden")
+    assert 'name="check_pause_gemacht" value="true" checked' in seite.text
+
+
+async def test_zeichnung_hochladen_anzeigen_und_loeschen(client, seed_data, session_maker):
+    from app.models.wohlbefinden import TagebuchEintrag
+
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+
+    resp = await client.post(
+        "/wohlbefinden/abend",
+        data={"csrf_token": token, "datum": heute, "zeichnung_daten": _PNG_1X1_BASE64},
+    )
+    assert resp.status_code == 303
+
+    async with session_maker() as session:
+        from sqlmodel import select
+
+        result = await session.execute(
+            select(TagebuchEintrag).where(TagebuchEintrag.teilnehmer_id == seed_data["teilnehmer_id"])
+        )
+        eintrag = result.scalar_one()
+        assert eintrag.zeichnung_pfad is not None
+        eintrag_id = eintrag.id
+
+    bild_resp = await client.get(f"/wohlbefinden/zeichnung/{eintrag_id}")
+    assert bild_resp.status_code == 200
+    assert bild_resp.headers["content-type"] == "image/png"
+
+    # Ersetzen entfernt die alte Datei von der Platte (siehe
+    # app/routers/wohlbefinden.py:abend_speichern) - kein verwaister Upload.
+    await client.post(
+        "/wohlbefinden/abend",
+        data={"csrf_token": token, "datum": heute, "zeichnung_entfernen": "true"},
+    )
+    async with session_maker() as session:
+        aktualisiert = await session.get(TagebuchEintrag, eintrag_id)
+        assert aktualisiert.zeichnung_pfad is None
+
+
+async def test_zeichnung_download_nur_fuer_owner(client, seed_data, session_maker):
+    """Ownership-Check analog zu Bewerbungsunterlagen (app/routers/bewerbungen.py):
+    eine andere Person darf die Zeichnung nicht abrufen können."""
+    from app.core.security import hash_password
+    from app.models.user import RoleEnum, User
+    from app.models.wohlbefinden import TagebuchEintrag
+
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+    await client.post(
+        "/wohlbefinden/abend",
+        data={"csrf_token": token, "datum": heute, "zeichnung_daten": _PNG_1X1_BASE64},
+    )
+
+    async with session_maker() as session:
+        from sqlmodel import select
+
+        result = await session.execute(
+            select(TagebuchEintrag).where(TagebuchEintrag.teilnehmer_id == seed_data["teilnehmer_id"])
+        )
+        eintrag_id = result.scalar_one().id
+
+        andere = User(
+            name="Andere Person",
+            email="andere-zeichnung@test.local",
+            password_hash=hash_password("anderespasswort123"),
+            role=RoleEnum.teilnehmer,
+        )
+        session.add(andere)
+        await session.commit()
+        await session.refresh(andere)
+
+    await client.post("/logout", data={"csrf_token": token})
+    await login(client, "andere-zeichnung@test.local", "anderespasswort123")
+    resp = await client.get(f"/wohlbefinden/zeichnung/{eintrag_id}")
+    assert resp.status_code == 403

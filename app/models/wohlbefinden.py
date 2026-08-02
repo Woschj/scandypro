@@ -40,6 +40,16 @@ class TagebuchEintrag(SQLModel, table=True):
     dankbarkeit_3: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
     morgen_impuls_frage: str | None = None
     morgen_impuls_antwort: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    # Batterie-Symbol statt Zahlenwert im UI (siehe uebersicht.html) - rein
+    # privat, taucht bewusst NIE im Dashboard/Verlauf als Trend auf (siehe
+    # CLAUDE.md "keine roten Warnsymbole"): anders als die frühere
+    # Stimmungsskala dient dieser Wert nur der Person selbst im Moment,
+    # nicht dem Vergleich über Tage hinweg.
+    energie_level: int | None = None
+    # Verbinde-die-Punkte-Atemübung vor dem Schreiben - nur der Zeitpunkt
+    # wird gespeichert (kein Zeichenpfad), da der eigentliche Nutzen die
+    # kurze Pause selbst ist, nicht ihr Ergebnis.
+    atemuebung_erledigt_am: datetime | None = None
     morgen_ausgefuellt_am: datetime | None = None
 
     highlight_1: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
@@ -47,6 +57,16 @@ class TagebuchEintrag(SQLModel, table=True):
     highlight_3: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
     abend_impuls_frage: str | None = None
     abend_impuls_antwort: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    # Freihand-Zeichnung ("Male, was dich heute gefreut hat") - wie
+    # Bewerbungsunterlagen (app/core/uploads.py) verschlüsselt auf der
+    # Platte abgelegt, hier nur der relative Pfad. Wird beim Ersetzen/
+    # Löschen des Eintrags mitgelöscht (siehe app/routers/wohlbefinden.py,
+    # app/core/deletion.py) - genauso hart löschbar wie der restliche
+    # Tagebuch-Inhalt.
+    zeichnung_pfad: str | None = None
+    check_pause_gemacht: bool = False
+    check_jemandem_geholfen: bool = False
+    check_kleines_erfolgserlebnis: bool = False
     abend_ausgefuellt_am: datetime | None = None
 
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)

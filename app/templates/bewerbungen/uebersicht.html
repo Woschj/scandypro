@@ -38,108 +38,7 @@
 </div>
 {% endif %}
 
-<div class="card">
-  <h3>Lebenslauf &amp; Zeugnisse</h3>
-  <p class="karte-meta">Einmal hochladen, für alle Bewerbungen wiederverwendbar. Die Reihenfolge hier bestimmt
-    die Reihenfolge im Gesamt-PDF-Export einer Bewerbung.</p>
-  {% if stammunterlagen %}
-  <table>
-    <thead><tr><th></th><th>Kategorie</th><th>Datei</th><th></th></tr></thead>
-    <tbody>
-    {% for u in stammunterlagen %}
-    <tr>
-      <td style="white-space: nowrap;">
-        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-oben" style="display:inline;">
-          {% include "partials/csrf_field.html" %}
-          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.first %}disabled{% endif %} title="Nach oben" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach oben">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false"><path d="M2.5 7.5L6 4L9.5 7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </form>
-        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-unten" style="display:inline;">
-          {% include "partials/csrf_field.html" %}
-          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.last %}disabled{% endif %} title="Nach unten" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach unten">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </form>
-      </td>
-      <td>{{ u.kategorie.value|capitalize }}</td>
-      <td>
-        <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
-        {% if u.id in nicht_einbettbare_ids %}
-        <span class="karte-meta">– wird nicht ins Gesamt-PDF eingebunden (kein PDF/Bild)</span>
-        {% endif %}
-      </td>
-      <td>
-        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Datei &quot;{{ u.original_dateiname }}&quot; löschen?">
-          {% include "partials/csrf_field.html" %}
-          <button type="submit" class="link-btn danger">Löschen</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-  <form method="post" action="/bewerbungen/unterlagen" enctype="multipart/form-data" class="form-row" style="margin-top: var(--space-4);">
-    {% include "partials/csrf_field.html" %}
-    <div class="field">
-      <label for="kategorie">Kategorie</label>
-      <select id="kategorie" name="kategorie">
-        <option value="lebenslauf">Lebenslauf</option>
-        <option value="zeugnis">Zeugnis</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="datei">Datei (PDF, Word oder Bild, max. 10 MB)</label>
-      <input type="file" id="datei" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Hochladen</button>
-  </form>
-</div>
-
-<div class="card">
-  <h3>Neue Bewerbung</h3>
-  <form method="post" action="/bewerbungen" enctype="multipart/form-data" data-warn-on-leave>
-    {% include "partials/csrf_field.html" %}
-    <div class="form-row">
-      <div class="field">
-        <label for="firma">Firma</label>
-        <input type="text" id="firma" name="firma" required>
-      </div>
-      <div class="field">
-        <label for="position">Position</label>
-        <input type="text" id="position" name="position" required>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="field">
-        <label for="beworben_am">Beworben am (optional)</label>
-        <input type="date" id="beworben_am" name="beworben_am">
-      </div>
-      <div class="field">
-        <label for="naechster_termin">Nächster Termin (optional)</label>
-        <input type="date" id="naechster_termin" name="naechster_termin">
-      </div>
-    </div>
-    <div class="field">
-      <label for="notizen">Notizen (optional)</label>
-      <textarea id="notizen" name="notizen"></textarea>
-    </div>
-    <div class="field">
-      <label for="deckblatt">Deckblatt (optional, PDF/Bild empfohlen – erscheint im PDF vor dem Anschreiben)</label>
-      <input type="file" id="deckblatt" name="deckblatt" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png">
-    </div>
-    <div class="field">
-      <label for="anschreiben">Anschreiben (optional, PDF/Bild empfohlen)</label>
-      <input type="file" id="anschreiben" name="anschreiben" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png">
-    </div>
-    <button type="submit" class="btn btn-primary">Anlegen</button>
-  </form>
-</div>
-
-<h2>Übersicht</h2>
-{% if bewerbungen %}
-{% for b in bewerbungen %}
+{% macro bewerbung_karte(b) %}
 <div class="card">
   <div class="form-row" style="align-items: center; margin-bottom: var(--space-3);">
     <h3 style="margin: 0; flex: 1;">{{ b.firma }} — {{ b.position }}</h3>
@@ -209,69 +108,231 @@
     <button type="submit" class="link-btn danger">Bewerbung löschen</button>
   </form>
 </div>
-{% endfor %}
-{% else %}
-<p class="empty-state">Noch keine Bewerbungen erfasst.</p>
-{% endif %}
+{% endmacro %}
 
-<details class="card">
-  <summary class="card-collapsible-summary"><h3>Für wen freigeben</h3></summary>
-  <div style="margin-top: var(--space-4);">
-    {% if trainer_kontakt %}
-    <p class="karte-meta">Die zuständige Berufstrainer:in (<strong>{{ trainer_kontakt.name }}</strong>) sieht deine
-      Bewerbungen erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
-    <form method="post" action="/bewerbungen/freigaben" class="form-row">
-      {% include "partials/csrf_field.html" %}
-      <input type="hidden" name="empfaenger_id" value="{{ trainer_kontakt.id }}">
-      <div class="field">
-        <label for="umfang">Umfang</label>
-        <select id="umfang" name="umfang" onchange="document.getElementById('freigabe-bewerbung-feld').style.display = this.value === 'einzeln' ? '' : 'none';">
-          <option value="alle">Alle Bewerbungen</option>
-          <option value="einzeln">Nur eine Bewerbung</option>
-        </select>
+{% set laufende_bewerbungen = bewerbungen | rejectattr("status.value", "in", ["abgesagt", "zugesagt"]) | list %}
+{% set abgeschlossene_bewerbungen = bewerbungen | selectattr("status.value", "in", ["abgesagt", "zugesagt"]) | list %}
+
+<div class="seiten-tabs" x-data="{ tab: 'neu' }">
+  <nav class="seiten-tabs-nav" aria-label="Bewerbungs-Bereiche">
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'neu' }" @click="tab = 'neu'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      </span>
+      Neue Bewerbung
+    </button>
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'unterlagen' }" @click="tab = 'unterlagen'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="17" rx="2"/></svg>
+      </span>
+      Meine Unterlagen
+    </button>
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'laufend' }" @click="tab = 'laufend'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </span>
+      Laufende Bewerbungen
+      {% if laufende_bewerbungen %}<span class="seiten-tabs-badge">{{ laufende_bewerbungen | length }}</span>{% endif %}
+    </button>
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'abgeschlossen' }" @click="tab = 'abgeschlossen'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </span>
+      Abgeschlossene Bewerbungen
+      {% if abgeschlossene_bewerbungen %}<span class="seiten-tabs-badge">{{ abgeschlossene_bewerbungen | length }}</span>{% endif %}
+    </button>
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'freigeben' }" @click="tab = 'freigeben'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </span>
+      Für wen freigeben
+    </button>
+  </nav>
+
+  <div class="seiten-tabs-panels">
+    <div x-show="tab === 'neu'" x-cloak>
+      <div class="card">
+        <h3>Neue Bewerbung</h3>
+        <form method="post" action="/bewerbungen" enctype="multipart/form-data" data-warn-on-leave>
+          {% include "partials/csrf_field.html" %}
+          <div class="form-row">
+            <div class="field">
+              <label for="firma">Firma</label>
+              <input type="text" id="firma" name="firma" required>
+            </div>
+            <div class="field">
+              <label for="position">Position</label>
+              <input type="text" id="position" name="position" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="beworben_am">Beworben am (optional)</label>
+              <input type="date" id="beworben_am" name="beworben_am">
+            </div>
+            <div class="field">
+              <label for="naechster_termin">Nächster Termin (optional)</label>
+              <input type="date" id="naechster_termin" name="naechster_termin">
+            </div>
+          </div>
+          <div class="field">
+            <label for="notizen">Notizen (optional)</label>
+            <textarea id="notizen" name="notizen"></textarea>
+          </div>
+          <div class="field">
+            <label for="deckblatt">Deckblatt (optional, PDF/Bild empfohlen – erscheint im PDF vor dem Anschreiben)</label>
+            <input type="file" id="deckblatt" name="deckblatt" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png">
+          </div>
+          <div class="field">
+            <label for="anschreiben">Anschreiben (optional, PDF/Bild empfohlen)</label>
+            <input type="file" id="anschreiben" name="anschreiben" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png">
+          </div>
+          <button type="submit" class="btn btn-primary">Anlegen</button>
+        </form>
       </div>
-      <div class="field" id="freigabe-bewerbung-feld" style="display:none;">
-        <label for="bewerbung_id">Welche Bewerbung</label>
-        <select id="bewerbung_id" name="bewerbung_id">
-          {% for b in bewerbungen %}
-          <option value="{{ b.id }}">{{ b.firma }} — {{ b.position }}</option>
+    </div>
+
+    <div x-show="tab === 'unterlagen'" x-cloak>
+      <div class="card">
+        <h3>Lebenslauf &amp; Zeugnisse</h3>
+        <p class="karte-meta">Einmal hochladen, für alle Bewerbungen wiederverwendbar. Die Reihenfolge hier bestimmt
+          die Reihenfolge im Gesamt-PDF-Export einer Bewerbung.</p>
+        {% if stammunterlagen %}
+        <table>
+          <thead><tr><th></th><th>Kategorie</th><th>Datei</th><th></th></tr></thead>
+          <tbody>
+          {% for u in stammunterlagen %}
+          <tr>
+            <td style="white-space: nowrap;">
+              <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-oben" style="display:inline;">
+                {% include "partials/csrf_field.html" %}
+                <button type="submit" class="btn btn-ghost btn-sm" {% if loop.first %}disabled{% endif %} title="Nach oben" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach oben">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false"><path d="M2.5 7.5L6 4L9.5 7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </form>
+              <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-unten" style="display:inline;">
+                {% include "partials/csrf_field.html" %}
+                <button type="submit" class="btn btn-ghost btn-sm" {% if loop.last %}disabled{% endif %} title="Nach unten" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach unten">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </form>
+            </td>
+            <td>{{ u.kategorie.value|capitalize }}</td>
+            <td>
+              <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+              {% if u.id in nicht_einbettbare_ids %}
+              <span class="karte-meta">– wird nicht ins Gesamt-PDF eingebunden (kein PDF/Bild)</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Datei &quot;{{ u.original_dateiname }}&quot; löschen?">
+                {% include "partials/csrf_field.html" %}
+                <button type="submit" class="link-btn danger">Löschen</button>
+              </form>
+            </td>
+          </tr>
           {% endfor %}
-        </select>
+          </tbody>
+        </table>
+        {% endif %}
+        <form method="post" action="/bewerbungen/unterlagen" enctype="multipart/form-data" class="form-row" style="margin-top: var(--space-4);">
+          {% include "partials/csrf_field.html" %}
+          <div class="field">
+            <label for="kategorie">Kategorie</label>
+            <select id="kategorie" name="kategorie">
+              <option value="lebenslauf">Lebenslauf</option>
+              <option value="zeugnis">Zeugnis</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="datei">Datei (PDF, Word oder Bild, max. 10 MB)</label>
+            <input type="file" id="datei" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Hochladen</button>
+        </form>
       </div>
-      <div class="field">
-        <label for="gueltig_bis">Gültig bis (optional)</label>
-        <input type="date" id="gueltig_bis" name="gueltig_bis">
-      </div>
-      <button type="submit" class="btn btn-primary">Freigeben</button>
-    </form>
-    {% else %}
-    <p class="empty-state">Dir ist noch keine Berufstrainer:in zugeordnet - sprich deine Einrichtung an.</p>
-    {% endif %}
+    </div>
 
-    {% if freigaben %}
-    <table style="margin-top: var(--space-4);">
-      <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
-      <tbody>
-      {% for f in freigaben %}
-      <tr>
-        <td>{{ trainer_kontakt.name if trainer_kontakt and trainer_kontakt.id == f.empfaenger_id else "Berufstrainer:in #" ~ f.empfaenger_id }}</td>
-        <td>
-          {% if f.umfang.value == "alle" %}Alle Bewerbungen
-          {% elif f.bewerbung_id in bewerbung_by_id %}{{ bewerbung_by_id[f.bewerbung_id].firma }}
-          {% else %}Einzelne Bewerbung{% endif %}
-        </td>
-        <td>{{ f.gueltig_bis or "unbefristet" }}</td>
-        <td>
-          <form method="post" action="/bewerbungen/freigaben/{{ f.id }}/widerrufen">
-            {% include "partials/csrf_field.html" %}
-            <button type="submit" class="link-btn danger">Widerrufen</button>
-          </form>
-        </td>
-      </tr>
+    <div x-show="tab === 'laufend'" x-cloak>
+      {% if laufende_bewerbungen %}
+      {% for b in laufende_bewerbungen %}
+      {{ bewerbung_karte(b) }}
       {% endfor %}
-      </tbody>
-    </table>
-    {% endif %}
+      {% else %}
+      <p class="empty-state">Keine laufenden Bewerbungen – lege oben eine neue an.</p>
+      {% endif %}
+    </div>
+
+    <div x-show="tab === 'abgeschlossen'" x-cloak>
+      {% if abgeschlossene_bewerbungen %}
+      {% for b in abgeschlossene_bewerbungen %}
+      {{ bewerbung_karte(b) }}
+      {% endfor %}
+      {% else %}
+      <p class="empty-state">Noch keine abgeschlossenen Bewerbungen.</p>
+      {% endif %}
+    </div>
+
+    <div x-show="tab === 'freigeben'" x-cloak>
+      <div class="card">
+        <h3>Für wen freigeben</h3>
+        {% if trainer_kontakt %}
+        <p class="karte-meta">Die zuständige Berufstrainer:in (<strong>{{ trainer_kontakt.name }}</strong>) sieht deine
+          Bewerbungen erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
+        <form method="post" action="/bewerbungen/freigaben" class="form-row">
+          {% include "partials/csrf_field.html" %}
+          <input type="hidden" name="empfaenger_id" value="{{ trainer_kontakt.id }}">
+          <div class="field">
+            <label for="umfang">Umfang</label>
+            <select id="umfang" name="umfang" onchange="document.getElementById('freigabe-bewerbung-feld').style.display = this.value === 'einzeln' ? '' : 'none';">
+              <option value="alle">Alle Bewerbungen</option>
+              <option value="einzeln">Nur eine Bewerbung</option>
+            </select>
+          </div>
+          <div class="field" id="freigabe-bewerbung-feld" style="display:none;">
+            <label for="bewerbung_id">Welche Bewerbung</label>
+            <select id="bewerbung_id" name="bewerbung_id">
+              {% for b in bewerbungen %}
+              <option value="{{ b.id }}">{{ b.firma }} — {{ b.position }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="gueltig_bis">Gültig bis (optional)</label>
+            <input type="date" id="gueltig_bis" name="gueltig_bis">
+          </div>
+          <button type="submit" class="btn btn-primary">Freigeben</button>
+        </form>
+        {% else %}
+        <p class="empty-state">Dir ist noch keine Berufstrainer:in zugeordnet - sprich deine Einrichtung an.</p>
+        {% endif %}
+
+        {% if freigaben %}
+        <table style="margin-top: var(--space-4);">
+          <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
+          <tbody>
+          {% for f in freigaben %}
+          <tr>
+            <td>{{ trainer_kontakt.name if trainer_kontakt and trainer_kontakt.id == f.empfaenger_id else "Berufstrainer:in #" ~ f.empfaenger_id }}</td>
+            <td>
+              {% if f.umfang.value == "alle" %}Alle Bewerbungen
+              {% elif f.bewerbung_id in bewerbung_by_id %}{{ bewerbung_by_id[f.bewerbung_id].firma }}
+              {% else %}Einzelne Bewerbung{% endif %}
+            </td>
+            <td>{{ f.gueltig_bis or "unbefristet" }}</td>
+            <td>
+              <form method="post" action="/bewerbungen/freigaben/{{ f.id }}/widerrufen">
+                {% include "partials/csrf_field.html" %}
+                <button type="submit" class="link-btn danger">Widerrufen</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+    </div>
   </div>
-</details>
+</div>
 {% endblock %}

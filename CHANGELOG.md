@@ -8,6 +8,40 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.7] - 2026-08-02
+
+### Added
+- **Vertikale Tab-Leiste** als wiederverwendbare Komponente (`.seiten-tabs`,
+  siehe `app/static/css/style.css`) für Seiten mit mehreren klar getrennten
+  Abschnitten - Alpine-gestützt, ohne Server-Roundtrip beim Wechseln. Auf
+  schmalen Screens wird daraus eine horizontal scrollende Leiste statt
+  einer Sidebar.
+- **Bewerbungen-Seite komplett auf diese Tab-Leiste umgebaut**: "Neue
+  Bewerbung", "Meine Unterlagen", "Laufende Bewerbungen", "Abgeschlossene
+  Bewerbungen" und "Für wen freigeben" sind jetzt getrennte Abschnitte statt
+  einer einzigen langen Seite mit allem untereinander.
+- **4 interaktive Elemente im 5-Minuten-Tagebuch** (siehe
+  `app/static/js/tagebuch-interaktiv.js`, `app/models/wohlbefinden.py`):
+  eine Verbinde-die-Punkte-Atemübung morgens (nur der Zeitpunkt wird
+  gespeichert, kein Zeichenpfad), ein optionaler Energie-Level als
+  Batterie-Symbol morgens (rein privat, taucht nie im Dashboard-Trend auf),
+  ein Freihand-Zeichenfeld abends ("Male, was dich heute gefreut hat" -
+  wie Bewerbungsunterlagen verschlüsselt gespeichert, siehe
+  `app/core/uploads.py`, mit eigenem Hard-Delete-Pfad) und drei antippbare
+  Checklisten-Kacheln abends. Migration `f6a7b8c9d0e1`.
+
+### Fixed
+- Echter Bug beim Verbinde-die-Punkte-Widget behoben: der Startpunkt der
+  Atemübung wurde nie als "erreicht" gezählt, da die Trefferprüfung nur bei
+  Zeigerbewegung lief, nicht beim initialen Antippen selbst.
+- CSS-Spezifitätsbug behoben, durch den die gefüllten Segmente der
+  Energie-Batterie unsichtbar blieben (`button:not(.btn)` war spezifischer
+  als `.energie-segment--voll`).
+- Mobile Tab-Leiste verursachte horizontales Scrollen der gesamten Seite
+  statt nur der Leiste selbst (fehlendes `min-width: 0` auf Flex-Kindern,
+  plus `width: 100%` auf einzelnen Tab-Buttons, die dadurch je die volle
+  Leistenbreite beanspruchten).
+
 ## [0.1.6] - 2026-08-02
 
 ### Fixed

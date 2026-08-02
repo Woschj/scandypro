@@ -25,6 +25,10 @@ from cryptography.fernet import Fernet
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-nur-fuer-tests")
 os.environ.setdefault("FIELD_ENCRYPTION_KEY", Fernet.generate_key().decode())
+# Der Produktiv-Default "/app/uploads" existiert außerhalb des Docker-Images
+# nicht/ist nicht beschreibbar - Datei-Upload-Tests (Bewerbungsunterlagen,
+# Tagebuch-Zeichnungen) brauchen ein echtes, beschreibbares Verzeichnis.
+os.environ.setdefault("UPLOAD_DIR", tempfile.mkdtemp(prefix="scandypro-test-uploads-"))
 
 import app.models  # noqa: E402,F401  (registriert alle Tabellen in SQLModel.metadata)
 import pytest_asyncio  # noqa: E402

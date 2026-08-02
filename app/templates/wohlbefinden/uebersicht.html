@@ -27,6 +27,25 @@
     <input type="hidden" name="morgen_impuls_frage" value="{{ tag.morgen_impuls_frage }}">
 
     <div class="field">
+      <label class="eyebrow">Kurz ankommen</label>
+      <div class="atemuebung" data-atemuebung>
+        <svg viewBox="0 0 280 200" class="atemuebung-svg">
+          <path data-linie fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle data-punkt="0" cx="40" cy="100" r="10"/>
+          <text x="40" y="128" text-anchor="middle" class="atemuebung-label">Einatmen</text>
+          <circle data-punkt="1" cx="140" cy="30" r="10"/>
+          <text x="140" y="18" text-anchor="middle" class="atemuebung-label">Halten</text>
+          <circle data-punkt="2" cx="240" cy="100" r="10"/>
+          <text x="240" y="128" text-anchor="middle" class="atemuebung-label">Ausatmen</text>
+          <circle data-punkt="3" cx="140" cy="170" r="10"/>
+          <text x="140" y="195" text-anchor="middle" class="atemuebung-label">Halten</text>
+        </svg>
+        <p class="karte-meta" data-atemuebung-hinweis>Fahre mit dem Finger oder der Maus der Reihe nach von Punkt zu Punkt - eine kleine Pause, bevor es losgeht.</p>
+        <input type="hidden" name="atemuebung_erledigt" value="{{ 'true' if tag.atemuebung_erledigt else '' }}">
+      </div>
+    </div>
+
+    <div class="field">
       <label>Ich bin dankbar für …</label>
       <input type="text" name="dankbarkeit_1" value="{{ tag.dankbarkeit[0] }}" placeholder="1.">
       <input type="text" name="dankbarkeit_2" value="{{ tag.dankbarkeit[1] }}" placeholder="2." style="margin-top: var(--space-2);">
@@ -36,6 +55,17 @@
     <div class="field">
       <label>{{ tag.morgen_impuls_frage }}</label>
       <textarea name="morgen_impuls_antwort" rows="2">{{ tag.morgen_impuls_antwort }}</textarea>
+    </div>
+
+    <div class="field">
+      <label>Wie viel Energie spürst du gerade? (optional, nur für dich)</label>
+      <div class="energie-batterie" data-energie-batterie>
+        <div class="energie-batterie-kopf"></div>
+        {% for i in range(1, 5) %}
+        <button type="button" class="energie-segment {% if tag.energie_level and i <= tag.energie_level %}energie-segment--voll{% endif %}" data-energie-segment aria-label="Energie-Level {{ i }} von 4"></button>
+        {% endfor %}
+        <input type="hidden" name="energie_level" value="{{ tag.energie_level or '' }}">
+      </div>
     </div>
 
     <button type="submit" class="btn btn-primary btn-sm">Morgens speichern</button>
@@ -64,6 +94,37 @@
       <textarea name="abend_impuls_antwort" rows="2">{{ tag.abend_impuls_antwort }}</textarea>
     </div>
 
+    <div class="field">
+      <label>Magst du malen, was dich heute gefreut hat? (optional)</label>
+      <div class="zeichenfeld-canvas-wrap" data-zeichenfeld>
+        {% if tag.hat_zeichnung %}
+        <img class="zeichenfeld-bestehend" data-zeichenfeld-bestehend src="/wohlbefinden/zeichnung/{{ tag.eintrag_id }}" alt="Deine bisherige Zeichnung für diesen Tag">
+        {% endif %}
+        <canvas width="600" height="360" {% if tag.hat_zeichnung %}style="display:none;"{% endif %}></canvas>
+        <input type="hidden" name="zeichnung_daten">
+        <input type="hidden" name="zeichnung_entfernen" value="">
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" data-zeichenfeld-loeschen style="margin-top: var(--space-2);">Zeichnung löschen</button>
+    </div>
+
+    <div class="field">
+      <label class="eyebrow">Magst du ankreuzen, was heute auch noch war?</label>
+      <div class="tagebuch-chip-liste">
+        <label class="tagebuch-chip">
+          <input type="checkbox" name="check_pause_gemacht" value="true" {% if tag.check_pause_gemacht %}checked{% endif %}>
+          Ich habe eine Pause gemacht
+        </label>
+        <label class="tagebuch-chip">
+          <input type="checkbox" name="check_jemandem_geholfen" value="true" {% if tag.check_jemandem_geholfen %}checked{% endif %}>
+          Ich habe jemandem geholfen (oder Hilfe bekommen)
+        </label>
+        <label class="tagebuch-chip">
+          <input type="checkbox" name="check_kleines_erfolgserlebnis" value="true" {% if tag.check_kleines_erfolgserlebnis %}checked{% endif %}>
+          Kleines Erfolgserlebnis gehabt
+        </label>
+      </div>
+    </div>
+
     <button type="submit" class="btn btn-primary btn-sm">Abends speichern</button>
   </form>
 </div>
@@ -88,6 +149,15 @@
       <div class="eyebrow">{{ eintrag.morgen_impuls_frage }}</div>
       <p>{{ eintrag.morgen_impuls_antwort }}</p>
       {% endif %}
+      {% if eintrag.energie_level %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Energie an dem Tag</div>
+      <div class="energie-batterie" style="margin-top: var(--space-2);">
+        <div class="energie-batterie-kopf"></div>
+        {% for i in range(1, 5) %}
+        <span class="energie-segment {% if i <= eintrag.energie_level %}energie-segment--voll{% endif %}"></span>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% if eintrag.highlights | select | list %}
       <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
       <ul style="margin: var(--space-2) 0 var(--space-4);">
@@ -97,6 +167,17 @@
       {% if eintrag.abend_impuls_antwort %}
       <div class="eyebrow">{{ eintrag.abend_impuls_frage }}</div>
       <p>{{ eintrag.abend_impuls_antwort }}</p>
+      {% endif %}
+      {% if eintrag.hat_zeichnung %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Deine Zeichnung</div>
+      <img class="zeichenfeld-bestehend" style="margin-top: var(--space-2); max-width: 320px;" src="/wohlbefinden/zeichnung/{{ eintrag.eintrag_id }}" alt="Deine Zeichnung vom {{ eintrag.label }}">
+      {% endif %}
+      {% if eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
+      <div class="tagebuch-chip-liste" style="margin-top: var(--space-3);">
+        {% if eintrag.check_pause_gemacht %}<span class="chip chip-neutral">Pause gemacht</span>{% endif %}
+        {% if eintrag.check_jemandem_geholfen %}<span class="chip chip-neutral">Jemandem geholfen</span>{% endif %}
+        {% if eintrag.check_kleines_erfolgserlebnis %}<span class="chip chip-neutral">Kleines Erfolgserlebnis</span>{% endif %}
+      </div>
       {% endif %}
       <form method="post" action="/wohlbefinden/tag/loeschen" data-confirm="Eintrag vom {{ eintrag.label }} unwiderruflich löschen?" style="margin-top: var(--space-3);">
         {% include "partials/csrf_field.html" %}

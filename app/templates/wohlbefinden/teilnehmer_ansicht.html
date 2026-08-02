@@ -35,6 +35,14 @@
       <div class="eyebrow">{{ eintrag.abend_impuls_frage }}</div>
       <p>{{ eintrag.abend_impuls_antwort }}</p>
       {% endif %}
+      {% if eintrag.hat_zeichnung or eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
+      <div class="tagebuch-chip-liste" style="margin-top: var(--space-3);">
+        {% if eintrag.hat_zeichnung %}<span class="chip chip-neutral">Hat eine Zeichnung angefertigt</span>{% endif %}
+        {% if eintrag.check_pause_gemacht %}<span class="chip chip-neutral">Pause gemacht</span>{% endif %}
+        {% if eintrag.check_jemandem_geholfen %}<span class="chip chip-neutral">Jemandem geholfen</span>{% endif %}
+        {% if eintrag.check_kleines_erfolgserlebnis %}<span class="chip chip-neutral">Kleines Erfolgserlebnis</span>{% endif %}
+      </div>
+      {% endif %}
     </div>
   </details>
   {% endfor %}

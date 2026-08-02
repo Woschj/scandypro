@@ -346,6 +346,112 @@ button:not(.btn) {
 }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); }
 
+/* Vertikale Tab-Leiste - fuer Seiten mit mehreren klar getrennten
+   Abschnitten (z.B. Bewerbungen: Neue Bewerbung/Meine Unterlagen/Laufend/
+   Abgeschlossen), damit nicht mehr alles auf einer langen Seite
+   untereinander steht. Zustand rein clientseitig (Alpine x-data="{ tab: '...' }"
+   am .seiten-tabs-Wrapper) - kein Server-Roundtrip beim Wechseln. */
+.seiten-tabs { display: flex; gap: var(--space-6); align-items: flex-start; }
+.seiten-tabs-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  width: 240px;
+  position: sticky;
+  top: var(--space-4);
+}
+.seiten-tabs-nav button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.seiten-tabs-nav button:hover { background: var(--bg-raised); color: var(--ink); }
+.seiten-tabs-nav button.seiten-tabs-aktiv {
+  background: var(--bg-raised);
+  color: var(--ink);
+  border-color: var(--line);
+  box-shadow: var(--shadow-card);
+}
+.seiten-tabs-nav button.seiten-tabs-aktiv .seiten-tabs-icon { color: var(--accent); }
+.seiten-tabs-icon { flex-shrink: 0; display: flex; }
+.seiten-tabs-badge {
+  margin-left: auto;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
+}
+.seiten-tabs-panels { flex: 1; min-width: 0; }
+
+@media (max-width: 860px) {
+  .seiten-tabs { flex-direction: column; gap: var(--space-4); min-width: 0; }
+  .seiten-tabs-nav {
+    flex-direction: row;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    position: static;
+    padding-bottom: var(--space-2);
+  }
+  .seiten-tabs-nav button { flex-shrink: 0; width: auto; white-space: nowrap; }
+}
+
+/* Interaktive Tagebuch-Elemente (siehe app/static/js/tagebuch-interaktiv.js,
+   app/templates/wohlbefinden/uebersicht.html) - bewusst spielerisch statt
+   textlastig, aber ohne jede Bewertungs-Optik (keine Ampelfarben, kein
+   "richtig/falsch"). */
+.atemuebung { max-width: 320px; margin: 0 auto var(--space-3); }
+.atemuebung-svg { display: block; width: 100%; touch-action: none; }
+.atemuebung-svg [data-punkt] { fill: var(--bg-raised); stroke: var(--line-strong); stroke-width: 2; cursor: pointer; }
+.atemuebung-svg .atemuebung-punkt--erreicht { fill: var(--accent); stroke: var(--accent); }
+.atemuebung-label { fill: var(--ink-soft); font-family: var(--font-display); font-size: 11px; }
+[data-atemuebung-hinweis] { text-align: center; }
+
+.zeichenfeld-canvas-wrap { position: relative; border: 1px dashed var(--line-strong); border-radius: var(--radius); overflow: hidden; background: var(--bg-raised); }
+.zeichenfeld-canvas-wrap canvas { display: block; width: 100%; height: 180px; touch-action: none; cursor: crosshair; }
+.zeichenfeld-bestehend { display: block; width: 100%; height: 180px; object-fit: contain; background: var(--bg-raised); }
+
+.energie-batterie { display: flex; align-items: center; gap: var(--space-2); }
+.energie-segment {
+  width: 28px;
+  height: 44px;
+  border: 2px solid var(--line-strong);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.energie-segment.energie-segment--voll { background: var(--accent); border-color: var(--accent); }
+.energie-batterie-kopf { width: 10px; height: 12px; border-radius: 2px 2px 0 0; background: var(--line-strong); margin: 0 0 -2px 4px; }
+
+.tagebuch-chip-liste { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tagebuch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+.tagebuch-chip:has(input:checked) { background: var(--bg); color: var(--ink); border-color: var(--accent); }
+.tagebuch-chip input { accent-color: var(--accent); }
+
 /* Chips */
 .chip {
   display: inline-flex;
