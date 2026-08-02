@@ -647,86 +647,46 @@ button:not(.btn) {
   .main-content { padding-bottom: calc(var(--tab-bar-height) + var(--space-6)); }
 }
 
-/* Kanban */
+/* Kanban - Spalten als wrappendes Grid statt horizontal scrollender
+   Flex-Reihe: alle Spalten passen auf gängigen Desktop-Breiten in eine
+   Zeile (kein Scrollbalken, kein Pfeil-Gedöns), bei mehr Spalten oder auf
+   schmalen Screens wird einfach in die naechste Zeile umgebrochen statt
+   seitlich zu scrollen. */
 .board-columns-wrap { position: relative; }
-.board-columns-wrap::before,
-.board-columns-wrap::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: var(--space-6);
-  width: 56px;
-  pointer-events: none;
-  z-index: 5;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.board-columns-wrap::before { left: 0; background: linear-gradient(to right, var(--bg-raised), transparent); }
-.board-columns-wrap::after { right: 0; background: linear-gradient(to left, var(--bg-raised), transparent); }
-.board-columns-wrap.can-scroll-left::before { opacity: 1; }
-.board-columns-wrap.can-scroll-right::after { opacity: 1; }
 
-.board-scroll-btn {
-  position: absolute;
-  top: 2.5rem;
-  z-index: 6;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--bg-raised);
-  box-shadow: var(--shadow-card);
-  color: var(--ink-soft);
-  font-size: 1.2rem;
-  line-height: 1;
+.spalte-hinzufuegen-leiste {
+  margin-bottom: var(--space-4);
+}
+.spalte-hinzufuegen-leiste > summary {
+  list-style: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  display: inline-block;
+  padding: var(--space-2) var(--space-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
-.board-scroll-btn--left { left: -0.75rem; }
-.board-scroll-btn--right { right: -0.75rem; }
-.board-columns-wrap.can-scroll-left .board-scroll-btn--left,
-.board-columns-wrap.can-scroll-right .board-scroll-btn--right {
-  opacity: 1;
-  visibility: visible;
-}
-.board-scroll-btn:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
-@media (max-width: 640px) {
-  .board-scroll-btn { display: none; }
-}
+.spalte-hinzufuegen-leiste > summary::-webkit-details-marker { display: none; }
+.spalte-hinzufuegen-leiste > summary:hover { background: var(--bg); color: var(--ink); }
+.spalte-hinzufuegen-leiste[open] > summary { border-style: solid; margin-bottom: var(--space-3); }
+.spalte-hinzufuegen-leiste form { max-width: 480px; }
 
 .board-columns {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: var(--space-6);
-  overflow-x: auto;
-  padding: var(--space-2) var(--space-2) var(--space-6);
-  scroll-snap-type: x proximity;
-  scroll-behavior: smooth;
-  align-items: flex-start;
-  cursor: grab;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
+  align-items: start;
 }
-.board-columns:active { cursor: grabbing; }
-.board-columns.board-columns--panning { scroll-snap-type: none; }
-.board-columns::-webkit-scrollbar { height: 8px; }
-.board-columns::-webkit-scrollbar-track { background: transparent; }
-.board-columns::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
-.board-columns::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
 .board-column {
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   padding: var(--space-4);
-  width: 320px;
-  min-width: 320px;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
+  min-width: 0;
 }
 .board-column-head {
   display: flex;
@@ -773,7 +733,6 @@ button:not(.btn) {
   flex-direction: column;
   gap: var(--space-2);
 }
-.board-column--neu { background: transparent; box-shadow: none; border-style: dashed; display: flex; align-items: flex-start; }
 .spalte-count {
   display: inline-flex;
   align-items: center;
@@ -976,10 +935,6 @@ button:not(.btn) {
 .neue-karte-toggle[open] > summary { border-style: solid; margin-bottom: var(--space-3); }
 .neue-karte-toggle .field { margin-bottom: var(--space-3); }
 
-@media (max-width: 640px) {
-  .board-column { width: 85vw; min-width: 85vw; }
-  .board-columns { scroll-snap-type: x mandatory; }
-}
 
 /* Zuklappbare Listen (Board-Übersicht, Wochenberichte) */
 .zuklapp-liste { display: flex; flex-direction: column; gap: var(--space-3); }

@@ -199,64 +199,8 @@
     });
   }
 
-  /*
-   * Horizontales Scrollen der Board-Spalten: Fade-Kanten + Pfeil-Buttons
-   * zeigen an, ob noch mehr Spalten folgen; zusätzlich Klick-und-Ziehen auf
-   * dem leeren Spalten-Hintergrund (Trello-Stil), ohne die native
-   * Karten-Drag&Drop-Funktion (draggable=true auf .karte) zu stören.
-   */
-  function initScrollUX() {
-    document.querySelectorAll("[data-board-scroll]").forEach((wrap) => {
-      const scroller = wrap.querySelector(".board-columns");
-      if (!scroller) return;
-
-      function updateEdges() {
-        const max = scroller.scrollWidth - scroller.clientWidth;
-        wrap.classList.toggle("can-scroll-left", scroller.scrollLeft > 24);
-        wrap.classList.toggle("can-scroll-right", scroller.scrollLeft < max - 24);
-      }
-      scroller.scrollLeft = 0;
-      updateEdges();
-      scroller.addEventListener("scroll", updateEdges, { passive: true });
-      window.addEventListener("resize", updateEdges);
-      if (window.ResizeObserver) new ResizeObserver(updateEdges).observe(scroller);
-
-      wrap.querySelectorAll(".board-scroll-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const richtung = parseInt(btn.dataset.scrollDir, 10);
-          const spalte = scroller.querySelector(".board-column");
-          const schritt = spalte ? spalte.getBoundingClientRect().width + 24 : 320;
-          scroller.scrollBy({ left: richtung * schritt, behavior: "smooth" });
-        });
-      });
-
-      let ziehtGerade = false;
-      let startX = 0;
-      let startScrollLeft = 0;
-      scroller.addEventListener("mousedown", (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest("[data-karte-id], button, a, input, textarea, select, summary")) return;
-        ziehtGerade = true;
-        scroller.classList.add("board-columns--panning");
-        startX = e.clientX;
-        startScrollLeft = scroller.scrollLeft;
-        e.preventDefault();
-      });
-      window.addEventListener("mousemove", (e) => {
-        if (!ziehtGerade) return;
-        scroller.scrollLeft = startScrollLeft - (e.clientX - startX);
-      });
-      window.addEventListener("mouseup", () => {
-        if (!ziehtGerade) return;
-        ziehtGerade = false;
-        scroller.classList.remove("board-columns--panning");
-      });
-    });
-  }
-
   document.addEventListener("DOMContentLoaded", () => {
     initDragUndDrop();
     initUnteraufgaben();
-    initScrollUX();
   });
 })();

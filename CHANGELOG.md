@@ -8,6 +8,17 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.4] - 2026-08-02
+
+### Changed
+- Kanban-Board-Layout von horizontal scrollender Flex-Reihe auf ein
+  wrappendes CSS-Grid umgestellt: alle Spalten passen auf gängigen
+  Breiten in eine Zeile (kein Scrollbalken, keine Pfeil-Buttons mehr
+  nötig), bei mehr Spalten oder auf schmalen Screens wird umgebrochen
+  statt seitlich zu scrollen. "+ Spalte hinzufügen" ist jetzt eine
+  schlanke Leiste über den Spalten statt einer leeren Geister-Spalte im
+  Spalten-Grid.
+
 ## [0.1.3] - 2026-08-02
 
 ### Changed

@@ -4,28 +4,22 @@
    Feldern board, spalten, karten_by_spalte, zuweisungen_by_karte,
    unteraufgaben_by_karte, boardmitglieder, darf_sichtbarkeit_aendern, heute
    (siehe app/routers/kanban.py, _board_kontext). #}
-<div class="board-columns-wrap" data-board-scroll>
-  <button type="button" class="board-scroll-btn board-scroll-btn--left" data-scroll-dir="-1" aria-label="Spalten nach links scrollen">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M10 3.5L5 8L10 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
+<div class="board-columns-wrap">
+  {% if k.darf_board_verwalten %}
+  <details class="spalte-hinzufuegen-leiste">
+    <summary>+ Spalte hinzufügen</summary>
+    <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten" class="form-row">
+      {% include "partials/csrf_field.html" %}
+      <div class="field" style="flex:1;">
+        <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>
+      </div>
+      <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+    </form>
+  </details>
+  {% endif %}
   <div class="board-columns">
   {% for spalte in k.spalten %}
   {% set karten = k.karten_by_spalte.get(spalte.id, []) %}
-  {% if spalte.ist_system_erledigt and k.darf_board_verwalten %}
-  <div class="board-column board-column--neu">
-    <details class="neue-karte-toggle">
-      <summary>+ Spalte hinzufügen</summary>
-      <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten">
-        {% include "partials/csrf_field.html" %}
-        <div class="field">
-          <label>Name</label>
-          <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>
-        </div>
-        <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
-      </form>
-    </details>
-  </div>
-  {% endif %}
   <div class="board-column {% if spalte.ist_system_erledigt %}board-column--erledigt{% endif %}">
     <div class="board-column-head">
       <h3>{{ spalte.name }}{% if spalte.ist_system_erledigt %} <span title="Abgeschlossene Karten">✓</span>{% endif %}</h3>
@@ -276,24 +270,5 @@
     {% endif %}
   </div>
   {% endfor %}
-  {% set hat_erledigt_spalte = k.spalten | selectattr("ist_system_erledigt") | list | length > 0 %}
-  {% if k.darf_board_verwalten and not hat_erledigt_spalte %}
-  <div class="board-column board-column--neu">
-    <details class="neue-karte-toggle">
-      <summary>+ Spalte hinzufügen</summary>
-      <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten">
-        {% include "partials/csrf_field.html" %}
-        <div class="field">
-          <label>Name</label>
-          <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>
-        </div>
-        <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
-      </form>
-    </details>
   </div>
-  {% endif %}
-  </div>
-  <button type="button" class="board-scroll-btn board-scroll-btn--right" data-scroll-dir="1" aria-label="Spalten nach rechts scrollen">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M6 3.5L11 8L6 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
 </div>
