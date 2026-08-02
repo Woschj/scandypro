@@ -8,6 +8,25 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.6] - 2026-08-02
+
+### Fixed
+- **Echter, reproduzierbarer CSRF-Bug behoben**: "+ Spalte hinzufügen" im
+  Kanban (und praktisch jedes andere Formular) konnte mit "Ungültige oder
+  abgelaufene Anfrage" (403) fehlschlagen, sobald zwischen dem Laden der
+  Seite und dem Absenden mehr als eine Sekunde lag. Ursache: Starlettes
+  `SessionMiddleware` signiert den Session-Cookie bei **jeder** Antwort mit
+  einem neuen Zeitstempel neu (`itsdangerous.TimestampSigner`) - der rohe
+  Cookie-String ändert sich dadurch bei jedem Request-Response-Zyklus,
+  obwohl die enthaltenen Daten (z. B. `user_id`) gleich bleiben. Das
+  CSRF-Token wurde bisher direkt aus diesem rohen, instabilen Cookie-Wert
+  abgeleitet - ein beim Seitenaufruf eingebettetes Token war dadurch schon
+  beim nächsten Request wieder ungültig. Fix: Das Token wird jetzt aus
+  einem stabilen, zufälligen Wert abgeleitet, der im entschlüsselten
+  Session-Dict liegt (`request.session["_csrf_secret"]`, siehe
+  `app/core/templating.py:csrf_token`) und über beliebig viele Requests
+  hinweg gültig bleibt, bis die Session geleert wird (Login/Logout).
+
 ## [0.1.5] - 2026-08-02
 
 ### Changed

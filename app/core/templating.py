@@ -1,10 +1,11 @@
 import json
+import secrets
 from pathlib import Path
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
-from app.core.security import SESSION_COOKIE_NAME, generate_csrf_token
+from app.core.security import generate_csrf_token
 from app.version import __version__
 
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent.parent / "templates")
@@ -18,11 +19,20 @@ templates.env.globals["asset_version"] = __version__
 
 def csrf_token(request: Request) -> str:
     """Für `{{ csrf_token(request) }}` in app/templates/partials/csrf_field.html
-    - leitet das Token aus dem aktuellen Session-Cookie ab (siehe
-    app.core.security.generate_csrf_token). Vor dem Login gibt es kein
-    Session-Cookie; dann liefert das einen "leeren" Token, was unkritisch
-    ist, da /login selbst nicht CSRF-geschützt ist (siehe app.core.deps.verify_csrf)."""
-    return generate_csrf_token(request.cookies.get(SESSION_COOKIE_NAME, ""))
+    - leitet das Token aus einem stabilen, in der (serverseitig entschlüsselten)
+    Session abgelegten Zufallswert ab (siehe app.core.security.generate_csrf_token),
+    NICHT aus dem rohen Session-Cookie-String: Starlettes SessionMiddleware
+    signiert den Cookie bei JEDER Antwort neu (itsdangerous.TimestampSigner,
+    Zeitstempel in der Signatur), wodurch sich der rohe Cookie-Wert bei jedem
+    Request-Response-Zyklus ändert - ein daraus abgeleitetes Token wäre schon
+    beim nächsten Request wieder ungültig (siehe CHANGELOG). Der hier erzeugte
+    Zufallswert liegt dagegen im entschlüsselten Session-Dict und bleibt über
+    mehrere Requests hinweg stabil, bis die Session geleert wird (Login/Logout)."""
+    secret = request.session.get("_csrf_secret")
+    if not secret:
+        secret = secrets.token_urlsafe(32)
+        request.session["_csrf_secret"] = secret
+    return generate_csrf_token(secret)
 
 
 templates.env.globals["csrf_token"] = csrf_token
