@@ -121,6 +121,7 @@
     <p class="karte-meta">Die zuständige psychosoziale Mitarbeiter:in (<strong>{{ psm_kontakt.name }}</strong>) sieht deine
       Einträge erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
     <form method="post" action="/wohlbefinden/freigaben" class="form-row">
+      {% include "partials/csrf_field.html" %}
       <input type="hidden" name="empfaenger_id" value="{{ psm_kontakt.id }}">
       <div class="field">
         <label for="umfang">Umfang</label>
@@ -150,6 +151,7 @@
         <td>{{ f.gueltig_bis or "unbefristet" }}</td>
         <td>
           <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">
+            {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Widerrufen</button>
           </form>
         </td>

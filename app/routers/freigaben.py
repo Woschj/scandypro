@@ -8,19 +8,19 @@ in app/routers/wohlbefinden.py bzw. app/routers/bewerbungen.py - hier wird
 nur gebündelt dargestellt.
 """
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 
 from app.core.deletion import loesche_alle_bewerbungsdaten, loesche_alle_wohlbefinden_daten
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.models.audit import AuditLogEintrag
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe
 from app.models.user import RoleEnum, User
 from app.models.wohlbefinden import WohlbefindenFreigabe
 
-router = APIRouter(prefix="/freigaben", tags=["freigaben"])
+router = APIRouter(prefix="/freigaben", tags=["freigaben"], dependencies=[Depends(verify_csrf)])
 
 BESTAETIGUNGSWORT = "LÖSCHEN"
 

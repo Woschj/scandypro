@@ -8,6 +8,7 @@
 <div class="card">
   <h3>Neue Abteilung</h3>
   <form method="post" action="/admin/abteilungen" class="form-row">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <label for="neue_abteilung_name">Name</label>
       <input type="text" id="neue_abteilung_name" name="name" required>
@@ -27,6 +28,7 @@
   </summary>
   <div class="zuklapp-eintrag-body">
     <form method="post" action="/admin/abteilungen/{{ abteilung.id }}/umbenennen" class="form-row" style="margin-bottom: var(--space-4);">
+      {% include "partials/csrf_field.html" %}
       <div class="field">
         <label>Abteilung</label>
         <input type="text" name="name" value="{{ abteilung.name }}" required>
@@ -38,6 +40,7 @@
     <h3>Handlungsfelder</h3>
 
     <form method="post" action="/admin/handlungsfelder" class="form-row" style="margin-bottom: var(--space-3);">
+      {% include "partials/csrf_field.html" %}
       <input type="hidden" name="abteilung_id" value="{{ abteilung.id }}">
       <div class="field" style="flex: 1;">
         <input type="text" name="name" placeholder="Neues Handlungsfeld" required>
@@ -67,6 +70,7 @@
             </summary>
             <div class="zeile-verwalten-body">
               <form method="post" action="/admin/handlungsfelder/{{ h.id }}/umbenennen" class="form-row">
+                {% include "partials/csrf_field.html" %}
                 <div class="field" style="flex: 1;">
                   <input type="text" name="name" value="{{ h.name }}" required>
                 </div>
@@ -78,6 +82,7 @@
               <span class="chip chip-neutral">
                 {{ trainer_by_id[leitung.berufstrainer_id].name }}
                 <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung/{{ leitung.id }}/entfernen" style="display:inline; margin-left: var(--space-2);">
+                  {% include "partials/csrf_field.html" %}
                   <button type="submit" class="link-btn danger" style="min-height:auto; min-width:auto; padding:0;">Entfernen</button>
                 </form>
               </span>
@@ -86,6 +91,7 @@
               {% endfor %}
 
               <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung" class="form-row">
+                {% include "partials/csrf_field.html" %}
                 <div class="field" style="flex: 1;">
                   <select name="berufstrainer_id" required>
                     <option value="" selected disabled>– Berufstrainer:in wählen –</option>

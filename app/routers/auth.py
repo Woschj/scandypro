@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.security import hash_password, verify_password
 from app.core.templating import templates
 from app.models.user import User
@@ -36,7 +36,7 @@ async def login_submit(
     return RedirectResponse(url="/", status_code=303)
 
 
-@router.post("/logout")
+@router.post("/logout", dependencies=[Depends(verify_csrf)])
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
@@ -47,7 +47,7 @@ async def konto_form(request: Request, current_user: CurrentUser):
     return templates.TemplateResponse(request, "auth/konto.html", {"current_user": current_user, "error": None})
 
 
-@router.post("/konto/passwort", response_class=HTMLResponse)
+@router.post("/konto/passwort", response_class=HTMLResponse, dependencies=[Depends(verify_csrf)])
 async def passwort_aendern(
     request: Request,
     current_user: CurrentUser,

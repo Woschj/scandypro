@@ -8,6 +8,7 @@
 <details class="card">
   <summary class="card-collapsible-summary"><h3>Neuer Wochenbericht</h3></summary>
   <form method="post" action="/wochenberichte" style="margin-top: var(--space-4);" data-warn-on-leave>
+    {% include "partials/csrf_field.html" %}
     <div class="field" style="max-width: 220px;">
       <label for="woche">Kalenderwoche</label>
       <input type="week" id="woche" name="woche" value="{{ aktuelle_kw }}" required>
@@ -65,6 +66,7 @@
   <div class="zuklapp-eintrag-body">
     {% if b.status.value == "entwurf" %}
     <form method="post" action="/wochenberichte/{{ b.id }}/bearbeiten" data-warn-on-leave>
+      {% include "partials/csrf_field.html" %}
       {% set ausgefuellte_tage = eintrag.tage | selectattr("taetigkeiten") | list | length %}
       <p class="karte-meta" style="margin-bottom: var(--space-3);">{{ ausgefuellte_tage }} von {{ eintrag.tage | length }} Tagen ausgefüllt.</p>
       <div class="zuklapp-liste" style="margin-bottom: var(--space-4);">
@@ -120,9 +122,11 @@
       <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
       {% if b.status.value == "entwurf" %}
       <form method="post" action="/wochenberichte/{{ b.id }}/abgeben">
+        {% include "partials/csrf_field.html" %}
         <button type="submit" class="btn btn-primary btn-sm">Bei Berufstrainer:in abgeben</button>
       </form>
       <form method="post" action="/wochenberichte/{{ b.id }}/loeschen" data-confirm="Entwurf KW {{ b.kw_nummer }}/{{ b.kw_jahr }} löschen?">
+        {% include "partials/csrf_field.html" %}
         <button type="submit" class="link-btn danger">Löschen</button>
       </form>
       {% endif %}

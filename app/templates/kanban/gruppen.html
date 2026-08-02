@@ -40,10 +40,12 @@
         <td style="text-align: right;">
           {% if t.id in hf_mitglied_teilnehmer_ids %}
           <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder/{{ hf_mitglied_id_by_teilnehmer[t.id] }}/entfernen">
+            {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Entfernen</button>
           </form>
           {% else %}
           <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder">
+            {% include "partials/csrf_field.html" %}
             <input type="hidden" name="teilnehmer_id" value="{{ t.id }}">
             <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
           </form>
@@ -87,6 +89,7 @@
 <h2>Neue Arbeitsgruppe</h2>
 <div class="card">
   <form method="post" action="/kanban/gruppen">
+    {% include "partials/csrf_field.html" %}
     <input type="hidden" name="handlungsfeld_id" value="{{ ausgewaehltes_handlungsfeld_id }}">
     <div class="field">
       <label for="name">Gruppenname</label>

@@ -10,6 +10,7 @@
 <div class="card" style="max-width: 480px;">
   <h3>Accountdaten</h3>
   <form method="post" action="/admin/benutzer/{{ benutzer.id }}/bearbeiten">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <label for="name">Name</label>
       <input type="text" id="name" name="name" value="{{ benutzer.name }}" required>
@@ -49,6 +50,7 @@
   <p class="karte-meta">Setzt sofort ein neues Passwort, ohne das alte zu kennen - z. B. wenn
     {{ benutzer.name }} das eigene Passwort vergessen hat.</p>
   <form method="post" action="/admin/benutzer/{{ benutzer.id }}/passwort-zuruecksetzen">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <label for="neues_passwort">Neues Passwort (mind. 8 Zeichen)</label>
       <input type="password" id="neues_passwort" name="neues_passwort" minlength="8" required autocomplete="new-password">

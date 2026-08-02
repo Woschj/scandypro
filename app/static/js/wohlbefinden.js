@@ -4,6 +4,11 @@
  * zwischen Tagen (siehe app/routers/wohlbefinden.py:_tag_kontext).
  */
 (function () {
+  function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : "";
+  }
+
   function init(root) {
     const tagDaten = JSON.parse(root.querySelector("#tag-data").textContent);
     const emojiListen = JSON.parse(root.querySelector("#emoji-daten").textContent);
@@ -32,7 +37,7 @@
         await fetch("/wohlbefinden/tag", {
           method: "POST",
           credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
           body: JSON.stringify({
             datum: tagDaten.datum,
             stimmung: tagDaten.stimmung,
@@ -83,7 +88,7 @@
       await fetch("/wohlbefinden/tag/kommentar", {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
         body: JSON.stringify({ datum: tagDaten.datum, kommentar: tagDaten.kommentar }),
       });
       aktualisierePin();

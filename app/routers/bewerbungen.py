@@ -1,12 +1,12 @@
 from datetime import date, datetime
 
-from fastapi import APIRouter, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
 from app.core.access import require_owner
 from app.core.audit import protokolliere
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.pdf_merge import unterlagen_zu_pdf
 from app.core.templating import templates
 from app.core.uploads import datei_lesen_entschluesselt, datei_loeschen, datei_speichern
@@ -22,7 +22,7 @@ from app.models.bewerbung import (
 from app.models.organisation import BerufstrainerZuordnung
 from app.models.user import RoleEnum, User
 
-router = APIRouter(prefix="/bewerbungen", tags=["bewerbungen"])
+router = APIRouter(prefix="/bewerbungen", tags=["bewerbungen"], dependencies=[Depends(verify_csrf)])
 
 STAMM_KATEGORIEN = (UnterlagenKategorie.lebenslauf, UnterlagenKategorie.zeugnis)
 WARTET_AUF_RUECKMELDUNG = (BewerbungStatus.versendet, BewerbungStatus.rueckmeldung_offen)

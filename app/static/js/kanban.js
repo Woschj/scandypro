@@ -17,6 +17,11 @@
 (function () {
   const FEIER_TEXTE = ["Geschafft ✓", "Erledigt – gut gemacht", "Fertig – schön, dass du dran geblieben bist"];
 
+  function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : "";
+  }
+
   function stempel(ursprungRect) {
     const el = document.createElement("span");
     el.className = "geschafft-stempel";
@@ -89,7 +94,7 @@
       const antwort = await fetch(`/kanban/spalten/${spalteId}/reihenfolge`, {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
         body: JSON.stringify({ karten_ids: kartenIds }),
       });
       if (!antwort.ok) throw new Error("Speichern fehlgeschlagen");
@@ -161,7 +166,11 @@
         const karte = form.closest("[data-karte-id]");
         const btn = form.querySelector(".unteraufgabe-toggle-btn");
         try {
-          const antwort = await fetch(form.action, { method: "POST", credentials: "same-origin" });
+          const antwort = await fetch(form.action, {
+            method: "POST",
+            credentials: "same-origin",
+            body: new FormData(form),
+          });
           if (!antwort.ok) throw new Error("Umschalten fehlgeschlagen");
           const daten = await antwort.json();
 

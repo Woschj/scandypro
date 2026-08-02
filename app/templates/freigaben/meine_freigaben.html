@@ -18,6 +18,7 @@
       <td>{{ f.gueltig_bis or "unbefristet" }}</td>
       <td>
         <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">
+          {% include "partials/csrf_field.html" %}
           <button type="submit" class="link-btn danger">Widerrufen</button>
         </form>
       </td>
@@ -47,6 +48,7 @@
       <td>{{ f.gueltig_bis or "unbefristet" }}</td>
       <td>
         <form method="post" action="/bewerbungen/freigaben/{{ f.id }}/widerrufen">
+          {% include "partials/csrf_field.html" %}
           <button type="submit" class="link-btn danger">Widerrufen</button>
         </form>
       </td>
@@ -90,6 +92,7 @@
       Zugang zu ScandyPro bleibt bestehen. Zur Bestätigung bitte "LÖSCHEN" eintippen.</p>
 
     <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" class="form-row" style="margin-bottom: var(--space-4);">
+      {% include "partials/csrf_field.html" %}
       <div class="field">
         <label for="bestaetigung-wb">Alle Einträge zu "Mein Tag" löschen</label>
         <input type="text" id="bestaetigung-wb" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
@@ -98,6 +101,7 @@
     </form>
 
     <form method="post" action="/freigaben/konto/bewerbungen-loeschen" class="form-row">
+      {% include "partials/csrf_field.html" %}
       <div class="field">
         <label for="bestaetigung-bw">Alle Bewerbungsdaten löschen</label>
         <input type="text" id="bestaetigung-bw" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 
 from app.core.access import require_role
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.security import hash_password
 from app.core.templating import templates
 from app.models.organisation import (
@@ -15,7 +15,7 @@ from app.models.organisation import (
 )
 from app.models.user import RoleEnum, User
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(verify_csrf)])
 
 
 async def _require_admin(current_user: CurrentUser) -> None:

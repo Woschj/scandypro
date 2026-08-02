@@ -108,10 +108,26 @@ async def client(session_maker):
             yield session
 
     app.dependency_overrides[db_module.get_session] = _get_session_override
+
+    # app.main.http_exception_handler öffnet für current_user (Fehlerseiten-
+    # Kontext) bewusst eine eigene Session statt der Request-Dependency
+    # (siehe dortigen Docstring) - importiert async_session_factory dabei
+    # per `from ... import`, also als eigene Modul-Referenz, die
+    # dependency_overrides nicht erreicht. Deshalb hier zusätzlich
+    # app.main.async_session_factory direkt patchen, sonst zeigt jeder Test,
+    # der eine HTTPException auslöst (401/403/404/...), fälschlich einen
+    # 500er auf die (nie initialisierte) Produktions-Engine statt den
+    # erwarteten Statuscode.
+    import app.main as main_module
+
+    original_factory = main_module.async_session_factory
+    main_module.async_session_factory = session_maker
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+    main_module.async_session_factory = original_factory
 
 
 async def login(client: AsyncClient, email: str, passwort: str) -> None:

@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 
@@ -16,7 +16,7 @@ from app.core.access import (
     require_role,
     sichtbare_karten_filter,
 )
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenZuweisung, Spalte, Unteraufgabe
 from app.models.organisation import (
@@ -27,7 +27,7 @@ from app.models.organisation import (
 )
 from app.models.user import RoleEnum, User
 
-router = APIRouter(prefix="/kanban", tags=["kanban"])
+router = APIRouter(prefix="/kanban", tags=["kanban"], dependencies=[Depends(verify_csrf)])
 
 STANDARD_SPALTEN = ["Offen", "In Arbeit", "Wartet", "Erledigt"]
 

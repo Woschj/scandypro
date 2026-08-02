@@ -9,6 +9,7 @@
   {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
   {% if erfolg %}<div class="form-success">Passwort geändert.</div>{% endif %}
   <form method="post" action="/konto/passwort">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <label for="aktuelles_passwort">Aktuelles Passwort</label>
       <input type="password" id="aktuelles_passwort" name="aktuelles_passwort" required>

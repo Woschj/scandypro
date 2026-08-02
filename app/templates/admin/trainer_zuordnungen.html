@@ -9,6 +9,7 @@
 <div class="card">
   <h3>Neue Zuordnung</h3>
   <form method="post" action="/admin/trainer-zuordnungen" class="form-row">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <label for="berufstrainer_id">Berufstrainer:in</label>
       <select id="berufstrainer_id" name="berufstrainer_id" required>
@@ -42,6 +43,7 @@
       <td>{{ user_by_id[z.teilnehmer_id].name }}</td>
       <td>
         <form method="post" action="/admin/trainer-zuordnungen/{{ z.id }}/entfernen">
+          {% include "partials/csrf_field.html" %}
           <button type="submit" class="link-btn danger">Entfernen</button>
         </form>
       </td>
