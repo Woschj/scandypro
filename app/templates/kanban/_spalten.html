@@ -9,9 +9,23 @@
   <div class="board-columns">
   {% for spalte in k.spalten %}
   {% set karten = k.karten_by_spalte.get(spalte.id, []) %}
-  <div class="board-column">
+  {% if spalte.ist_system_erledigt and k.darf_board_verwalten %}
+  <div class="board-column board-column--neu">
+    <details class="neue-karte-toggle">
+      <summary>+ Spalte hinzufügen</summary>
+      <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten">
+        <div class="field">
+          <label>Name</label>
+          <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>
+        </div>
+        <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+      </form>
+    </details>
+  </div>
+  {% endif %}
+  <div class="board-column {% if spalte.ist_system_erledigt %}board-column--erledigt{% endif %}">
     <div class="board-column-head">
-      <h3>{{ spalte.name }}</h3>
+      <h3>{{ spalte.name }}{% if spalte.ist_system_erledigt %} <span title="Abgeschlossene Karten">✓</span>{% endif %}</h3>
       <span class="spalte-count">{{ karten | length }}</span>
       {% if k.darf_board_verwalten %}
       <details class="spalte-verwalten">
@@ -23,20 +37,23 @@
             </div>
             <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
           </form>
+          {% if not spalte.ist_system_erledigt %}
           <form method="post" action="/kanban/spalten/{{ spalte.id }}/loeschen" onsubmit="return confirm('Spalte inkl. aller Karten löschen?');">
             <button type="submit" class="btn btn-ghost btn-sm">Spalte löschen</button>
           </form>
+          {% endif %}
         </div>
       </details>
       {% endif %}
     </div>
-    <div class="karten-liste" data-spalte-id="{{ spalte.id }}" {% if loop.last %}data-ist-letzte-spalte="true"{% endif %}>
+    <div class="karten-liste" data-spalte-id="{{ spalte.id }}" {% if spalte.ist_system_erledigt %}data-ist-erledigt-spalte="true"{% endif %}>
     {% for karte in karten %}
       {% set zuweisungen = k.zuweisungen_by_karte.get(karte.id, []) %}
       {% set unteraufgaben = k.unteraufgaben_by_karte.get(karte.id, []) %}
       {% set erledigte_unteraufgaben = unteraufgaben | selectattr("erledigt") | list %}
       {% set ist_faellig_ueberfaellig = karte.faelligkeit and karte.faelligkeit < k.heute %}
-      <details class="karte {% if karte.sichtbarkeit.value == 'privat' %}karte-privat{% endif %}" draggable="true" data-karte-id="{{ karte.id }}">
+      {% set ist_gesperrt = spalte.ist_system_erledigt %}
+      <details class="karte {% if karte.sichtbarkeit.value == 'privat' %}karte-privat{% endif %} {% if ist_gesperrt %}karte--gesperrt{% endif %}" draggable="true" data-karte-id="{{ karte.id }}">
         <summary>
           <div class="karte-titel">{{ karte.titel }}</div>
 
@@ -71,8 +88,12 @@
         </summary>
 
         <div class="karte-body">
+          {% if ist_gesperrt %}
+          <p class="karte-gesperrt-hinweis">✓ Abgeschlossen – zum Bearbeiten zurück in eine andere Spalte ziehen.</p>
+          {% endif %}
           {% if karte.beschreibung %}<p>{{ karte.beschreibung }}</p>{% endif %}
 
+          {% if not ist_gesperrt %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/aktualisieren" class="form-row">
             <input type="hidden" name="titel" value="{{ karte.titel }}">
             <div class="field" style="flex-basis: 100%;">
@@ -94,6 +115,7 @@
             {% endif %}
             <button type="submit" class="btn btn-ghost btn-sm">Speichern</button>
           </form>
+          {% endif %}
 
           {% if k.boardmitglieder %}
           <div class="eyebrow" style="margin-top: var(--space-4);">Zugewiesen</div>
@@ -104,13 +126,16 @@
             <div class="avatar-liste-eintrag">
               <span class="avatar avatar-{{ z.teilnehmer_id % 5 }}">{{ (person.name | initialen) if person else "?" }}</span>
               <span style="flex:1;">{{ person.name if person else "?" }}</span>
+              {% if not ist_gesperrt %}
               <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen/{{ z.id }}/entfernen">
                 <button type="submit" class="btn btn-ghost btn-sm">Entfernen</button>
               </form>
+              {% endif %}
             </div>
             {% endfor %}
           </div>
           {% endif %}
+          {% if not ist_gesperrt %}
           {% set zugewiesene_ids = zuweisungen | map(attribute="teilnehmer_id") | list %}
           {% set freie_mitglieder = k.boardmitglieder.values() | rejectattr("id", "in", zugewiesene_ids) | list %}
           {% if freie_mitglieder %}
@@ -128,24 +153,32 @@
           </div>
           {% endif %}
           {% endif %}
+          {% endif %}
 
           <div class="eyebrow" style="margin-top: var(--space-4);">Unteraufgaben</div>
           {% for u in unteraufgaben %}
           <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}" data-unteraufgabe-id="{{ u.id }}">
+            {% if ist_gesperrt %}
+            <span class="unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;">{{ "✓" if u.erledigt else "○" }}</span>
+            {% else %}
             <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/umschalten" class="unteraufgabe-umschalten-form">
               <button type="submit" class="btn btn-ghost btn-sm unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;">{{ "✓" if u.erledigt else "○" }}</button>
             </form>
+            {% endif %}
             <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
             {% if u.zugewiesen_an and u.zugewiesen_an in k.boardmitglieder %}
             <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.boardmitglieder[u.zugewiesen_an].name }}">{{ k.boardmitglieder[u.zugewiesen_an].name | initialen }}</span>
             {% endif %}
+            {% if not ist_gesperrt %}
             <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/loeschen">
               <button type="submit" class="btn btn-ghost btn-sm">✕</button>
             </form>
+            {% endif %}
           </div>
           {% else %}
           <p class="empty-state">Keine Unteraufgaben.</p>
           {% endfor %}
+          {% if not ist_gesperrt %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/unteraufgaben" class="form-row">
             <div class="field">
               <input type="text" name="titel" placeholder="Neue Unteraufgabe" required>
@@ -162,8 +195,9 @@
             {% endif %}
             <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
           </form>
+          {% endif %}
 
-          {% if k.darf_board_verwalten or karte.ersteller_id == current_user.id %}
+          {% if not ist_gesperrt and (k.darf_board_verwalten or karte.ersteller_id == current_user.id) %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/loeschen" onsubmit="return confirm('Karte endgültig löschen?');" style="margin-top: var(--space-4);">
             <button type="submit" class="btn btn-ghost btn-sm">Karte löschen</button>
           </form>
@@ -175,6 +209,7 @@
     {% endfor %}
     </div>
 
+    {% if not spalte.ist_system_erledigt %}
     <details class="neue-karte-toggle">
       <summary>+ Karte hinzufügen</summary>
       <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten/{{ spalte.id }}/karten">
@@ -205,9 +240,11 @@
         <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
       </form>
     </details>
+    {% endif %}
   </div>
   {% endfor %}
-  {% if k.darf_board_verwalten %}
+  {% set hat_erledigt_spalte = k.spalten | selectattr("ist_system_erledigt") | list | length > 0 %}
+  {% if k.darf_board_verwalten and not hat_erledigt_spalte %}
   <div class="board-column board-column--neu">
     <details class="neue-karte-toggle">
       <summary>+ Spalte hinzufügen</summary>

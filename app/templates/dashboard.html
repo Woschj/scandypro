@@ -11,6 +11,16 @@
 <p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong></p>
 {% endif %}
 
+{% if schritte_diese_woche is not none %}
+<div class="fortschritt-signal">
+  {% if schritte_diese_woche > 0 %}
+  <p>In den letzten 7 Tagen hast du <strong>{{ schritte_diese_woche }}</strong> {{ "Schritt" if schritte_diese_woche == 1 else "Schritte" }} geschafft. Schön, dass du dran bleibst.</p>
+  {% else %}
+  <p>Was möchtest du diese Woche angehen? Jeder kleine Schritt zählt – nur für dich sichtbar.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <div class="card-grid">
   <div class="card">
     <h3>Projekte</h3>

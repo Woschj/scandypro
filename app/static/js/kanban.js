@@ -4,32 +4,35 @@
  * Kartenreihenfolge nach jedem Drop; bei Fehler wird neu geladen, damit
  * Server- und Client-Zustand nie dauerhaft auseinanderlaufen.
  *
- * Sanftes "geschafft"-Feedback (siehe CLAUDE.md, Abschnitt 25 Bonus-
+ * Ruhiges "geschafft"-Feedback (siehe CLAUDE.md, Abschnitt 25 Bonus-
  * Features "positive Verstärkung"): jede Karten-Bewegung bekommt ein
- * kurzes Pop, eine Karte in die letzte Spalte (das "fertig"-Äquivalent
- * des Boards) und das Abhaken der letzten Unteraufgabe einer Karte lösen
- * zusätzlich einen kleinen Konfetti-Impuls aus. Bewusst kein Punktesystem/
- * keine Bestenliste - passt nicht zum Reha-Kontext (siehe CLAUDE.md,
- * "keine Leistungsbegriffe").
+ * kurzes Pop, eine Karte in die fest verankerte Erledigt-Spalte (siehe
+ * app/models/kanban.py: Spalte.ist_system_erledigt - strukturell fixiert,
+ * nicht per Positions-Heuristik erkannt) und das Abhaken der letzten
+ * Unteraufgabe einer Karte lösen zusätzlich einen warmen Glow + kurzen
+ * Stempel-Haken aus. Bewusst kein Konfetti/Punktesystem/Bestenliste - passt
+ * nicht zum Reha-Kontext (siehe CLAUDE.md, "keine Leistungsbegriffe") und
+ * soll bei häufigem Auslösen nicht überreizen.
  */
 (function () {
-  const FEIER_FARBEN = ["#1b5e5a", "#e8a33d", "#2d6b4c", "#4d5952"];
-  const FEIER_TEXTE = ["Geschafft ✓", "Erledigt – gut gemacht", "🎉 Fertig!"];
+  const FEIER_TEXTE = ["Geschafft ✓", "Erledigt – gut gemacht", "Fertig – schön, dass du dran geblieben bist"];
 
-  function konfetti(ursprungRect, anzahl) {
-    for (let i = 0; i < anzahl; i++) {
-      const teilchen = document.createElement("span");
-      teilchen.className = "konfetti-teilchen";
-      teilchen.style.left = ursprungRect.left + ursprungRect.width / 2 + "px";
-      teilchen.style.top = ursprungRect.top + ursprungRect.height / 2 + "px";
-      teilchen.style.background = FEIER_FARBEN[i % FEIER_FARBEN.length];
-      const winkel = Math.random() * Math.PI * 2;
-      const distanz = 40 + Math.random() * 50;
-      teilchen.style.setProperty("--dx", Math.cos(winkel) * distanz + "px");
-      teilchen.style.setProperty("--dy", Math.sin(winkel) * distanz - 20 + "px");
-      document.body.appendChild(teilchen);
-      teilchen.addEventListener("animationend", () => teilchen.remove());
-    }
+  function stempel(ursprungRect) {
+    const el = document.createElement("span");
+    el.className = "geschafft-stempel";
+    el.textContent = "✓";
+    el.style.left = ursprungRect.left + ursprungRect.width / 2 - 12 + "px";
+    el.style.top = ursprungRect.top + "px";
+    document.body.appendChild(el);
+    el.addEventListener("animationend", () => el.remove());
+  }
+
+  function feiern(karte) {
+    karte.classList.remove("karte--gefeiert");
+    void karte.offsetWidth;
+    karte.classList.add("karte--gefeiert");
+    stempel(karte.getBoundingClientRect());
+    zeigeKanbanToast(zufallsText());
   }
 
   function zeigeKanbanToast(text) {
@@ -75,7 +78,7 @@
     ).element;
   }
 
-  async function persistiereReihenfolge(liste, karte, spalteGewechselt) {
+  async function persistiereReihenfolge(liste, karte, spalteGewechselt, startSpalte) {
     const spalteId = liste.dataset.spalteId;
     const kartenIds = [...liste.querySelectorAll("[data-karte-id]")].map((el) =>
       parseInt(el.dataset.karteId, 10)
@@ -91,9 +94,17 @@
 
       popAnimation(karte);
       if (spalteGewechselt) {
-        if (liste.dataset.istLetzteSpalte === "true") {
-          konfetti(karte.getBoundingClientRect(), 16);
-          zeigeKanbanToast(zufallsText());
+        const wirdErledigt = liste.dataset.istErledigtSpalte === "true";
+        const warErledigt = startSpalte && startSpalte.dataset.istErledigtSpalte === "true";
+        if (wirdErledigt) {
+          // Karte wird jetzt gesperrt (siehe app/routers/kanban_karten.py:
+          // _karte_ist_gesperrt) - Server-Markup neu laden, damit Bearbeiten-
+          // Formulare tatsächlich verschwinden, aber erst nach dem kurzen
+          // Feier-Moment, damit das Feedback sichtbar bleibt.
+          feiern(karte);
+          setTimeout(() => location.reload(), 900);
+        } else if (warErledigt) {
+          location.reload();
         }
       }
     } catch (err) {
@@ -129,7 +140,7 @@
         e.preventDefault();
         const karte = document.querySelector(".karte--dragging") || liste.querySelector("[data-karte-id]");
         const spalteGewechselt = startSpalte !== null && startSpalte !== liste;
-        persistiereReihenfolge(liste, karte, spalteGewechselt);
+        persistiereReihenfolge(liste, karte, spalteGewechselt, startSpalte);
       });
     });
   }
@@ -168,7 +179,7 @@
           }
 
           if (daten.karte_komplett) {
-            konfetti(btn.getBoundingClientRect(), 10);
+            stempel(btn.getBoundingClientRect());
           }
         } catch (err) {
           location.reload();

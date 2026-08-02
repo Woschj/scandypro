@@ -12,6 +12,7 @@ from app.core.access import hat_wohlbefinden_freigabe
 from app.core.config import settings
 from app.core.database import async_session_factory, init_db
 from app.core.deps import SessionDep, get_current_user_optional
+from app.core.fortschritt import woechentliche_schritte
 from app.core.seed import seed_admin, seed_demo_data
 from app.core.templating import templates
 from app.models.bewerbung import BewerbungsFreigabe
@@ -64,6 +65,7 @@ async def dashboard(request: Request, session: SessionDep):
     betreute_teilnehmer: list[User] = []
     freigegebene_wohlbefinden_ids: set[int] = set()
     freigegebene_bewerbungen_ids: set[int] = set()
+    schritte_diese_woche: int | None = None
 
     if current_user.role == RoleEnum.teilnehmer:
         result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id))
@@ -77,6 +79,8 @@ async def dashboard(request: Request, session: SessionDep):
         trainer_zuordnung = trainer_result.scalar_one_or_none()
         if trainer_zuordnung is not None:
             trainer_kontakt = await session.get(User, trainer_zuordnung.berufstrainer_id)
+
+        schritte_diese_woche = await woechentliche_schritte(session, current_user.id)
     elif current_user.role == RoleEnum.psychosoziale_mitarbeit:
         result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.psm_id == current_user.id))
         teilnehmer_ids = [z.teilnehmer_id for z in result.scalars().all()]
@@ -117,5 +121,6 @@ async def dashboard(request: Request, session: SessionDep):
             "betreute_teilnehmer": betreute_teilnehmer,
             "freigegebene_wohlbefinden_ids": freigegebene_wohlbefinden_ids,
             "freigegebene_bewerbungen_ids": freigegebene_bewerbungen_ids,
+            "schritte_diese_woche": schritte_diese_woche,
         },
     )

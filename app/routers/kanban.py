@@ -75,8 +75,9 @@ async def _hole_oder_erstelle_personenboard(session: SessionDep, teilnehmer_id: 
     )
     session.add(board)
     await session.flush()
+    letzter_index = len(STANDARD_SPALTEN) - 1
     for i, name in enumerate(STANDARD_SPALTEN):
-        session.add(Spalte(board_id=board.id, name=name, reihenfolge=i))
+        session.add(Spalte(board_id=board.id, name=name, reihenfolge=i, ist_system_erledigt=i == letzter_index))
     await session.commit()
     await session.refresh(board)
     return board
@@ -149,8 +150,9 @@ async def board_erstellen(
     )
     session.add(board)
     await session.flush()
+    letzter_index = len(STANDARD_SPALTEN) - 1
     for i, name in enumerate(STANDARD_SPALTEN):
-        session.add(Spalte(board_id=board.id, name=name, reihenfolge=i))
+        session.add(Spalte(board_id=board.id, name=name, reihenfolge=i, ist_system_erledigt=i == letzter_index))
     await session.commit()
     return RedirectResponse(url=f"/kanban/boards/{board.id}", status_code=303)
 
@@ -266,11 +268,25 @@ async def spalte_erstellen(board_id: int, current_user: CurrentUser, session: Se
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     await require_board_verwaltung(session, current_user, board)
 
-    max_result = await session.execute(
-        select(Spalte.reihenfolge).where(Spalte.board_id == board_id).order_by(Spalte.reihenfolge.desc())
+    erledigt_result = await session.execute(
+        select(Spalte).where(Spalte.board_id == board_id, Spalte.ist_system_erledigt == True)  # noqa: E712
     )
-    naechste_reihenfolge = (max_result.scalars().first() or -1) + 1
-    session.add(Spalte(board_id=board_id, name=name, reihenfolge=naechste_reihenfolge))
+    erledigt_spalte = erledigt_result.scalar_one_or_none()
+
+    if erledigt_spalte is not None:
+        # Neue Spalten landen immer vor der fixierten Erledigt-Spalte (siehe
+        # CLAUDE.md Abschnitt 25 "positive Verstärkung" / Konzept-Entscheidung:
+        # Erledigt bleibt strukturell das Ende jedes Boards).
+        neue_reihenfolge = erledigt_spalte.reihenfolge
+        erledigt_spalte.reihenfolge += 1
+        session.add(erledigt_spalte)
+    else:
+        max_result = await session.execute(
+            select(Spalte.reihenfolge).where(Spalte.board_id == board_id).order_by(Spalte.reihenfolge.desc())
+        )
+        neue_reihenfolge = (max_result.scalars().first() or -1) + 1
+
+    session.add(Spalte(board_id=board_id, name=name, reihenfolge=neue_reihenfolge))
     await session.commit()
     return RedirectResponse(url=f"/kanban/boards/{board_id}", status_code=303)
 
@@ -296,6 +312,9 @@ async def spalte_loeschen(spalte_id: int, current_user: CurrentUser, session: Se
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     board = await session.get(Board, spalte.board_id)
     await require_board_verwaltung(session, current_user, board)
+
+    if spalte.ist_system_erledigt:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Die Erledigt-Spalte ist fest verankert und kann nicht gelöscht werden.")
 
     anzahl_spalten = list((await session.execute(select(Spalte.id).where(Spalte.board_id == board.id))).scalars().all())
     if len(anzahl_spalten) <= 1:

@@ -39,10 +39,21 @@ class BoardFreigabe(SQLModel, table=True):
 
 
 class Spalte(SQLModel, table=True):
+    """Eine Spalte auf genau einem Board.
+
+    ist_system_erledigt markiert die eine, fest verankerte "Erledigt"-Spalte
+    jedes Boards (siehe app/routers/kanban.py:STANDARD_SPALTEN) - immer die
+    letzte Spalte, kann nicht gelöscht werden, Karten darin gelten als
+    abgeschlossen und sind nicht mehr editierbar (siehe
+    app/routers/kanban_karten.py:_karte_ist_gesperrt). Macht das positive
+    Feedback beim Verschieben zuverlässig, unabhängig davon, wie Trainer:innen
+    ihre übrigen Spalten benennen/anordnen."""
+
     id: int | None = Field(default=None, primary_key=True)
     board_id: int = Field(foreign_key="board.id")
     name: str
     reihenfolge: int = 0
+    ist_system_erledigt: bool = False
 
 
 class KartenSichtbarkeit(str, Enum):
@@ -71,6 +82,12 @@ class Karte(SQLModel, table=True):
     sichtbarkeit: KartenSichtbarkeit = KartenSichtbarkeit.team
     reihenfolge: int = 0
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    abgeschlossen_am: datetime | None = None
+    """Gesetzt, sobald die Karte in die fest verankerte Erledigt-Spalte
+    verschoben wird (siehe Spalte.ist_system_erledigt); wieder None, wenn
+    sie herausgezogen wird. Grundlage für das private Wochen-Fortschritts-
+    Signal (siehe app/core/fortschritt.py) - bewusst kein allgemeines
+    Aktivitäts-/Audit-Log, nur dieses eine schmale Feld."""
 
 
 class KartenZuweisung(SQLModel, table=True):
@@ -93,3 +110,4 @@ class Unteraufgabe(SQLModel, table=True):
     zugewiesen_an: int | None = Field(default=None, foreign_key="user.id")
     reihenfolge: int = 0
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erledigt_am: datetime | None = None

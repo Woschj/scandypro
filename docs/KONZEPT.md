@@ -46,12 +46,26 @@ Handlungsfelds, an denen mehrere Teilnehmer:innen gemeinsam arbeiten:
   aus Teilnehmer:innen der zugehörigen Abteilung (z. B. "Projektteam
   Video"). Ein Board wird für eine oder mehrere Teilnehmergruppen
   freigegeben statt für einzelne Personen.
-- Spalten frei konfigurierbar, Standard-Vorlage: `Offen → In Arbeit →
-  Wartet → Erledigt`
+- Spalten frei konfigurierbar (Standard-Vorlage: `Offen → In Arbeit →
+  Wartet → Erledigt`), **außer der letzten Spalte**: Jedes Board hat genau
+  eine strukturell fixierte "Erledigt"-Spalte (`Spalte.ist_system_erledigt`)
+  – immer die letzte, kann nicht gelöscht werden, neue Spalten werden immer
+  davor eingefügt. Karten darin gelten als abgeschlossen und sind
+  schreibgeschützt (Inhalte/Zuweisungen/Unteraufgaben bleiben sichtbar wie
+  ein "Trophäenregal", nur das Zurückziehen in eine andere Spalte hebt die
+  Sperre wieder auf).
 - Karten mit: Titel, Beschreibung, Fälligkeitsdatum, Checkliste,
   Kommentare, Anhänge
 - Fortschrittsanzeige pro Board (erledigt/gesamt)
 - Erinnerungen bei nahender Fälligkeit
+- **Positives Feedback statt Gamification** (siehe CLAUDE.md Abschnitt 25):
+  eine Karte in die Erledigt-Spalte zu ziehen löst einen ruhigen visuellen
+  Impuls aus (warmer Glow + kurzer Stempel-Haken, kein Konfetti/Punkte/
+  Bestenliste). Für Teilnehmer:innen ergänzt ein privates, nie negativ
+  formuliertes Wochen-Fortschritts-Signal auf dem Dashboard ("In den
+  letzten 7 Tagen X Schritte geschafft", gezählt aus abgeschlossenen
+  Karten/Unteraufgaben, `app/core/fortschritt.py`) – bei 0 eine einladende
+  neutrale Zeile statt einer Zahl, nur für die Person selbst sichtbar.
 
 Datenklassifikation: **normal** (nicht Art.-9-sensibel), Soft-Delete
 zulässig. Zugriff: nur die Leitung(en) eines Handlungsfelds verwalten

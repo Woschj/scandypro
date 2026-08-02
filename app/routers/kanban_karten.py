@@ -6,7 +6,7 @@ CLAUDE.md vorgegebene Größenordnung wachsen zu lassen - gleicher Prefix,
 gleiche zentrale Zugriffsprüfung über app/core/access.py.
 """
 
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Body, Form, HTTPException, status
 from fastapi.responses import RedirectResponse
@@ -36,6 +36,24 @@ async def _board_von_karte(session: SessionDep, karte_id: int) -> tuple[Karte, B
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     _, board = await _board_von_spalte(session, karte.spalte_id)
     return karte, board
+
+
+async def _karte_ist_gesperrt(session: SessionDep, karte: Karte) -> bool:
+    """Karten in der fest verankerten Erledigt-Spalte (siehe
+    app/models/kanban.py:Spalte.ist_system_erledigt) gelten als
+    abgeschlossen und sind nicht mehr editierbar - nur das Zurückziehen in
+    eine andere Spalte (karte_verschieben/spalte_reihenfolge_setzen) bleibt
+    erlaubt und hebt die Sperre auf."""
+    spalte = await session.get(Spalte, karte.spalte_id)
+    return spalte is not None and spalte.ist_system_erledigt
+
+
+async def _require_karte_entsperrt(session: SessionDep, karte: Karte) -> None:
+    if await _karte_ist_gesperrt(session, karte):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Diese Karte ist erledigt und abgeschlossen. Zum Bearbeiten zurück in eine andere Spalte ziehen.",
+        )
 
 
 @router.post("/boards/{board_id}/spalten/{spalte_id}/karten")
@@ -106,6 +124,7 @@ async def karte_aktualisieren(
 ):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    await _require_karte_entsperrt(session, karte)
 
     karte.titel = titel
     karte.beschreibung = beschreibung or None
@@ -146,6 +165,7 @@ async def karte_loeschen(karte_id: int, current_user: CurrentUser, session: Sess
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Nur die Ersteller:in oder die Board-Verwaltung löscht diese Karte."
         )
+    await _require_karte_entsperrt(session, karte)
 
     for modell in (KartenZuweisung, Unteraufgabe):
         rows = (await session.execute(select(modell).where(modell.karte_id == karte_id))).scalars().all()
@@ -174,6 +194,11 @@ async def karte_verschieben(
     )
     karte.spalte_id = ziel_spalte_id
     karte.reihenfolge = (max_reihenfolge_result.scalars().first() or 0) + 1
+    if ziel_spalte.ist_system_erledigt:
+        if karte.abgeschlossen_am is None:
+            karte.abgeschlossen_am = datetime.utcnow()
+    else:
+        karte.abgeschlossen_am = None
     session.add(karte)
     await session.commit()
     return RedirectResponse(url=f"/kanban/boards/{board.id}", status_code=303)
@@ -190,7 +215,7 @@ async def spalte_reihenfolge_setzen(
     app/static/js/kanban.js). `karten_ids` ist die vollständige, neue
     Reihenfolge der Karten in dieser Spalte (inkl. ggf. neu hineingezogener
     Karte aus einer anderen Spalte)."""
-    _, board = await _board_von_spalte(session, spalte_id)
+    ziel_spalte, board = await _board_von_spalte(session, spalte_id)
     await require_kanban_access(session, current_user, board)
 
     for index, karte_id in enumerate(karten_ids):
@@ -202,6 +227,11 @@ async def spalte_reihenfolge_setzen(
             continue
         karte.spalte_id = spalte_id
         karte.reihenfolge = index
+        if ziel_spalte.ist_system_erledigt:
+            if karte.abgeschlossen_am is None:
+                karte.abgeschlossen_am = datetime.utcnow()
+        else:
+            karte.abgeschlossen_am = None
         session.add(karte)
 
     await session.commit()
@@ -214,6 +244,7 @@ async def zuweisung_hinzufuegen(
 ):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    await _require_karte_entsperrt(session, karte)
 
     if teilnehmer_id not in await boardmitglieder_ids(session, board):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Zuweisung an eine boardfremde Person nicht möglich.")
@@ -233,6 +264,7 @@ async def zuweisung_hinzufuegen(
 async def zuweisung_entfernen(karte_id: int, zuweisung_id: int, current_user: CurrentUser, session: SessionDep):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    await _require_karte_entsperrt(session, karte)
 
     zuweisung = await session.get(KartenZuweisung, zuweisung_id)
     if zuweisung is None or zuweisung.karte_id != karte_id:
@@ -253,6 +285,7 @@ async def unteraufgabe_hinzufuegen(
 ):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    await _require_karte_entsperrt(session, karte)
 
     zugewiesen_an_id = int(zugewiesen_an) if zugewiesen_an else None
     if zugewiesen_an_id is not None and zugewiesen_an_id not in await boardmitglieder_ids(session, board):
@@ -279,10 +312,12 @@ async def unteraufgabe_umschalten(unteraufgabe_id: int, current_user: CurrentUse
     unteraufgabe = await session.get(Unteraufgabe, unteraufgabe_id)
     if unteraufgabe is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    _, board = await _board_von_karte(session, unteraufgabe.karte_id)
+    karte, board = await _board_von_karte(session, unteraufgabe.karte_id)
     await require_kanban_access(session, current_user, board)
+    await _require_karte_entsperrt(session, karte)
 
     unteraufgabe.erledigt = not unteraufgabe.erledigt
+    unteraufgabe.erledigt_am = datetime.utcnow() if unteraufgabe.erledigt else None
     session.add(unteraufgabe)
     await session.commit()
 
@@ -303,8 +338,9 @@ async def unteraufgabe_loeschen(unteraufgabe_id: int, current_user: CurrentUser,
     unteraufgabe = await session.get(Unteraufgabe, unteraufgabe_id)
     if unteraufgabe is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    _, board = await _board_von_karte(session, unteraufgabe.karte_id)
+    karte, board = await _board_von_karte(session, unteraufgabe.karte_id)
     await require_kanban_access(session, current_user, board)
+    await _require_karte_entsperrt(session, karte)
 
     await session.delete(unteraufgabe)
     await session.commit()

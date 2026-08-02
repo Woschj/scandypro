@@ -122,7 +122,12 @@ async def seed_demo_data(session: AsyncSession) -> None:
 
     spalten = []
     for i, spalten_name in enumerate(STANDARD_SPALTEN):
-        spalte = Spalte(board_id=board.id, name=spalten_name, reihenfolge=i)
+        spalte = Spalte(
+            board_id=board.id,
+            name=spalten_name,
+            reihenfolge=i,
+            ist_system_erledigt=i == len(STANDARD_SPALTEN) - 1,
+        )
         session.add(spalte)
         spalten.append(spalte)
     await session.flush()
@@ -199,7 +204,12 @@ async def seed_demo_data(session: AsyncSession) -> None:
 
     persoenliche_spalten = []
     for i, spalten_name in enumerate(STANDARD_SPALTEN):
-        persoenliche_spalte = Spalte(board_id=persoenliches_board.id, name=spalten_name, reihenfolge=i)
+        persoenliche_spalte = Spalte(
+            board_id=persoenliches_board.id,
+            name=spalten_name,
+            reihenfolge=i,
+            ist_system_erledigt=i == len(STANDARD_SPALTEN) - 1,
+        )
         session.add(persoenliche_spalte)
         persoenliche_spalten.append(persoenliche_spalte)
     await session.flush()
