@@ -1,11 +1,11 @@
 from datetime import date, datetime
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
 from app.core.access import betreute_teilnehmer_ids, require_owner, require_role
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.core.wochenbericht_export import wochenbericht_als_docx
 from app.models.user import RoleEnum, User
@@ -13,7 +13,7 @@ from app.models.wochenbericht import WOCHENTAG_LABELS, WOCHENTAGE, Wochenbericht
 
 WORD_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
-router = APIRouter(prefix="/wochenberichte", tags=["wochenberichte"])
+router = APIRouter(prefix="/wochenberichte", tags=["wochenberichte"], dependencies=[Depends(verify_csrf)])
 
 
 def _wochenstart(kw_jahr: int, kw_nummer: int) -> date:

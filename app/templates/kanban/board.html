@@ -21,6 +21,7 @@
         <td>{{ gruppe.name }}</td>
         <td style="text-align: right;">
           <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben/{{ freigabe.id }}/entfernen">
+            {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Freigabe entfernen</button>
           </form>
         </td>
@@ -34,6 +35,7 @@
 
   {% if freigaben_kontext.verfuegbare_gruppen %}
   <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben" class="form-row" style="margin-top: var(--space-4);">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <label for="gruppe_id">Arbeitsgruppe freigeben</label>
       <select id="gruppe_id" name="gruppe_id" required>
@@ -52,6 +54,7 @@
 
   {% if k.darf_board_verwalten %}
   <form method="post" action="/kanban/boards/{{ k.board.id }}/loeschen" data-confirm="Board &quot;{{ k.board.titel }}&quot; inkl. aller Spalten und Karten endgültig löschen?" style="margin-top: var(--space-4);">
+    {% include "partials/csrf_field.html" %}
     <button type="submit" class="link-btn danger">Board löschen</button>
   </form>
   {% endif %}

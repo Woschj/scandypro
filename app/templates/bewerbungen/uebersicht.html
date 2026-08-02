@@ -50,11 +50,13 @@
     <tr>
       <td style="white-space: nowrap;">
         <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-oben" style="display:inline;">
+          {% include "partials/csrf_field.html" %}
           <button type="submit" class="btn btn-ghost btn-sm" {% if loop.first %}disabled{% endif %} title="Nach oben" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach oben">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false"><path d="M2.5 7.5L6 4L9.5 7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </form>
         <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-unten" style="display:inline;">
+          {% include "partials/csrf_field.html" %}
           <button type="submit" class="btn btn-ghost btn-sm" {% if loop.last %}disabled{% endif %} title="Nach unten" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach unten">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
@@ -69,6 +71,7 @@
       </td>
       <td>
         <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Datei &quot;{{ u.original_dateiname }}&quot; löschen?">
+          {% include "partials/csrf_field.html" %}
           <button type="submit" class="link-btn danger">Löschen</button>
         </form>
       </td>
@@ -78,6 +81,7 @@
   </table>
   {% endif %}
   <form method="post" action="/bewerbungen/unterlagen" enctype="multipart/form-data" class="form-row" style="margin-top: var(--space-4);">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <label for="kategorie">Kategorie</label>
       <select id="kategorie" name="kategorie">
@@ -96,6 +100,7 @@
 <div class="card">
   <h3>Neue Bewerbung</h3>
   <form method="post" action="/bewerbungen" enctype="multipart/form-data" data-warn-on-leave>
+    {% include "partials/csrf_field.html" %}
     <div class="form-row">
       <div class="field">
         <label for="firma">Firma</label>
@@ -139,6 +144,7 @@
   <div class="form-row" style="align-items: center; margin-bottom: var(--space-3);">
     <h3 style="margin: 0; flex: 1;">{{ b.firma }} — {{ b.position }}</h3>
     <form method="post" action="/bewerbungen/{{ b.id }}/status">
+      {% include "partials/csrf_field.html" %}
       <select name="status_wert" onchange="this.form.submit()">
         {% for s in status_optionen %}
         <option value="{{ s.value }}" {% if s == b.status %}selected{% endif %}>{{ s.value }}</option>
@@ -157,6 +163,7 @@
     <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
     {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
     <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Deckblatt löschen?">
+      {% include "partials/csrf_field.html" %}
       <button type="submit" class="link-btn danger">Löschen</button>
     </form>
   </div>
@@ -164,6 +171,7 @@
   <p class="empty-state">Kein Deckblatt hochgeladen.</p>
   {% endfor %}
   <form method="post" action="/bewerbungen/{{ b.id }}/deckblatt" enctype="multipart/form-data" class="form-row">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
     </div>
@@ -176,6 +184,7 @@
     <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
     {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
     <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Anschreiben löschen?">
+      {% include "partials/csrf_field.html" %}
       <button type="submit" class="link-btn danger">Löschen</button>
     </form>
   </div>
@@ -183,6 +192,7 @@
   <p class="empty-state">Noch kein Anschreiben hochgeladen.</p>
   {% endfor %}
   <form method="post" action="/bewerbungen/{{ b.id }}/anschreiben" enctype="multipart/form-data" class="form-row">
+    {% include "partials/csrf_field.html" %}
     <div class="field">
       <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
     </div>
@@ -195,6 +205,7 @@
   </div>
 
   <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" data-confirm="Bewerbung &quot;{{ b.firma }} — {{ b.position }}&quot; endgültig löschen?" style="margin-top: var(--space-3);">
+    {% include "partials/csrf_field.html" %}
     <button type="submit" class="link-btn danger">Bewerbung löschen</button>
   </form>
 </div>
@@ -210,6 +221,7 @@
     <p class="karte-meta">Die zuständige Berufstrainer:in (<strong>{{ trainer_kontakt.name }}</strong>) sieht deine
       Bewerbungen erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
     <form method="post" action="/bewerbungen/freigaben" class="form-row">
+      {% include "partials/csrf_field.html" %}
       <input type="hidden" name="empfaenger_id" value="{{ trainer_kontakt.id }}">
       <div class="field">
         <label for="umfang">Umfang</label>
@@ -251,6 +263,7 @@
         <td>{{ f.gueltig_bis or "unbefristet" }}</td>
         <td>
           <form method="post" action="/bewerbungen/freigaben/{{ f.id }}/widerrufen">
+            {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Widerrufen</button>
           </form>
         </td>

@@ -9,6 +9,7 @@
   <h3>Neues Board</h3>
   {% if eigene_handlungsfelder %}
   <form method="post" action="/kanban/boards">
+    {% include "partials/csrf_field.html" %}
     <div class="form-row">
       <div class="field">
         <label for="titel">Titel</label>

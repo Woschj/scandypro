@@ -16,6 +16,7 @@
     <details class="neue-karte-toggle">
       <summary>+ Spalte hinzufügen</summary>
       <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten">
+        {% include "partials/csrf_field.html" %}
         <div class="field">
           <label>Name</label>
           <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>
@@ -36,6 +37,7 @@
         </summary>
         <div class="spalte-verwalten-body">
           <form method="post" action="/kanban/spalten/{{ spalte.id }}/umbenennen" class="form-row">
+            {% include "partials/csrf_field.html" %}
             <div class="field">
               <input type="text" name="name" value="{{ spalte.name }}" required>
             </div>
@@ -43,6 +45,7 @@
           </form>
           {% if not spalte.ist_system_erledigt %}
           <form method="post" action="/kanban/spalten/{{ spalte.id }}/loeschen" data-confirm="Spalte &quot;{{ spalte.name }}&quot; inkl. aller Karten löschen?">
+            {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Spalte löschen</button>
           </form>
           {% endif %}
@@ -99,6 +102,7 @@
 
           {% if k.spalten | length > 1 %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/verschieben" class="form-row">
+            {% include "partials/csrf_field.html" %}
             <div class="field" style="flex:1;">
               <label for="verschieben-{{ karte.id }}">Karte in andere Spalte verschieben (auch per Tastatur bedienbar, als Alternative zum Ziehen mit der Maus)</label>
               <select id="verschieben-{{ karte.id }}" name="ziel_spalte_id" required aria-label="Zielspalte für {{ karte.titel }}">
@@ -116,6 +120,7 @@
 
           {% if not ist_gesperrt %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/aktualisieren" class="form-row">
+            {% include "partials/csrf_field.html" %}
             <input type="hidden" name="titel" value="{{ karte.titel }}">
             <div class="field" style="flex-basis: 100%;">
               <label for="beschreibung-{{ karte.id }}">Beschreibung</label>
@@ -149,6 +154,7 @@
               <span style="flex:1;">{{ person.name if person else "?" }}</span>
               {% if not ist_gesperrt %}
               <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen/{{ z.id }}/entfernen">
+                {% include "partials/csrf_field.html" %}
                 <button type="submit" class="link-btn danger">Entfernen</button>
               </form>
               {% endif %}
@@ -164,6 +170,7 @@
           <div class="zuweisen-chips">
             {% for m in freie_mitglieder %}
             <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen">
+              {% include "partials/csrf_field.html" %}
               <input type="hidden" name="teilnehmer_id" value="{{ m.id }}">
               <button type="submit" class="zuweisen-chip" title="{{ m.name }} zuweisen">
                 <span class="avatar avatar-{{ m.id % 5 }}">{{ m.name | initialen }}</span>
@@ -183,6 +190,7 @@
             <span class="unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;" aria-label="{{ 'Erledigt' if u.erledigt else 'Offen' }}">{{ "✓" if u.erledigt else "○" }}</span>
             {% else %}
             <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/umschalten" class="unteraufgabe-umschalten-form">
+              {% include "partials/csrf_field.html" %}
               <button type="submit" class="btn btn-ghost btn-sm unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;" aria-label="Unteraufgabe &quot;{{ u.titel }}&quot; als {{ 'offen' if u.erledigt else 'erledigt' }} markieren">{{ "✓" if u.erledigt else "○" }}</button>
             </form>
             {% endif %}
@@ -192,6 +200,7 @@
             {% endif %}
             {% if not ist_gesperrt %}
             <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/loeschen" data-confirm="Unteraufgabe &quot;{{ u.titel }}&quot; löschen?">
+              {% include "partials/csrf_field.html" %}
               <button type="submit" class="link-btn danger">Entfernen</button>
             </form>
             {% endif %}
@@ -201,6 +210,7 @@
           {% endfor %}
           {% if not ist_gesperrt %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/unteraufgaben" class="form-row">
+            {% include "partials/csrf_field.html" %}
             <div class="field">
               <input type="text" name="titel" placeholder="Neue Unteraufgabe" required>
             </div>
@@ -220,6 +230,7 @@
 
           {% if not ist_gesperrt and (k.darf_board_verwalten or karte.ersteller_id == current_user.id) %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/loeschen" data-confirm="Karte &quot;{{ karte.titel }}&quot; endgültig löschen?" style="margin-top: var(--space-4);">
+            {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Karte löschen</button>
           </form>
           {% endif %}
@@ -234,6 +245,7 @@
     <details class="neue-karte-toggle">
       <summary>+ Karte hinzufügen</summary>
       <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten/{{ spalte.id }}/karten">
+        {% include "partials/csrf_field.html" %}
         <div class="field">
           <label>Titel</label>
           <input type="text" name="titel" placeholder="Titel" required style="margin-bottom: var(--space-2);">
@@ -270,6 +282,7 @@
     <details class="neue-karte-toggle">
       <summary>+ Spalte hinzufügen</summary>
       <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten">
+        {% include "partials/csrf_field.html" %}
         <div class="field">
           <label>Name</label>
           <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>

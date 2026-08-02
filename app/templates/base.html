@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if current_user %}
+  <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  {% endif %}
   <title>{% block title %}ScandyPro{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/style.css?v={{ asset_version }}">
   <script>
@@ -75,6 +78,7 @@
         </button>
         <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
         <form method="post" action="/logout" style="margin:0;">
+          {% include "partials/csrf_field.html" %}
           <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
         </form>
       </div>

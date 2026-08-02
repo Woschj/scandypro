@@ -8,16 +8,16 @@ gleiche zentrale Zugriffsprüfung über app/core/access.py.
 
 from datetime import date, datetime
 
-from fastapi import APIRouter, Body, Form, HTTPException, status
+from fastapi import APIRouter, Body, Depends, Form, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlmodel import select
 
 from app.core.access import boardmitglieder_ids, ist_leiter_von_handlungsfeld, require_kanban_access
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.models.kanban import Board, BoardTyp, Karte, KartenSichtbarkeit, KartenZuweisung, Spalte, Unteraufgabe
 from app.models.user import RoleEnum
 
-router = APIRouter(prefix="/kanban", tags=["kanban"])
+router = APIRouter(prefix="/kanban", tags=["kanban"], dependencies=[Depends(verify_csrf)])
 
 
 async def _board_von_spalte(session: SessionDep, spalte_id: int) -> tuple[Spalte, Board]:

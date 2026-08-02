@@ -1,14 +1,14 @@
 import json
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field as PydanticField
 from sqlmodel import select
 
 from app.core.access import hat_wohlbefinden_freigabe, require_owner
 from app.core.audit import protokolliere
-from app.core.deps import CurrentUser, SessionDep
+from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.skala import heatmap_farbe, stimmung_emoji
 from app.core.templating import templates
 from app.models.audit import AuditAktion, AuditZieltyp
@@ -16,7 +16,7 @@ from app.models.organisation import PsmZuordnung
 from app.models.user import RoleEnum, User
 from app.models.wohlbefinden import WohlbefindenEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
 
-router = APIRouter(prefix="/wohlbefinden", tags=["wohlbefinden"])
+router = APIRouter(prefix="/wohlbefinden", tags=["wohlbefinden"], dependencies=[Depends(verify_csrf)])
 
 WOCHENTAG_NAMEN = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 HEATMAP_WOCHEN_ANZAHL = 8
