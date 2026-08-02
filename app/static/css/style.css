@@ -492,6 +492,25 @@ button:not(.btn) {
 
 [x-cloak] { display: none !important; }
 
+/* Hauptmenü ab hier (genug Platz für die volle Zeile) immer sichtbar, auch
+   bevor Alpine geladen hat - MUSS nach der [x-cloak]-Regel oben stehen:
+   beide haben !important bei gleicher Selektor-Spezifität, bei einem
+   Gleichstand gewinnt die später im Stylesheet stehende Regel. Stünde das
+   hier vor [x-cloak], würde die Navigation auf breiten Screens bis zur
+   Alpine-Initialisierung unsichtbar bleiben (kurzes Aufblitzen ohne Menü) -
+   und ohne diese Regel überhaupt (der eigentliche Bug) bliebe .topnav-links
+   auf breiten Screens dauerhaft an Alpines x-show="menuOpen" gekoppelt und
+   damit unsichtbar, solange niemand den (dort unsichtbaren) Hamburger-
+   Button geklickt hat. 1:1 aus Scandy-Lite übernommen. */
+@media (min-width: 861px) {
+  .nav-trigger-btn { display: none; }
+  .nav-backdrop { display: none !important; }
+  .topnav-links {
+    display: flex !important;
+    position: static !important;
+  }
+}
+
 @media (max-width: 860px) {
   .nav-trigger-btn { display: inline-flex; }
   .topnav-links {
