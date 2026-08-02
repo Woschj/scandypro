@@ -285,7 +285,17 @@ async def unteraufgabe_umschalten(unteraufgabe_id: int, current_user: CurrentUse
     unteraufgabe.erledigt = not unteraufgabe.erledigt
     session.add(unteraufgabe)
     await session.commit()
-    return RedirectResponse(url=f"/kanban/boards/{board.id}", status_code=303)
+
+    # Für das sanfte "geschafft"-Feedback im Frontend (app/static/js/kanban.js)
+    # - true, wenn mit diesem Umschalten JETZT alle Unteraufgaben der Karte
+    # erledigt sind (nicht nur diese eine).
+    alle_result = await session.execute(
+        select(Unteraufgabe.erledigt).where(Unteraufgabe.karte_id == unteraufgabe.karte_id)
+    )
+    alle_werte = alle_result.scalars().all()
+    karte_komplett = bool(alle_werte) and all(alle_werte)
+
+    return {"ok": True, "erledigt": unteraufgabe.erledigt, "karte_komplett": karte_komplett}
 
 
 @router.post("/unteraufgaben/{unteraufgabe_id}/loeschen")

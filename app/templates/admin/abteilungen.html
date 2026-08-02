@@ -36,52 +36,73 @@
 
     <hr class="section-divider">
     <h3>Handlungsfelder</h3>
-    {% if handlungsfelder %}
-    {% for h in handlungsfelder %}
-    <div style="margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--line);">
-      <form method="post" action="/admin/handlungsfelder/{{ h.id }}/umbenennen" class="form-row" style="margin-bottom: var(--space-2);">
-        <div class="field">
-          <input type="text" name="name" value="{{ h.name }}" required>
-        </div>
-        <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
-      </form>
 
-      <div class="eyebrow" style="margin-bottom: var(--space-2);">Leitung</div>
-      {% for leitung in leitungen_by_handlungsfeld.get(h.id, []) %}
-      <span class="chip chip-neutral" style="margin-right: var(--space-2);">
-        {{ trainer_by_id[leitung.berufstrainer_id].name }}
-        <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung/{{ leitung.id }}/entfernen" style="display:inline; margin-left: var(--space-2);">
-          <button type="submit" class="btn btn-ghost btn-sm" style="min-height:auto; padding:0;">✕</button>
-        </form>
-      </span>
-      {% else %}
-      <span class="empty-state">keine Leitung zugewiesen</span>
-      {% endfor %}
-
-      <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung" class="form-row" style="margin-top: var(--space-3);">
-        <div class="field">
-          <select name="berufstrainer_id">
-            {% for t in alle_trainer %}
-            <option value="{{ t.id }}">{{ t.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <button type="submit" class="btn btn-ghost btn-sm">Als Leitung hinzufügen</button>
-      </form>
-    </div>
-    {% endfor %}
-    {% else %}
-    <p class="empty-state">Noch keine Handlungsfelder.</p>
-    {% endif %}
-
-    <form method="post" action="/admin/handlungsfelder" class="form-row">
+    <form method="post" action="/admin/handlungsfelder" class="form-row" style="margin-bottom: var(--space-3);">
       <input type="hidden" name="abteilung_id" value="{{ abteilung.id }}">
-      <div class="field">
-        <label>Neues Handlungsfeld</label>
-        <input type="text" name="name" placeholder="Name" required>
+      <div class="field" style="flex: 1;">
+        <input type="text" name="name" placeholder="Neues Handlungsfeld" required>
       </div>
       <button type="submit" class="btn btn-primary btn-sm">Anlegen</button>
     </form>
+
+    {% if handlungsfelder %}
+    <table>
+      <thead><tr><th>Name</th><th>Leitung</th><th></th></tr></thead>
+      <tbody>
+      {% for h in handlungsfelder %}
+      {% set leitungen = leitungen_by_handlungsfeld.get(h.id, []) %}
+      <tr>
+        <td>{{ h.name }}</td>
+        <td>
+          {% if leitungen %}
+          {% for leitung in leitungen %}{{ trainer_by_id[leitung.berufstrainer_id].name }}{% if not loop.last %}, {% endif %}{% endfor %}
+          {% else %}
+          <span class="empty-state">keine Leitung</span>
+          {% endif %}
+        </td>
+        <td style="text-align: right;">
+          <details class="zeile-verwalten">
+            <summary title="Handlungsfeld verwalten">⋮</summary>
+            <div class="zeile-verwalten-body">
+              <form method="post" action="/admin/handlungsfelder/{{ h.id }}/umbenennen" class="form-row">
+                <div class="field" style="flex: 1;">
+                  <input type="text" name="name" value="{{ h.name }}" required>
+                </div>
+                <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
+              </form>
+
+              <div class="eyebrow">Leitung</div>
+              {% for leitung in leitungen %}
+              <span class="chip chip-neutral">
+                {{ trainer_by_id[leitung.berufstrainer_id].name }}
+                <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung/{{ leitung.id }}/entfernen" style="display:inline; margin-left: var(--space-2);">
+                  <button type="submit" class="btn btn-ghost btn-sm" style="min-height:auto; padding:0;">✕</button>
+                </form>
+              </span>
+              {% else %}
+              <span class="empty-state">keine Leitung zugewiesen</span>
+              {% endfor %}
+
+              <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung" class="form-row">
+                <div class="field" style="flex: 1;">
+                  <select name="berufstrainer_id">
+                    {% for t in alle_trainer %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+              </form>
+            </div>
+          </details>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">Noch keine Handlungsfelder.</p>
+    {% endif %}
   </div>
 </details>
 {% endfor %}

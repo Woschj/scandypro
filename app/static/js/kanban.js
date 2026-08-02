@@ -3,8 +3,63 @@
  * (Vorbild: Vanilla-JS + fetch() wie in wohlbefinden.js). Persistiert die
  * Kartenreihenfolge nach jedem Drop; bei Fehler wird neu geladen, damit
  * Server- und Client-Zustand nie dauerhaft auseinanderlaufen.
+ *
+ * Sanftes "geschafft"-Feedback (siehe CLAUDE.md, Abschnitt 25 Bonus-
+ * Features "positive Verstärkung"): jede Karten-Bewegung bekommt ein
+ * kurzes Pop, eine Karte in die letzte Spalte (das "fertig"-Äquivalent
+ * des Boards) und das Abhaken der letzten Unteraufgabe einer Karte lösen
+ * zusätzlich einen kleinen Konfetti-Impuls aus. Bewusst kein Punktesystem/
+ * keine Bestenliste - passt nicht zum Reha-Kontext (siehe CLAUDE.md,
+ * "keine Leistungsbegriffe").
  */
 (function () {
+  const FEIER_FARBEN = ["#1b5e5a", "#e8a33d", "#2d6b4c", "#4d5952"];
+  const FEIER_TEXTE = ["Geschafft ✓", "Erledigt – gut gemacht", "🎉 Fertig!"];
+
+  function konfetti(ursprungRect, anzahl) {
+    for (let i = 0; i < anzahl; i++) {
+      const teilchen = document.createElement("span");
+      teilchen.className = "konfetti-teilchen";
+      teilchen.style.left = ursprungRect.left + ursprungRect.width / 2 + "px";
+      teilchen.style.top = ursprungRect.top + ursprungRect.height / 2 + "px";
+      teilchen.style.background = FEIER_FARBEN[i % FEIER_FARBEN.length];
+      const winkel = Math.random() * Math.PI * 2;
+      const distanz = 40 + Math.random() * 50;
+      teilchen.style.setProperty("--dx", Math.cos(winkel) * distanz + "px");
+      teilchen.style.setProperty("--dy", Math.sin(winkel) * distanz - 20 + "px");
+      document.body.appendChild(teilchen);
+      teilchen.addEventListener("animationend", () => teilchen.remove());
+    }
+  }
+
+  function zeigeKanbanToast(text) {
+    const bestehender = document.querySelector(".kanban-toast");
+    if (bestehender) bestehender.remove();
+    const toast = document.createElement("div");
+    toast.className = "kanban-toast";
+    toast.textContent = text;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("kanban-toast--sichtbar"));
+    setTimeout(() => {
+      toast.classList.remove("kanban-toast--sichtbar");
+      setTimeout(() => toast.remove(), 300);
+    }, 1800);
+  }
+
+  function zufallsText() {
+    return FEIER_TEXTE[Math.floor(Math.random() * FEIER_TEXTE.length)];
+  }
+
+  function popAnimation(karte) {
+    karte.classList.remove("karte--bewegt");
+    // Reflow erzwingen, damit die Animation bei wiederholtem Drop erneut
+    // startet (Klasse einfach erneut setzen würde sonst nichts tun, wenn
+    // sie schon vorhanden war).
+    void karte.offsetWidth;
+    karte.classList.add("karte--bewegt");
+    karte.addEventListener("animationend", () => karte.classList.remove("karte--bewegt"), { once: true });
+  }
+
   function getDragAfterElement(container, y) {
     const elemente = [...container.querySelectorAll("[data-karte-id]:not(.karte--dragging)")];
     return elemente.reduce(
@@ -20,7 +75,7 @@
     ).element;
   }
 
-  async function persistiereReihenfolge(liste) {
+  async function persistiereReihenfolge(liste, karte, spalteGewechselt) {
     const spalteId = liste.dataset.spalteId;
     const kartenIds = [...liste.querySelectorAll("[data-karte-id]")].map((el) =>
       parseInt(el.dataset.karteId, 10)
@@ -33,16 +88,27 @@
         body: JSON.stringify({ karten_ids: kartenIds }),
       });
       if (!antwort.ok) throw new Error("Speichern fehlgeschlagen");
+
+      popAnimation(karte);
+      if (spalteGewechselt) {
+        if (liste.dataset.istLetzteSpalte === "true") {
+          konfetti(karte.getBoundingClientRect(), 16);
+          zeigeKanbanToast(zufallsText());
+        }
+      }
     } catch (err) {
       location.reload();
     }
   }
 
-  function init() {
+  function initDragUndDrop() {
+    let startSpalte = null;
+
     document.querySelectorAll("[data-karte-id]").forEach((karte) => {
       karte.addEventListener("dragstart", () => {
         karte.classList.add("karte--dragging");
         if (karte.open) karte.open = false;
+        startSpalte = karte.closest(".karten-liste");
       });
       karte.addEventListener("dragend", () => karte.classList.remove("karte--dragging"));
     });
@@ -61,7 +127,52 @@
       });
       liste.addEventListener("drop", (e) => {
         e.preventDefault();
-        persistiereReihenfolge(liste);
+        const karte = document.querySelector(".karte--dragging") || liste.querySelector("[data-karte-id]");
+        const spalteGewechselt = startSpalte !== null && startSpalte !== liste;
+        persistiereReihenfolge(liste, karte, spalteGewechselt);
+      });
+    });
+  }
+
+  /*
+   * Unteraufgaben per fetch() umschalten statt vollem Seiten-Reload - nur
+   * so ist Platz für eine kurze Puls-Animation. Fällt bei JS-Fehlern auf
+   * die normale Formular-Submission zurück (kein preventDefault, wenn der
+   * fetch() selbst nicht startet).
+   */
+  function initUnteraufgaben() {
+    document.querySelectorAll(".unteraufgabe-umschalten-form").forEach((form) => {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const zeile = form.closest("[data-unteraufgabe-id]");
+        const karte = form.closest("[data-karte-id]");
+        const btn = form.querySelector(".unteraufgabe-toggle-btn");
+        try {
+          const antwort = await fetch(form.action, { method: "POST", credentials: "same-origin" });
+          if (!antwort.ok) throw new Error("Umschalten fehlgeschlagen");
+          const daten = await antwort.json();
+
+          zeile.classList.toggle("unteraufgabe--erledigt", daten.erledigt);
+          btn.textContent = daten.erledigt ? "✓" : "○";
+          btn.classList.remove("unteraufgabe-toggle-btn--puls");
+          void btn.offsetWidth;
+          btn.classList.add("unteraufgabe-toggle-btn--puls");
+
+          if (karte) {
+            const alle = karte.querySelectorAll("[data-unteraufgabe-id]").length;
+            const erledigt = karte.querySelectorAll("[data-unteraufgabe-id].unteraufgabe--erledigt").length;
+            const text = karte.querySelector("[data-fortschritt-text]");
+            const fuellung = karte.querySelector("[data-fortschritt-fuellung]");
+            if (text) text.textContent = `${erledigt}/${alle} Unteraufgaben erledigt`;
+            if (fuellung) fuellung.style.width = Math.round((erledigt / alle) * 100) + "%";
+          }
+
+          if (daten.karte_komplett) {
+            konfetti(btn.getBoundingClientRect(), 10);
+          }
+        } catch (err) {
+          location.reload();
+        }
       });
     });
   }
@@ -122,7 +233,8 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    init();
+    initDragUndDrop();
+    initUnteraufgaben();
     initScrollUX();
   });
 })();

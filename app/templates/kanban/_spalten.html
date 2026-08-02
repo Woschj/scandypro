@@ -30,7 +30,7 @@
       </details>
       {% endif %}
     </div>
-    <div class="karten-liste" data-spalte-id="{{ spalte.id }}">
+    <div class="karten-liste" data-spalte-id="{{ spalte.id }}" {% if loop.last %}data-ist-letzte-spalte="true"{% endif %}>
     {% for karte in karten %}
       {% set zuweisungen = k.zuweisungen_by_karte.get(karte.id, []) %}
       {% set unteraufgaben = k.unteraufgaben_by_karte.get(karte.id, []) %}
@@ -54,9 +54,9 @@
           {% endif %}
 
           {% if unteraufgaben %}
-          <div class="karte-fortschritt">{{ erledigte_unteraufgaben | length }}/{{ unteraufgaben | length }} Unteraufgaben erledigt</div>
+          <div class="karte-fortschritt" data-fortschritt-text>{{ erledigte_unteraufgaben | length }}/{{ unteraufgaben | length }} Unteraufgaben erledigt</div>
           <div class="fortschritt-leiste">
-            <div class="fortschritt-leiste-fuellung" style="width: {{ (erledigte_unteraufgaben | length / unteraufgaben | length * 100) | round | int }}%;"></div>
+            <div class="fortschritt-leiste-fuellung" data-fortschritt-fuellung style="width: {{ (erledigte_unteraufgaben | length / unteraufgaben | length * 100) | round | int }}%;"></div>
           </div>
           {% endif %}
 
@@ -131,9 +131,9 @@
 
           <div class="eyebrow" style="margin-top: var(--space-4);">Unteraufgaben</div>
           {% for u in unteraufgaben %}
-          <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}">
-            <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/umschalten">
-              <button type="submit" class="btn btn-ghost btn-sm" style="min-height:auto; padding: 0.15rem 0.5rem;">{{ "✓" if u.erledigt else "○" }}</button>
+          <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}" data-unteraufgabe-id="{{ u.id }}">
+            <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/umschalten" class="unteraufgabe-umschalten-form">
+              <button type="submit" class="btn btn-ghost btn-sm unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;">{{ "✓" if u.erledigt else "○" }}</button>
             </form>
             <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
             {% if u.zugewiesen_an and u.zugewiesen_an in k.boardmitglieder %}
