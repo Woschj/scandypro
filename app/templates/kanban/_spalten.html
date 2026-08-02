@@ -4,9 +4,10 @@
    Feldern board, spalten, karten_by_spalte, zuweisungen_by_karte,
    unteraufgaben_by_karte, boardmitglieder, darf_sichtbarkeit_aendern, heute
    (siehe app/routers/kanban.py, _board_kontext). #}
-{% from "_icons.html" import menu, close, chevron_left, chevron_right %}
 <div class="board-columns-wrap" data-board-scroll>
-  <button type="button" class="board-scroll-btn board-scroll-btn--left" data-scroll-dir="-1" aria-label="Spalten nach links scrollen">{{ chevron_left() }}</button>
+  <button type="button" class="board-scroll-btn board-scroll-btn--left" data-scroll-dir="-1" aria-label="Spalten nach links scrollen">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M10 3.5L5 8L10 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
   <div class="board-columns">
   {% for spalte in k.spalten %}
   {% set karten = k.karten_by_spalte.get(spalte.id, []) %}
@@ -30,7 +31,9 @@
       <span class="spalte-count">{{ karten | length }}</span>
       {% if k.darf_board_verwalten %}
       <details class="spalte-verwalten">
-        <summary title="Spalte verwalten" aria-label="Spalte &quot;{{ spalte.name }}&quot; verwalten">{{ menu() }}</summary>
+        <summary title="Spalte verwalten" aria-label="Spalte &quot;{{ spalte.name }}&quot; verwalten">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="3" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="13" r="1.4" fill="currentColor"/></svg>
+        </summary>
         <div class="spalte-verwalten-body">
           <form method="post" action="/kanban/spalten/{{ spalte.id }}/umbenennen" class="form-row">
             <div class="field">
@@ -40,7 +43,7 @@
           </form>
           {% if not spalte.ist_system_erledigt %}
           <form method="post" action="/kanban/spalten/{{ spalte.id }}/loeschen" data-confirm="Spalte &quot;{{ spalte.name }}&quot; inkl. aller Karten löschen?">
-            <button type="submit" class="btn btn-danger btn-sm">Spalte löschen</button>
+            <button type="submit" class="link-btn danger">Spalte löschen</button>
           </form>
           {% endif %}
         </div>
@@ -146,7 +149,7 @@
               <span style="flex:1;">{{ person.name if person else "?" }}</span>
               {% if not ist_gesperrt %}
               <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen/{{ z.id }}/entfernen">
-                <button type="submit" class="btn btn-ghost btn-sm">Entfernen</button>
+                <button type="submit" class="link-btn danger">Entfernen</button>
               </form>
               {% endif %}
             </div>
@@ -189,7 +192,7 @@
             {% endif %}
             {% if not ist_gesperrt %}
             <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/loeschen" data-confirm="Unteraufgabe &quot;{{ u.titel }}&quot; löschen?">
-              <button type="submit" class="btn btn-ghost btn-sm" aria-label="Unteraufgabe &quot;{{ u.titel }}&quot; löschen">{{ close() }}</button>
+              <button type="submit" class="link-btn danger">Entfernen</button>
             </form>
             {% endif %}
           </div>
@@ -217,7 +220,7 @@
 
           {% if not ist_gesperrt and (k.darf_board_verwalten or karte.ersteller_id == current_user.id) %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/loeschen" data-confirm="Karte &quot;{{ karte.titel }}&quot; endgültig löschen?" style="margin-top: var(--space-4);">
-            <button type="submit" class="btn btn-danger btn-sm">Karte löschen</button>
+            <button type="submit" class="link-btn danger">Karte löschen</button>
           </form>
           {% endif %}
         </div>
@@ -277,5 +280,7 @@
   </div>
   {% endif %}
   </div>
-  <button type="button" class="board-scroll-btn board-scroll-btn--right" data-scroll-dir="1" aria-label="Spalten nach rechts scrollen">{{ chevron_right() }}</button>
+  <button type="button" class="board-scroll-btn board-scroll-btn--right" data-scroll-dir="1" aria-label="Spalten nach rechts scrollen">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M6 3.5L11 8L6 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
 </div>

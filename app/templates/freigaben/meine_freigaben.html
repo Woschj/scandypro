@@ -18,7 +18,7 @@
       <td>{{ f.gueltig_bis or "unbefristet" }}</td>
       <td>
         <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">
-          <button type="submit" class="btn btn-ghost btn-sm">Widerrufen</button>
+          <button type="submit" class="link-btn danger">Widerrufen</button>
         </form>
       </td>
     </tr>
@@ -47,7 +47,7 @@
       <td>{{ f.gueltig_bis or "unbefristet" }}</td>
       <td>
         <form method="post" action="/bewerbungen/freigaben/{{ f.id }}/widerrufen">
-          <button type="submit" class="btn btn-ghost btn-sm">Widerrufen</button>
+          <button type="submit" class="link-btn danger">Widerrufen</button>
         </form>
       </td>
     </tr>
@@ -94,7 +94,7 @@
         <label for="bestaetigung-wb">Alle Einträge zu "Mein Tag" löschen</label>
         <input type="text" id="bestaetigung-wb" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
       </div>
-      <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
+      <button type="submit" class="link-btn danger">Löschen</button>
     </form>
 
     <form method="post" action="/freigaben/konto/bewerbungen-loeschen" class="form-row">
@@ -102,7 +102,7 @@
         <label for="bestaetigung-bw">Alle Bewerbungsdaten löschen</label>
         <input type="text" id="bestaetigung-bw" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
       </div>
-      <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
+      <button type="submit" class="link-btn danger">Löschen</button>
     </form>
   </div>
 </details>

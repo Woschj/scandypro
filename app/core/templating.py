@@ -4,24 +4,15 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 from app.core.skala import ENERGIE_EMOJI, STIMMUNG_EMOJI, energie_emoji, heatmap_farbe, stimmung_emoji
+from app.version import __version__
 
 templates = Jinja2Templates(directory=Path(__file__).resolve().parent.parent / "templates")
-_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
-
-def static_version(pfad: str) -> str:
-    """Cache-Busting-Query anhand der mtime der Datei unter app/static, damit
-    CSS/JS-Änderungen nach einem Deploy nicht durch Browser-Caching verdeckt
-    werden (siehe app/templates/base.html)."""
-    voller_pfad = _STATIC_DIR / pfad
-    try:
-        mtime = int(voller_pfad.stat().st_mtime)
-    except OSError:
-        mtime = 0
-    return f"/static/{pfad}?v={mtime}"
-
-
-templates.env.globals["static_version"] = static_version
+# Cache-Busting-Query für statische Assets über die App-Version statt
+# Datei-mtime - analog zum Schwestermodul Scandy-Lite (app/core/templating.py
+# dort: asset_version = __version__), damit beide Apps dieselbe Konvention
+# nutzen (Templates schreiben literal "/static/....js?v={{ asset_version }}").
+templates.env.globals["asset_version"] = __version__
 
 
 def initialen(name: str) -> str:

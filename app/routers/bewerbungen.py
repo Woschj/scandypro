@@ -4,7 +4,7 @@ from fastapi import APIRouter, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
-from app.core.access import hat_bewerbungs_freigabe, require_owner
+from app.core.access import require_owner
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep
 from app.core.pdf_merge import unterlagen_zu_pdf

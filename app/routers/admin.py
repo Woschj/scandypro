@@ -38,8 +38,8 @@ async def abteilungen_uebersicht(request: Request, current_user: CurrentUser, se
     leitungen_result = await session.execute(select(HandlungsfeldLeitung))
     leitungen = list(leitungen_result.scalars().all())
     leitungen_by_handlungsfeld: dict[int, list[HandlungsfeldLeitung]] = {}
-    for l in leitungen:
-        leitungen_by_handlungsfeld.setdefault(l.handlungsfeld_id, []).append(l)
+    for leitung in leitungen:
+        leitungen_by_handlungsfeld.setdefault(leitung.handlungsfeld_id, []).append(leitung)
 
     trainer_result = await session.execute(select(User).where(User.role == RoleEnum.berufstrainer))
     trainer_by_id = {t.id: t for t in trainer_result.scalars().all()}

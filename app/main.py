@@ -4,7 +4,6 @@ from datetime import date
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from sqlmodel import select
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
@@ -15,6 +14,7 @@ from app.core.database import async_session_factory, init_db
 from app.core.deps import SessionDep, get_current_user_optional
 from app.core.fortschritt import woechentliche_schritte
 from app.core.seed import seed_admin, seed_demo_data
+from app.core.static_cache import CachedStaticFiles
 from app.core.templating import templates
 from app.models.bewerbung import BewerbungsFreigabe
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
@@ -38,7 +38,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ScandyPro", lifespan=lifespan)
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, same_site="lax")
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Versionierte Assets (?v={{ asset_version }}, siehe app/core/templating.py)
+# dürfen ein Jahr unverändert im Browser bleiben, da sich bei einem Release
+# die URL selbst ändert; unversionierte Treffer (z.B. Icons) bekommen nur
+# eine kurze, revalidierende Cache-Dauer. KEIN eigener /uploads-Mount (siehe
+# docs/KONZEPT.md, Abschnitt 2.3: Downloads laufen ausschließlich über
+# authentifizierte, Owner-geprüfte Routen, kein öffentlicher Static-Mount).
+app.mount(
+    "/static",
+    CachedStaticFiles(directory="app/static", cache_control="public, max-age=3600", versioned_cache_control="public, max-age=31536000, immutable"),
+    name="static",
+)
 
 app.include_router(auth.router)
 app.include_router(kanban.router)

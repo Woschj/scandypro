@@ -53,7 +53,7 @@
   </details>
   {% endfor %}
 </div>
-<script src="{{ static_version('js/kanban.js') }}"></script>
+<script src="/static/js/kanban.js?v={{ asset_version }}"></script>
 {% else %}
 <p class="empty-state">
   {% if current_user.role.value in ["psychosoziale_mitarbeit", "einrichtungs_admin"] %}

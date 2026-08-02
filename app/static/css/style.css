@@ -34,13 +34,15 @@
 }
 
 /* Dark-Mode (CLAUDE.md Abschnitt 19 "Frontend": Dark-Mode ist Pflicht).
-   Rein systemgesteuert über prefers-color-scheme, kein manueller Umschalter
-   nötig. Farbwerte wurden gegenüber ihrem jeweiligen Hintergrund auf
-   WCAG-AA-Kontrast (>=4.5:1 Text, >=3:1 UI-Komponenten) hin ausgewählt -
-   vor Produktivsetzung trotzdem mit einem Kontrast-Tool gegenprüfen
-   (siehe tasks/uiux-audit/UI-019.md). */
+   Standardmäßig systemgesteuert über prefers-color-scheme; zusätzlich per
+   manuellem Umschalter (siehe .theme-toggle unten, app/static/js/theme-toggle.js)
+   über data-theme="dark"/"light" auf <html> übersteuerbar - Klick gewinnt
+   immer gegenüber der Systemeinstellung. Farbwerte wurden gegenüber ihrem
+   jeweiligen Hintergrund auf WCAG-AA-Kontrast (>=4.5:1 Text, >=3:1
+   UI-Komponenten) hin ausgewählt - vor Produktivsetzung trotzdem mit einem
+   Kontrast-Tool gegenprüfen (siehe tasks/uiux-audit/UI-019.md). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #141c1a;
     --bg-raised: #1c2725;
     --ink: #eef2f0;
@@ -56,21 +58,63 @@
     --line-strong: #4a5d56;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.35);
   }
+}
 
-  .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
-  .field select,
-  .field textarea,
-  .field input[type="file"] {
+:root[data-theme="dark"] {
+  --bg: #141c1a;
+  --bg-raised: #1c2725;
+  --ink: #eef2f0;
+  --ink-soft: #a3b0a9;
+  --brand: #1f7a72;
+  --brand-ink: #7fd6c9;
+  --accent: #f0b25c;
+  --success: #5aab7e;
+  --success-bg: #1e3327;
+  --danger: #b8503f;
+  --danger-bg: #3a211d;
+  --line: #33413c;
+  --line-strong: #4a5d56;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  :root:not([data-theme="light"]) .field select,
+  :root:not([data-theme="light"]) .field textarea,
+  :root:not([data-theme="light"]) .field input[type="file"] {
     background: var(--bg-raised);
     color: var(--ink);
   }
-
-  select {
+  :root:not([data-theme="light"]) select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a3b0a9'%3E%3Cpath d='M5.25 7.5L10 12.25L14.75 7.5H5.25Z'/%3E%3C/svg%3E");
   }
+  :root:not([data-theme="light"]) .karte-badge--faellig { background: #3a2c14; }
+  :root:not([data-theme="light"]) .tag-kommentar-btn--gesetzt { background: #3a2c14; }
+}
 
-  .karte-badge--faellig { background: #3a2c14; }
-  .tag-kommentar-btn--gesetzt { background: #3a2c14; }
+:root[data-theme="dark"] .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] .field textarea,
+:root[data-theme="dark"] .field input[type="file"] {
+  background: var(--bg-raised);
+  color: var(--ink);
+}
+:root[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a3b0a9'%3E%3Cpath d='M5.25 7.5L10 12.25L14.75 7.5H5.25Z'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] .karte-badge--faellig { background: #3a2c14; }
+:root[data-theme="dark"] .tag-kommentar-btn--gesetzt { background: #3a2c14; }
+
+/* Umschalter-Button (siehe app/templates/base.html, app/static/js/theme-toggle.js):
+   zeigt Mond ("zu Dunkel wechseln") wenn aktuell hell, Sonne wenn aktuell
+   dunkel - Zustand rein per CSS abgeleitet, kein Icon-Austausch per JS nötig. */
+.theme-toggle-sonne { display: none; }
+.theme-toggle-mond { display: inline-flex; }
+:root[data-theme="dark"] .theme-toggle-sonne { display: inline-flex; }
+:root[data-theme="dark"] .theme-toggle-mond { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle-sonne { display: inline-flex; }
+  :root:not([data-theme="light"]) .theme-toggle-mond { display: none; }
 }
 
 * { box-sizing: border-box; }
@@ -176,6 +220,52 @@ button:not(.btn) {
   color: var(--ink);
   cursor: pointer;
 }
+
+/* Icon-Only-Toolbar-Buttons (Nav-Trigger, Theme-Toggle, Spalten-/Zeilen-
+   Menüs) - 1:1 aus dem Schwestermodul Scandy-Lite übernommen (dort
+   .icon-btn), var(--bg-raised) statt hartem #fff für Dark-Mode-Konsistenz. */
+.icon-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--ink);
+  cursor: pointer;
+}
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn:hover { background: var(--bg); }
+
+/* Zeilen-Aktionen (Löschen/Entfernen in Listen/Tabellen) - textbasiert
+   statt Icon-only, 1:1 aus Scandy-Lite übernommen. Zusammen mit dem
+   Bestätigungs-Modal (siehe app/static/js/confirm.js) statt des dortigen
+   nativen confirm() - das bleibt eine bewusste ScandyPro-Ergänzung. */
+.link-btn {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: none;
+  border: none;
+  padding: var(--space-2) var(--space-2);
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-decoration: none;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.link-btn:hover { color: var(--brand-ink); }
+.link-btn.danger { color: var(--danger); }
+.link-btn.danger:hover { background: var(--danger-bg); border-radius: var(--radius); }
+.link-btn:disabled { opacity: 0.6; cursor: default; }
 
 /* Formulare */
 .field { margin-bottom: var(--space-4); text-align: left; }
@@ -301,18 +391,17 @@ button:not(.btn) {
 .app-shell { min-height: 100dvh; display: flex; flex-direction: column; }
 
 .topnav {
-  min-height: var(--nav-height);
+  height: var(--nav-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3) var(--space-4);
-  padding: var(--space-2) var(--space-6);
+  gap: var(--space-4);
+  padding: 0 var(--space-6);
   background: var(--bg-raised);
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
   z-index: 20;
-  flex-wrap: wrap;
 }
 
 .wordmark {
@@ -325,7 +414,7 @@ button:not(.btn) {
 }
 .wordmark .dot { color: var(--accent); }
 
-.topnav-links { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.topnav-links { display: flex; align-items: center; gap: var(--space-4); }
 .topnav-links a {
   font-family: var(--font-display);
   font-size: 0.8125rem;
@@ -385,42 +474,27 @@ button:not(.btn) {
 .user-chip a { color: inherit; text-decoration: none; }
 .user-chip a:hover, .user-chip a.active { color: var(--brand); }
 
-/* Mobile-Kollaps der Topnav (siehe app/static/js/nav-toggle.js,
-   tasks/uiux-audit/UI-009.md): oberhalb des Breakpoints bleibt alles wie
-   bisher nebeneinander sichtbar, der Toggle-Button ist unsichtbar. */
-.nav-toggle {
+/* Mobile-Kollaps der Topnav via Alpine.js (siehe app/templates/base.html:
+   x-data="{ menuOpen: false }") - 1:1 aus dem Schwestermodul Scandy-Lite
+   übernommen (dort identisches .nav-trigger-btn/.nav-backdrop/[x-cloak]-
+   Muster in partials/nav.html), damit beide Apps sich gleich anfühlen. */
+.nav-trigger-btn {
   display: none;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--bg-raised);
-  cursor: pointer;
   flex-shrink: 0;
 }
-.nav-toggle-strich,
-.nav-toggle-strich::before,
-.nav-toggle-strich::after {
-  display: block;
-  width: 18px;
-  height: 2px;
-  background: var(--ink);
-  border-radius: 1px;
+
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 25;
 }
-.nav-toggle-strich { position: relative; }
-.nav-toggle-strich::before,
-.nav-toggle-strich::after { content: ""; position: absolute; left: 0; }
-.nav-toggle-strich::before { top: -6px; }
-.nav-toggle-strich::after { top: 6px; }
 
-.nav-panel { display: flex; align-items: center; gap: var(--space-4) var(--space-6); flex-wrap: wrap; }
+[x-cloak] { display: none !important; }
 
-@media (max-width: 720px) {
-  .nav-toggle { display: flex; }
-  .nav-panel {
-    display: none;
+@media (max-width: 860px) {
+  .nav-trigger-btn { display: inline-flex; }
+  .topnav-links {
     position: absolute;
     top: 100%;
     left: 0;
@@ -429,17 +503,16 @@ button:not(.btn) {
     align-items: stretch;
     gap: 0;
     background: var(--bg-raised);
+    border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
     box-shadow: var(--shadow-card);
-    padding: var(--space-4) var(--space-6);
+    padding: var(--space-2) var(--space-4);
+    z-index: 26;
   }
-  .nav-panel.nav-panel--offen { display: flex; }
-  .topnav-links { flex-direction: column; align-items: flex-start; gap: 0; width: 100%; }
-  .topnav-links a { width: 100%; padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
-  .topnav-links a.active, .topnav-links a:hover { border-bottom-color: var(--line); background: var(--bg); }
+  .topnav-links a { padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+  .topnav-links a:last-child { border-bottom: none; }
   .nav-dropdown { width: 100%; }
   .nav-dropdown-body { position: static; box-shadow: none; border: none; padding: 0; margin-top: 0; }
-  .user-chip { width: 100%; justify-content: space-between; padding-top: var(--space-3); }
 }
 
 .main-content { flex: 1; width: 100%; max-width: 1000px; margin: 0 auto; padding: var(--space-6); }
@@ -849,7 +922,7 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
    tasks/uiux-audit/UI-013.md) - vorher an vier Stellen wortgleich als
    Inline-Style dupliziert. */
 .card-collapsible-summary { cursor: pointer; list-style: none; }
-.card-collapsible-summary h3 { display: inline; }
+.card-collapsible-summary h3 { display: inline-flex; }
 
 /* Datei-Zeile (Download-Link + Meta + Löschen), wiederkehrend im
    Bewerbungsmodul (siehe tasks/uiux-audit/UI-013.md). */

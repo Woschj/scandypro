@@ -150,7 +150,7 @@
         <td>{{ f.gueltig_bis or "unbefristet" }}</td>
         <td>
           <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">
-            <button type="submit" class="btn btn-ghost btn-sm">Widerrufen</button>
+            <button type="submit" class="link-btn danger">Widerrufen</button>
           </form>
         </td>
       </tr>
@@ -161,5 +161,5 @@
   </div>
 </details>
 
-<script src="{{ static_version('js/wohlbefinden.js') }}" defer></script>
+<script src="/static/js/wohlbefinden.js?v={{ asset_version }}" defer></script>
 {% endblock %}

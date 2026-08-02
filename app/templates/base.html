@@ -4,51 +4,79 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ScandyPro{% endblock %}</title>
-  <link rel="stylesheet" href="{{ static_version('css/style.css') }}">
+  <link rel="stylesheet" href="/static/css/style.css?v={{ asset_version }}">
+  <script>
+    /* Muss synchron und vor dem Stylesheet-Rendering laufen, sonst blitzt
+       kurz das falsche Farbschema auf (FOUC) - siehe
+       app/static/js/theme-toggle.js für die restliche Umschalt-Logik. */
+    (function () {
+      var gespeichert = localStorage.getItem("scandypro-theme");
+      if (gespeichert) document.documentElement.setAttribute("data-theme", gespeichert);
+    })();
+  </script>
+  <script src="/static/js/vendor/htmx.min.js?v={{ asset_version }}" defer></script>
+  <script src="/static/js/vendor/alpine.min.js?v={{ asset_version }}" defer></script>
   {% if current_user %}
-  <script src="{{ static_version('js/nav-toggle.js') }}" defer></script>
+  <script src="/static/js/theme-toggle.js?v={{ asset_version }}" defer></script>
+  <script src="/static/js/confirm.js?v={{ asset_version }}" defer></script>
+  <script src="/static/js/upload-check.js?v={{ asset_version }}" defer></script>
+  <script src="/static/js/form-loading.js?v={{ asset_version }}" defer></script>
+  <script src="/static/js/heatmap.js?v={{ asset_version }}" defer></script>
+  <script src="/static/js/table-tools.js?v={{ asset_version }}" defer></script>
+  <script src="/static/js/leave-warning.js?v={{ asset_version }}" defer></script>
   {% endif %}
 </head>
 <body>
   <div class="app-shell">
     {% if current_user %}
-    <header class="topnav">
+    <header class="topnav" x-data="{ menuOpen: false }">
       <a class="wordmark" href="/">SCANDY<span class="dot">//</span>PRO</a>
-      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-panel" aria-label="Menü öffnen">
-        <span class="nav-toggle-strich"></span>
+
+      <button type="button" class="icon-btn nav-trigger-btn" @click="menuOpen = !menuOpen" aria-label="Menü" :aria-expanded="menuOpen.toString()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <div class="nav-panel" id="nav-panel">
-        <nav class="topnav-links">
-          <a href="/kanban" class="{% if request.url.path.startswith('/kanban') %}active{% endif %}">Projekte</a>
-          {% if current_user.role.value == "berufstrainer" %}
-          <a href="/kanban/gruppen" class="{% if request.url.path.startswith('/kanban/gruppen') %}active{% endif %}">Handlungsfeld-Team</a>
-          {% endif %}
-          {% if current_user.role.value in ["teilnehmer", "berufstrainer"] %}
-          <a href="/wochenberichte" class="{% if request.url.path.startswith('/wochenberichte') %}active{% endif %}">Wochenberichte</a>
-          {% endif %}
-          {% if current_user.role.value == "teilnehmer" %}
-          <a href="/wohlbefinden" class="{% if request.url.path.startswith('/wohlbefinden') %}active{% endif %}">Mein Tag</a>
-          <a href="/bewerbungen" class="{% if request.url.path.startswith('/bewerbungen') %}active{% endif %}">Bewerbungen</a>
-          <a href="/freigaben" class="{% if request.url.path.startswith('/freigaben') %}active{% endif %}">Meine Freigaben</a>
-          {% endif %}
-          {% if current_user.role.value == "einrichtungs_admin" %}
-          <details class="nav-dropdown">
-            <summary class="{% if request.url.path.startswith('/admin/psm-zuordnungen') or request.url.path.startswith('/admin/trainer-zuordnungen') or request.url.path.startswith('/admin/benutzer') or request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Verwaltung</summary>
-            <div class="nav-dropdown-body">
-              <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Abteilungen &amp; Handlungsfelder</a>
-              <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeiter:innen</a>
-              <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
-              <a href="/admin/benutzer" class="{% if request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Benutzerverwaltung</a>
-            </div>
-          </details>
-          {% endif %}
-        </nav>
-        <div class="user-chip">
-          <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
-          <form method="post" action="/logout" style="margin:0;">
-            <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
-          </form>
-        </div>
+
+      <div class="nav-backdrop" x-show="menuOpen" @click="menuOpen = false" x-cloak></div>
+
+      <nav class="topnav-links" x-show="menuOpen" x-cloak @click="menuOpen = false">
+        <a href="/kanban" class="{% if request.url.path.startswith('/kanban') %}active{% endif %}">Projekte</a>
+        {% if current_user.role.value == "berufstrainer" %}
+        <a href="/kanban/gruppen" class="{% if request.url.path.startswith('/kanban/gruppen') %}active{% endif %}">Handlungsfeld-Team</a>
+        {% endif %}
+        {% if current_user.role.value in ["teilnehmer", "berufstrainer"] %}
+        <a href="/wochenberichte" class="{% if request.url.path.startswith('/wochenberichte') %}active{% endif %}">Wochenberichte</a>
+        {% endif %}
+        {% if current_user.role.value == "teilnehmer" %}
+        <a href="/wohlbefinden" class="{% if request.url.path.startswith('/wohlbefinden') %}active{% endif %}">Mein Tag</a>
+        <a href="/bewerbungen" class="{% if request.url.path.startswith('/bewerbungen') %}active{% endif %}">Bewerbungen</a>
+        <a href="/freigaben" class="{% if request.url.path.startswith('/freigaben') %}active{% endif %}">Meine Freigaben</a>
+        {% endif %}
+        {% if current_user.role.value == "einrichtungs_admin" %}
+        <details class="nav-dropdown">
+          <summary class="{% if request.url.path.startswith('/admin/psm-zuordnungen') or request.url.path.startswith('/admin/trainer-zuordnungen') or request.url.path.startswith('/admin/benutzer') or request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Verwaltung</summary>
+          <div class="nav-dropdown-body">
+            <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Abteilungen &amp; Handlungsfelder</a>
+            <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeiter:innen</a>
+            <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
+            <a href="/admin/benutzer" class="{% if request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Benutzerverwaltung</a>
+          </div>
+        </details>
+        {% endif %}
+      </nav>
+
+      <div class="user-chip">
+        <button type="button" id="theme-toggle" class="icon-btn" aria-pressed="false" aria-label="Zu dunklem Modus wechseln">
+          <span class="theme-toggle-sonne">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.6 3.4L11.6 4.4M4.4 11.6L3.4 12.6M12.6 12.6L11.6 11.6M4.4 4.4L3.4 3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </span>
+          <span class="theme-toggle-mond">
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 106.7 6.7 6 6 0 010.3.3z" fill="currentColor"/></svg>
+          </span>
+        </button>
+        <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
+        <form method="post" action="/logout" style="margin:0;">
+          <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
+        </form>
       </div>
     </header>
     {% endif %}
@@ -67,12 +95,6 @@
       </div>
     </div>
   </div>
-  <script src="{{ static_version('js/confirm.js') }}"></script>
-  <script src="{{ static_version('js/upload-check.js') }}"></script>
-  <script src="{{ static_version('js/form-loading.js') }}"></script>
-  <script src="{{ static_version('js/heatmap.js') }}"></script>
-  <script src="{{ static_version('js/table-tools.js') }}"></script>
-  <script src="{{ static_version('js/leave-warning.js') }}"></script>
   {% endif %}
 </body>
 </html>

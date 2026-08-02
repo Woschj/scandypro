@@ -40,7 +40,7 @@
         <td style="text-align: right;">
           {% if t.id in hf_mitglied_teilnehmer_ids %}
           <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder/{{ hf_mitglied_id_by_teilnehmer[t.id] }}/entfernen">
-            <button type="submit" class="btn btn-ghost btn-sm">Entfernen</button>
+            <button type="submit" class="link-btn danger">Entfernen</button>
           </form>
           {% else %}
           <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder">
