@@ -32,6 +32,7 @@
       let naechsterIndex = 0;
       let pfad = "";
       let aktiv = false;
+      let gesperrtBisMs = 0;
 
       if (hiddenInput.value === "true") {
         kreise.forEach((k) => k.classList.add("atemuebung-punkt--erreicht"));
@@ -43,17 +44,40 @@
         return Math.hypot(a.x - b.x, a.y - b.y);
       }
 
+      // "Halten"-Punkte (data-halten > 0) schalten nicht sofort weiter,
+      // sondern zählen erst sinnvoll herunter (siehe Nutzer-Feedback: 5-6
+      // Sekunden) - Fingerposition ist dabei egal, es ist eine bewusste
+      // Pause, kein Präzisionstest.
+      function starteHaltenCountdown(sekunden) {
+        gesperrtBisMs = Date.now() + sekunden * 1000;
+        let verbleibend = sekunden;
+        if (hinweis) hinweis.textContent = `Halten … noch ${verbleibend}`;
+        const intervall = setInterval(() => {
+          verbleibend -= 1;
+          if (verbleibend <= 0) {
+            clearInterval(intervall);
+            if (hinweis && naechsterIndex < kreise.length) hinweis.textContent = "Weiter, wenn du bereit bist.";
+            return;
+          }
+          if (hinweis) hinweis.textContent = `Halten … noch ${verbleibend}`;
+        }, 1000);
+      }
+
       function pruefeTreffer(p) {
         if (naechsterIndex >= kreise.length) return;
+        if (Date.now() < gesperrtBisMs) return;
         const zielKreis = kreise[naechsterIndex];
         const ziel = { x: parseFloat(zielKreis.getAttribute("cx")), y: parseFloat(zielKreis.getAttribute("cy")) };
         if (abstand(p, ziel) <= RADIUS_TREFFER) {
           zielKreis.classList.add("atemuebung-punkt--erreicht");
           naechsterIndex += 1;
+          const haltenSekunden = parseFloat(zielKreis.dataset.halten || "0");
           if (naechsterIndex >= kreise.length) {
             hiddenInput.value = "true";
             if (hinweis) hinweis.textContent = "Geschafft - schön, dass du dir die Pause genommen hast.";
             aktiv = false;
+          } else if (haltenSekunden > 0) {
+            starteHaltenCountdown(haltenSekunden);
           }
         }
       }

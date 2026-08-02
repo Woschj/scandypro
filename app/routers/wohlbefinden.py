@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
 from app.core.access import hat_wohlbefinden_freigabe, require_owner
+from app.core.atemuebungen import atemuebung_des_tages, atemuebung_punkte
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
@@ -78,6 +79,7 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
             "morgen_impuls_antwort": "",
             "morgen_erledigt": False,
             "energie_level": None,
+            "atemuebung_name": None,
             "atemuebung_erledigt": False,
             "highlights": ["", "", ""],
             "abend_impuls_frage": None,
@@ -97,6 +99,7 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
         "morgen_impuls_antwort": eintrag.morgen_impuls_antwort or "",
         "morgen_erledigt": eintrag.morgen_ausgefuellt_am is not None,
         "energie_level": eintrag.energie_level,
+        "atemuebung_name": eintrag.atemuebung_name,
         "atemuebung_erledigt": eintrag.atemuebung_erledigt_am is not None,
         "highlights": [eintrag.highlight_1 or "", eintrag.highlight_2 or "", eintrag.highlight_3 or ""],
         "abend_impuls_frage": eintrag.abend_impuls_frage,
@@ -164,6 +167,9 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         anzeige["morgen_impuls_frage"] = morgen_impuls_des_tages(current_user.id, ausgewaehlter_tag)
     if anzeige["abend_impuls_frage"] is None:
         anzeige["abend_impuls_frage"] = abend_impuls_des_tages(current_user.id, ausgewaehlter_tag)
+    if anzeige["atemuebung_name"] is None:
+        anzeige["atemuebung_name"] = atemuebung_des_tages(current_user.id, ausgewaehlter_tag)
+    anzeige["atemuebung_punkte"] = atemuebung_punkte(anzeige["atemuebung_name"])
 
     verlauf = await _verlauf(session, current_user.id, heute)
 
@@ -297,6 +303,7 @@ async def morgen_speichern(
     morgen_impuls_frage: str = Form(""),
     morgen_impuls_antwort: str = Form(""),
     energie_level: str = Form(""),
+    atemuebung_name: str = Form(""),
     atemuebung_erledigt: str = Form(""),
 ):
     if current_user.role != RoleEnum.teilnehmer:
@@ -309,6 +316,7 @@ async def morgen_speichern(
     eintrag.dankbarkeit_3 = dankbarkeit_3 or None
     eintrag.morgen_impuls_frage = morgen_impuls_frage or morgen_impuls_des_tages(current_user.id, tag_datum)
     eintrag.morgen_impuls_antwort = morgen_impuls_antwort or None
+    eintrag.atemuebung_name = atemuebung_name or atemuebung_des_tages(current_user.id, tag_datum)
     if energie_level:
         wert = int(energie_level)
         if not ENERGIE_LEVEL_MIN <= wert <= ENERGIE_LEVEL_MAX:

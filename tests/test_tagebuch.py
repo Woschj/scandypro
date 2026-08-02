@@ -144,6 +144,56 @@ def test_impuls_des_tages_ist_deterministisch_und_stabil():
     assert abend_impuls_des_tages(1, heute) == abend_impuls_des_tages(1, heute)
 
 
+def test_atemuebung_des_tages_ist_deterministisch_und_im_pool():
+    from app.core.atemuebungen import ATEMUEBUNGEN_POOL, atemuebung_des_tages
+
+    heute = date.today()
+    name = atemuebung_des_tages(1, heute)
+    assert name == atemuebung_des_tages(1, heute)
+    assert name in {u["name"] for u in ATEMUEBUNGEN_POOL}
+
+
+def test_atemuebungen_pool_hat_mindestens_zehn_varianten_mit_sinnvollen_halten_zeiten():
+    from app.core.atemuebungen import ATEMUEBUNGEN_POOL
+
+    assert len(ATEMUEBUNGEN_POOL) >= 10
+    for uebung in ATEMUEBUNGEN_POOL:
+        for _label, halten_sekunden in uebung["schritte"]:
+            assert halten_sekunden == 0 or 5 <= halten_sekunden <= 6
+
+
+def test_atemuebung_punkte_layout_passt_zur_schrittanzahl():
+    from app.core.atemuebungen import ATEMUEBUNGEN_POOL, atemuebung_punkte
+
+    for uebung in ATEMUEBUNGEN_POOL:
+        punkte = atemuebung_punkte(uebung["name"])
+        assert len(punkte) == len(uebung["schritte"])
+        for p in punkte:
+            assert "cx" in p and "cy" in p and "label" in p
+
+
+async def test_atemuebung_name_wird_gespeichert(client, seed_data, session_maker):
+    from app.models.wohlbefinden import TagebuchEintrag
+
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+
+    resp = await client.post(
+        "/wohlbefinden/morgen",
+        data={"csrf_token": token, "datum": heute, "atemuebung_name": "Box-Atmung"},
+    )
+    assert resp.status_code == 303
+
+    async with session_maker() as session:
+        from sqlmodel import select
+
+        result = await session.execute(
+            select(TagebuchEintrag).where(TagebuchEintrag.teilnehmer_id == seed_data["teilnehmer_id"])
+        )
+        assert result.scalar_one().atemuebung_name == "Box-Atmung"
+
+
 # Ein winziges, gültiges 1x1-PNG (base64) als Stand-in für eine im Canvas
 # gezeichnete Skizze - Inhalt ist irrelevant, nur das Format muss stimmen.
 _PNG_1X1_BASE64 = (

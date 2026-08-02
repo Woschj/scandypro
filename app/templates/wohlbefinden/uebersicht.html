@@ -27,20 +27,17 @@
     <input type="hidden" name="morgen_impuls_frage" value="{{ tag.morgen_impuls_frage }}">
 
     <div class="field">
-      <label class="eyebrow">Kurz ankommen</label>
+      <label class="eyebrow">Kurz ankommen — {{ tag.atemuebung_name }}</label>
       <div class="atemuebung" data-atemuebung>
-        <svg viewBox="0 0 280 200" class="atemuebung-svg">
+        <svg viewBox="0 0 240 220" class="atemuebung-svg">
           <path data-linie fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle data-punkt="0" cx="40" cy="100" r="10"/>
-          <text x="40" y="128" text-anchor="middle" class="atemuebung-label">Einatmen</text>
-          <circle data-punkt="1" cx="140" cy="30" r="10"/>
-          <text x="140" y="18" text-anchor="middle" class="atemuebung-label">Halten</text>
-          <circle data-punkt="2" cx="240" cy="100" r="10"/>
-          <text x="240" y="128" text-anchor="middle" class="atemuebung-label">Ausatmen</text>
-          <circle data-punkt="3" cx="140" cy="170" r="10"/>
-          <text x="140" y="195" text-anchor="middle" class="atemuebung-label">Halten</text>
+          {% for p in tag.atemuebung_punkte %}
+          <circle data-punkt="{{ loop.index0 }}" data-halten="{{ p.halten_sekunden }}" cx="{{ p.cx }}" cy="{{ p.cy }}" r="10"/>
+          <text x="{{ p.cx }}" y="{{ p.cy + 28 if p.cy < 110 else p.cy - 18 }}" text-anchor="middle" class="atemuebung-label">{{ p.label }}</text>
+          {% endfor %}
         </svg>
         <p class="karte-meta" data-atemuebung-hinweis>Fahre mit dem Finger oder der Maus der Reihe nach von Punkt zu Punkt - eine kleine Pause, bevor es losgeht.</p>
+        <input type="hidden" name="atemuebung_name" value="{{ tag.atemuebung_name }}">
         <input type="hidden" name="atemuebung_erledigt" value="{{ 'true' if tag.atemuebung_erledigt else '' }}">
       </div>
     </div>
@@ -103,8 +100,8 @@
         <canvas width="600" height="360" {% if tag.hat_zeichnung %}style="display:none;"{% endif %}></canvas>
         <input type="hidden" name="zeichnung_daten">
         <input type="hidden" name="zeichnung_entfernen" value="">
+        <button type="button" class="btn btn-ghost btn-sm" data-zeichenfeld-loeschen style="margin-top: var(--space-2);">Zeichnung löschen</button>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm" data-zeichenfeld-loeschen style="margin-top: var(--space-2);">Zeichnung löschen</button>
     </div>
 
     <div class="field">

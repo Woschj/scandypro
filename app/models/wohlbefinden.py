@@ -46,9 +46,13 @@ class TagebuchEintrag(SQLModel, table=True):
     # Stimmungsskala dient dieser Wert nur der Person selbst im Moment,
     # nicht dem Vergleich über Tage hinweg.
     energie_level: int | None = None
-    # Verbinde-die-Punkte-Atemübung vor dem Schreiben - nur der Zeitpunkt
-    # wird gespeichert (kein Zeichenpfad), da der eigentliche Nutzen die
-    # kurze Pause selbst ist, nicht ihr Ergebnis.
+    # Verbinde-die-Punkte-Atemübung vor dem Schreiben - täglich rotierend
+    # aus einem Pool (siehe app/core/atemuebungen.py), der Name wird
+    # mitgespeichert (analog *_impuls_frage) damit er bei erneutem Aufruf
+    # stabil bleibt. Nur der Zeitpunkt des Abschlusses wird gespeichert
+    # (kein Zeichenpfad), da der eigentliche Nutzen die kurze Pause selbst
+    # ist, nicht ihr Ergebnis.
+    atemuebung_name: str | None = None
     atemuebung_erledigt_am: datetime | None = None
     morgen_ausgefuellt_am: datetime | None = None
 

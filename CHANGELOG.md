@@ -8,6 +8,27 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.8] - 2026-08-03
+
+### Added
+- **Atemübungs-Pool mit 15 Varianten** (siehe `app/core/atemuebungen.py`):
+  statt einer einzigen fest verdrahteten Verbinde-die-Punkte-Übung wird
+  morgens täglich eine von 15 Varianten deterministisch ausgewählt (Box-
+  Atmung, Dreieck-Atmung, Sechseck-Atmung, Anker setzen, ...) - Layout
+  (Punktanzahl/-anordnung) wird je nach Übung automatisch berechnet.
+  Migration `a1b2c3d4e5f6` speichert den gezeigten Namen, damit er beim
+  erneuten Aufruf stabil bleibt.
+- **Sinnvoller Halten-Timer (5-6 Sekunden)**: "Halten"-Punkte schalten
+  nicht mehr sofort weiter, sondern zeigen einen kurzen Countdown ("Halten
+  … noch 4"), bevor zum nächsten Punkt weitergezogen werden kann - eine
+  bewusste Pause statt eines Präzisionstests.
+
+### Fixed
+- **"Zeichnung löschen" hat nicht funktioniert**: der Button lag im Markup
+  außerhalb des von der JS als Container verwendeten `data-zeichenfeld`-
+  Wrappers, wodurch der Klick-Handler nie gefunden/gebunden wurde - jetzt
+  innerhalb des Wrappers verschachtelt.
+
 ## [0.1.7] - 2026-08-02
 
 ### Added
