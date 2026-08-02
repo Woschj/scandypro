@@ -6,32 +6,40 @@
   Leitungen deiner Handlungsfelder.</p>
 
 <details class="card">
-  <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Neuer Wochenbericht</h3></summary>
-  <form method="post" action="/wochenberichte" style="margin-top: var(--space-4);">
+  <summary class="card-collapsible-summary"><h3>Neuer Wochenbericht</h3></summary>
+  <form method="post" action="/wochenberichte" style="margin-top: var(--space-4);" data-warn-on-leave>
     <div class="field" style="max-width: 220px;">
       <label for="woche">Kalenderwoche</label>
       <input type="week" id="woche" name="woche" value="{{ aktuelle_kw }}" required>
     </div>
 
+    <p class="karte-meta" style="margin-bottom: var(--space-3);">Ein Tag nach dem anderen - tippe auf einen Wochentag, um ihn auszufüllen.</p>
+    <div class="zuklapp-liste" style="margin-bottom: var(--space-4);">
     {% for tag in wochentage %}
-    <div style="margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--line);">
-      <div class="eyebrow" style="margin-bottom: var(--space-2);">{{ tag_labels[tag] }}</div>
-      <div class="form-row">
-        <div class="field" style="max-width: 140px;">
-          <label for="start_{{ tag }}">Beginn</label>
-          <input type="time" id="start_{{ tag }}" name="start_{{ tag }}">
+    <details class="zuklapp-eintrag" {% if loop.first %}open{% endif %}>
+      <summary>
+        <span class="zuklapp-eintrag-chevron">▸</span>
+        <span class="zuklapp-eintrag-titel">{{ tag_labels[tag] }}</span>
+      </summary>
+      <div class="zuklapp-eintrag-body">
+        <div class="form-row">
+          <div class="field" style="max-width: 140px;">
+            <label for="start_{{ tag }}">Beginn</label>
+            <input type="time" id="start_{{ tag }}" name="start_{{ tag }}">
+          </div>
+          <div class="field" style="max-width: 140px;">
+            <label for="ende_{{ tag }}">Ende</label>
+            <input type="time" id="ende_{{ tag }}" name="ende_{{ tag }}">
+          </div>
         </div>
-        <div class="field" style="max-width: 140px;">
-          <label for="ende_{{ tag }}">Ende</label>
-          <input type="time" id="ende_{{ tag }}" name="ende_{{ tag }}">
+        <div class="field">
+          <label for="taetigkeiten_{{ tag }}">Tätigkeiten</label>
+          <textarea id="taetigkeiten_{{ tag }}" name="taetigkeiten_{{ tag }}" rows="2"></textarea>
         </div>
       </div>
-      <div class="field">
-        <label for="taetigkeiten_{{ tag }}">Tätigkeiten</label>
-        <textarea id="taetigkeiten_{{ tag }}" name="taetigkeiten_{{ tag }}" rows="2"></textarea>
-      </div>
-    </div>
+    </details>
     {% endfor %}
+    </div>
 
     <div class="field">
       <label for="besonderheiten">Besonderheiten der Woche (optional)</label>
@@ -56,26 +64,36 @@
   </summary>
   <div class="zuklapp-eintrag-body">
     {% if b.status.value == "entwurf" %}
-    <form method="post" action="/wochenberichte/{{ b.id }}/bearbeiten">
+    <form method="post" action="/wochenberichte/{{ b.id }}/bearbeiten" data-warn-on-leave>
+      {% set ausgefuellte_tage = eintrag.tage | selectattr("taetigkeiten") | list | length %}
+      <p class="karte-meta" style="margin-bottom: var(--space-3);">{{ ausgefuellte_tage }} von {{ eintrag.tage | length }} Tagen ausgefüllt.</p>
+      <div class="zuklapp-liste" style="margin-bottom: var(--space-4);">
       {% for tag in eintrag.tage %}
-      <div style="margin-bottom: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1px solid var(--line);">
-        <div class="eyebrow" style="margin-bottom: var(--space-2);">{{ tag_labels[tag.key] }} · {{ tag.datum.strftime("%d.%m.") }}</div>
-        <div class="form-row">
-          <div class="field" style="max-width: 140px;">
-            <label for="start_{{ b.id }}_{{ tag.key }}">Beginn</label>
-            <input type="time" id="start_{{ b.id }}_{{ tag.key }}" name="start_{{ tag.key }}" value="{{ tag.start or '' }}">
+      <details class="zuklapp-eintrag" {% if loop.first or not tag.taetigkeiten %}open{% endif %}>
+        <summary>
+          <span class="zuklapp-eintrag-chevron">▸</span>
+          <span class="zuklapp-eintrag-titel">{{ tag_labels[tag.key] }} · {{ tag.datum.strftime("%d.%m.") }}</span>
+          {% if tag.taetigkeiten %}<span class="chip chip-success">ausgefüllt</span>{% endif %}
+        </summary>
+        <div class="zuklapp-eintrag-body">
+          <div class="form-row">
+            <div class="field" style="max-width: 140px;">
+              <label for="start_{{ b.id }}_{{ tag.key }}">Beginn</label>
+              <input type="time" id="start_{{ b.id }}_{{ tag.key }}" name="start_{{ tag.key }}" value="{{ tag.start or '' }}">
+            </div>
+            <div class="field" style="max-width: 140px;">
+              <label for="ende_{{ b.id }}_{{ tag.key }}">Ende</label>
+              <input type="time" id="ende_{{ b.id }}_{{ tag.key }}" name="ende_{{ tag.key }}" value="{{ tag.ende or '' }}">
+            </div>
           </div>
-          <div class="field" style="max-width: 140px;">
-            <label for="ende_{{ b.id }}_{{ tag.key }}">Ende</label>
-            <input type="time" id="ende_{{ b.id }}_{{ tag.key }}" name="ende_{{ tag.key }}" value="{{ tag.ende or '' }}">
+          <div class="field">
+            <label for="taetigkeiten_{{ b.id }}_{{ tag.key }}">Tätigkeiten</label>
+            <textarea id="taetigkeiten_{{ b.id }}_{{ tag.key }}" name="taetigkeiten_{{ tag.key }}" rows="2">{{ tag.taetigkeiten or "" }}</textarea>
           </div>
         </div>
-        <div class="field">
-          <label for="taetigkeiten_{{ b.id }}_{{ tag.key }}">Tätigkeiten</label>
-          <textarea id="taetigkeiten_{{ b.id }}_{{ tag.key }}" name="taetigkeiten_{{ tag.key }}" rows="2">{{ tag.taetigkeiten or "" }}</textarea>
-        </div>
-      </div>
+      </details>
       {% endfor %}
+      </div>
       <div class="field">
         <label for="besonderheiten_{{ b.id }}">Besonderheiten der Woche (optional)</label>
         <textarea id="besonderheiten_{{ b.id }}" name="besonderheiten">{{ b.besonderheiten or "" }}</textarea>
@@ -104,8 +122,8 @@
       <form method="post" action="/wochenberichte/{{ b.id }}/abgeben">
         <button type="submit" class="btn btn-primary btn-sm">Bei Berufstrainer:in abgeben</button>
       </form>
-      <form method="post" action="/wochenberichte/{{ b.id }}/loeschen" onsubmit="return confirm('Entwurf löschen?');">
-        <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+      <form method="post" action="/wochenberichte/{{ b.id }}/loeschen" data-confirm="Entwurf KW {{ b.kw_nummer }}/{{ b.kw_jahr }} löschen?">
+        <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
       </form>
       {% endif %}
     </div>

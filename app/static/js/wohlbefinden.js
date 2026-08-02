@@ -16,7 +16,11 @@
 
     let zeigeToastTimeout = null;
 
-    function zeigeToast(text) {
+    function zeigeToast(text, dringlich) {
+      // aria-live dynamisch umschalten: Erfolg "polite" (unterbricht
+      // Screenreader nicht), Fehler "assertive" (Handlungsbedarf, siehe
+      // tasks/uiux-audit/UI-008.md).
+      toast.setAttribute("aria-live", dringlich ? "assertive" : "polite");
       toast.textContent = text;
       toast.classList.add("sichtbar");
       clearTimeout(zeigeToastTimeout);
@@ -37,7 +41,7 @@
         });
         zeigeToast("Gespeichert ✓");
       } catch (err) {
-        zeigeToast("Hat nicht geklappt – versuch's gleich nochmal");
+        zeigeToast("Hat nicht geklappt – versuch's gleich nochmal", true);
       }
     }
 

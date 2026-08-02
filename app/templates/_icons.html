@@ -1,0 +1,44 @@
+{# Kleines, einheitliches SVG-Icon-Set für UI-Chrome-Elemente (Menü, Entfernen,
+   Sortieren, Scrollen) - ersetzt rohe Unicode-Glyphen, die je nach OS/Browser
+   unterschiedlich rendern (siehe tasks/uiux-audit/UI-010.md). Icons erben
+   Textfarbe (currentColor) und funktionieren dadurch automatisch mit dem
+   Dark-Mode. Bewusst NICHT für die Stimmungs-/Energie-Emoji in "Mein Tag"
+   verwendet - die sind Teil des Produktkonzepts, kein UI-Chrome. #}
+
+{% macro menu(size=16) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false" style="vertical-align: -3px;">
+  <circle cx="8" cy="3" r="1.4" fill="currentColor"/>
+  <circle cx="8" cy="8" r="1.4" fill="currentColor"/>
+  <circle cx="8" cy="13" r="1.4" fill="currentColor"/>
+</svg>
+{% endmacro %}
+
+{% macro close(size=12) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false" style="vertical-align: -1px;">
+  <path d="M1.5 1.5L10.5 10.5M10.5 1.5L1.5 10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
+{% endmacro %}
+
+{% macro chevron_up(size=12) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false" style="vertical-align: -1px;">
+  <path d="M2.5 7.5L6 4L9.5 7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
+{% endmacro %}
+
+{% macro chevron_down(size=12) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 12 12" fill="none" aria-hidden="true" focusable="false" style="vertical-align: -1px;">
+  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
+{% endmacro %}
+
+{% macro chevron_left(size=16) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false" style="vertical-align: -3px;">
+  <path d="M10 3.5L5 8L10 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
+{% endmacro %}
+
+{% macro chevron_right(size=16) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false" style="vertical-align: -3px;">
+  <path d="M6 3.5L11 8L6 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
+{% endmacro %}

@@ -40,6 +40,8 @@
     if (bestehender) bestehender.remove();
     const toast = document.createElement("div");
     toast.className = "kanban-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
     toast.textContent = text;
     document.body.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add("kanban-toast--sichtbar"));

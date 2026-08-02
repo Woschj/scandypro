@@ -55,9 +55,15 @@
     {% for woche in heatmap_wochen %}
     <div class="heatmap-woche">
       {% for tag in woche %}
-      <div class="heatmap-tag {% if tag.zukunft %}heatmap-tag--zukunft{% endif %}"
+      {% if tag.zukunft %}
+      <div class="heatmap-tag heatmap-tag--zukunft" aria-hidden="true"></div>
+      {% else %}
+      <button type="button" class="heatmap-tag"
         {% if tag.farbe %}style="background: {{ tag.farbe }}; border-color: transparent;"{% endif %}
-        title="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else '' }}">{{ tag.emoji or "" }}</div>
+        title="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else '' }}"
+        aria-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ', kein Eintrag' }}"
+        data-heatmap-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ' – kein Eintrag' }}">{{ tag.emoji or "" }}</button>
+      {% endif %}
       {% endfor %}
     </div>
     {% endfor %}

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import select
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.access import hat_wohlbefinden_freigabe
@@ -52,6 +53,42 @@ app.include_router(freigaben.router)
 @app.exception_handler(401)
 async def unauthorized_handler(request: Request, exc):
     return RedirectResponse(url="/login", status_code=303)
+
+
+_FEHLER_TITEL = {
+    400: "Das hat nicht geklappt",
+    403: "Kein Zugriff",
+    404: "Nicht gefunden",
+    409: "Das hat nicht geklappt",
+    422: "Das hat nicht geklappt",
+}
+_FEHLER_STANDARDTEXT = {
+    400: "Bitte prüfe deine Eingabe und versuch es noch einmal.",
+    403: "Für diesen Bereich hast du keine Berechtigung.",
+    404: "Diese Seite oder dieser Eintrag wurde nicht gefunden.",
+    409: "Das hat gerade nicht geklappt. Bitte versuch es noch einmal.",
+    422: "Bitte prüfe deine Eingabe und versuch es noch einmal.",
+}
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Einheitliche, sanft formulierte Fehlerseite im ScandyPro-Layout statt
+    einer rohen {"detail": ...}-JSON-Antwort (siehe tasks/uiux-audit/UI-002.md).
+    401 bleibt beim spezialisierten Redirect-Handler oben."""
+    async with async_session_factory() as session:
+        current_user = await get_current_user_optional(request, session)
+
+    titel = _FEHLER_TITEL.get(exc.status_code, "Da ist etwas schiefgelaufen")
+    nachricht = exc.detail if isinstance(exc.detail, str) and exc.detail else _FEHLER_STANDARDTEXT.get(
+        exc.status_code, "Bitte versuch es gleich noch einmal."
+    )
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {"current_user": current_user, "titel": titel, "nachricht": nachricht},
+        status_code=exc.status_code,
+    )
 
 
 @app.get("/")

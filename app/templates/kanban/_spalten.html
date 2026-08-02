@@ -4,8 +4,9 @@
    Feldern board, spalten, karten_by_spalte, zuweisungen_by_karte,
    unteraufgaben_by_karte, boardmitglieder, darf_sichtbarkeit_aendern, heute
    (siehe app/routers/kanban.py, _board_kontext). #}
+{% from "_icons.html" import menu, close, chevron_left, chevron_right %}
 <div class="board-columns-wrap" data-board-scroll>
-  <button type="button" class="board-scroll-btn board-scroll-btn--left" data-scroll-dir="-1" aria-label="Spalten nach links scrollen">‹</button>
+  <button type="button" class="board-scroll-btn board-scroll-btn--left" data-scroll-dir="-1" aria-label="Spalten nach links scrollen">{{ chevron_left() }}</button>
   <div class="board-columns">
   {% for spalte in k.spalten %}
   {% set karten = k.karten_by_spalte.get(spalte.id, []) %}
@@ -29,7 +30,7 @@
       <span class="spalte-count">{{ karten | length }}</span>
       {% if k.darf_board_verwalten %}
       <details class="spalte-verwalten">
-        <summary title="Spalte verwalten">⋮</summary>
+        <summary title="Spalte verwalten" aria-label="Spalte &quot;{{ spalte.name }}&quot; verwalten">{{ menu() }}</summary>
         <div class="spalte-verwalten-body">
           <form method="post" action="/kanban/spalten/{{ spalte.id }}/umbenennen" class="form-row">
             <div class="field">
@@ -38,8 +39,8 @@
             <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
           </form>
           {% if not spalte.ist_system_erledigt %}
-          <form method="post" action="/kanban/spalten/{{ spalte.id }}/loeschen" onsubmit="return confirm('Spalte inkl. aller Karten löschen?');">
-            <button type="submit" class="btn btn-ghost btn-sm">Spalte löschen</button>
+          <form method="post" action="/kanban/spalten/{{ spalte.id }}/loeschen" data-confirm="Spalte &quot;{{ spalte.name }}&quot; inkl. aller Karten löschen?">
+            <button type="submit" class="btn btn-danger btn-sm">Spalte löschen</button>
           </form>
           {% endif %}
         </div>
@@ -92,6 +93,23 @@
           <p class="karte-gesperrt-hinweis">✓ Abgeschlossen – zum Bearbeiten zurück in eine andere Spalte ziehen.</p>
           {% endif %}
           {% if karte.beschreibung %}<p>{{ karte.beschreibung }}</p>{% endif %}
+
+          {% if k.spalten | length > 1 %}
+          <form method="post" action="/kanban/karten/{{ karte.id }}/verschieben" class="form-row">
+            <div class="field" style="flex:1;">
+              <label for="verschieben-{{ karte.id }}">Karte in andere Spalte verschieben (auch per Tastatur bedienbar, als Alternative zum Ziehen mit der Maus)</label>
+              <select id="verschieben-{{ karte.id }}" name="ziel_spalte_id" required aria-label="Zielspalte für {{ karte.titel }}">
+                <option value="" selected disabled>– Spalte wählen –</option>
+                {% for s in k.spalten %}
+                {% if s.id != spalte.id %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-ghost btn-sm">Verschieben</button>
+          </form>
+          {% endif %}
 
           {% if not ist_gesperrt %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/aktualisieren" class="form-row">
@@ -159,10 +177,10 @@
           {% for u in unteraufgaben %}
           <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}" data-unteraufgabe-id="{{ u.id }}">
             {% if ist_gesperrt %}
-            <span class="unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;">{{ "✓" if u.erledigt else "○" }}</span>
+            <span class="unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;" aria-label="{{ 'Erledigt' if u.erledigt else 'Offen' }}">{{ "✓" if u.erledigt else "○" }}</span>
             {% else %}
             <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/umschalten" class="unteraufgabe-umschalten-form">
-              <button type="submit" class="btn btn-ghost btn-sm unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;">{{ "✓" if u.erledigt else "○" }}</button>
+              <button type="submit" class="btn btn-ghost btn-sm unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;" aria-label="Unteraufgabe &quot;{{ u.titel }}&quot; als {{ 'offen' if u.erledigt else 'erledigt' }} markieren">{{ "✓" if u.erledigt else "○" }}</button>
             </form>
             {% endif %}
             <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
@@ -170,8 +188,8 @@
             <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.boardmitglieder[u.zugewiesen_an].name }}">{{ k.boardmitglieder[u.zugewiesen_an].name | initialen }}</span>
             {% endif %}
             {% if not ist_gesperrt %}
-            <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/loeschen">
-              <button type="submit" class="btn btn-ghost btn-sm">✕</button>
+            <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/loeschen" data-confirm="Unteraufgabe &quot;{{ u.titel }}&quot; löschen?">
+              <button type="submit" class="btn btn-ghost btn-sm" aria-label="Unteraufgabe &quot;{{ u.titel }}&quot; löschen">{{ close() }}</button>
             </form>
             {% endif %}
           </div>
@@ -198,8 +216,8 @@
           {% endif %}
 
           {% if not ist_gesperrt and (k.darf_board_verwalten or karte.ersteller_id == current_user.id) %}
-          <form method="post" action="/kanban/karten/{{ karte.id }}/loeschen" onsubmit="return confirm('Karte endgültig löschen?');" style="margin-top: var(--space-4);">
-            <button type="submit" class="btn btn-ghost btn-sm">Karte löschen</button>
+          <form method="post" action="/kanban/karten/{{ karte.id }}/loeschen" data-confirm="Karte &quot;{{ karte.titel }}&quot; endgültig löschen?" style="margin-top: var(--space-4);">
+            <button type="submit" class="btn btn-danger btn-sm">Karte löschen</button>
           </form>
           {% endif %}
         </div>
@@ -259,5 +277,5 @@
   </div>
   {% endif %}
   </div>
-  <button type="button" class="board-scroll-btn board-scroll-btn--right" data-scroll-dir="1" aria-label="Spalten nach rechts scrollen">›</button>
+  <button type="button" class="board-scroll-btn board-scroll-btn--right" data-scroll-dir="1" aria-label="Spalten nach rechts scrollen">{{ chevron_right() }}</button>
 </div>

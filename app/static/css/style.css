@@ -33,6 +33,46 @@
   --shadow-card: 0 1px 2px rgba(20, 32, 29, 0.06), 0 4px 12px rgba(20, 32, 29, 0.06);
 }
 
+/* Dark-Mode (CLAUDE.md Abschnitt 19 "Frontend": Dark-Mode ist Pflicht).
+   Rein systemgesteuert über prefers-color-scheme, kein manueller Umschalter
+   nötig. Farbwerte wurden gegenüber ihrem jeweiligen Hintergrund auf
+   WCAG-AA-Kontrast (>=4.5:1 Text, >=3:1 UI-Komponenten) hin ausgewählt -
+   vor Produktivsetzung trotzdem mit einem Kontrast-Tool gegenprüfen
+   (siehe tasks/uiux-audit/UI-019.md). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141c1a;
+    --bg-raised: #1c2725;
+    --ink: #eef2f0;
+    --ink-soft: #a3b0a9;
+    --brand: #1f7a72;
+    --brand-ink: #7fd6c9;
+    --accent: #f0b25c;
+    --success: #5aab7e;
+    --success-bg: #1e3327;
+    --danger: #b8503f;
+    --danger-bg: #3a211d;
+    --line: #33413c;
+    --line-strong: #4a5d56;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+
+  .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  .field select,
+  .field textarea,
+  .field input[type="file"] {
+    background: var(--bg-raised);
+    color: var(--ink);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a3b0a9'%3E%3Cpath d='M5.25 7.5L10 12.25L14.75 7.5H5.25Z'/%3E%3C/svg%3E");
+  }
+
+  .karte-badge--faellig { background: #3a2c14; }
+  .tag-kommentar-btn--gesetzt { background: #3a2c14; }
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -97,6 +137,28 @@ select {
   min-height: 40px;
 }
 .btn:active { transform: scale(0.98); }
+.btn:disabled,
+.btn.btn--laedt {
+  opacity: 0.65;
+  cursor: default;
+  transform: none;
+}
+.btn.btn--laedt {
+  position: relative;
+  color: transparent !important;
+}
+.btn.btn--laedt::after {
+  content: "";
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  animation: btn-spin 0.6s linear infinite;
+}
+.btn-ghost.btn--laedt::after { border-color: rgba(20, 32, 29, 0.25); border-top-color: var(--ink); }
+@keyframes btn-spin { to { transform: rotate(360deg); } }
 .btn-primary { background: var(--brand); color: #fff; }
 .btn-primary:hover { background: var(--brand-ink); }
 .btn-ghost { background: transparent; border-color: var(--line-strong); color: var(--ink); }
@@ -193,20 +255,24 @@ button:not(.btn) {
   padding: 0.25rem 0.625rem;
   border-radius: 999px;
   font-family: var(--font-display);
-  font-size: 0.6875rem;
-  letter-spacing: 0.04em;
+  /* War 0.6875rem (11px) - für die Zielgruppe (siehe CLAUDE.md Abschnitt 24
+     "kognitive Entlastung") auf besser lesbare 12px angehoben, letter-
+     spacing reduziert (Versalien + Buchstabenabstand verstärken sich sonst
+     gegenseitig in der Lesbarkeit), siehe tasks/uiux-audit/UI-019.md. */
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   font-weight: 600;
 }
 .chip-success { background: var(--success-bg); color: var(--success); }
 .chip-danger { background: var(--danger-bg); color: var(--danger); }
-.chip-neutral { background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line); }
+.chip-neutral { background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); }
 .chip-brand { background: #e2ede9; color: var(--brand-ink); }
 
 .eyebrow {
   font-family: var(--font-display);
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -318,6 +384,63 @@ button:not(.btn) {
 .user-chip { display: flex; align-items: center; gap: var(--space-3); font-size: 0.8125rem; color: var(--ink-soft); }
 .user-chip a { color: inherit; text-decoration: none; }
 .user-chip a:hover, .user-chip a.active { color: var(--brand); }
+
+/* Mobile-Kollaps der Topnav (siehe app/static/js/nav-toggle.js,
+   tasks/uiux-audit/UI-009.md): oberhalb des Breakpoints bleibt alles wie
+   bisher nebeneinander sichtbar, der Toggle-Button ist unsichtbar. */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.nav-toggle-strich,
+.nav-toggle-strich::before,
+.nav-toggle-strich::after {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 1px;
+}
+.nav-toggle-strich { position: relative; }
+.nav-toggle-strich::before,
+.nav-toggle-strich::after { content: ""; position: absolute; left: 0; }
+.nav-toggle-strich::before { top: -6px; }
+.nav-toggle-strich::after { top: 6px; }
+
+.nav-panel { display: flex; align-items: center; gap: var(--space-4) var(--space-6); flex-wrap: wrap; }
+
+@media (max-width: 720px) {
+  .nav-toggle { display: flex; }
+  .nav-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background: var(--bg-raised);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
+    padding: var(--space-4) var(--space-6);
+  }
+  .nav-panel.nav-panel--offen { display: flex; }
+  .topnav-links { flex-direction: column; align-items: flex-start; gap: 0; width: 100%; }
+  .topnav-links a { width: 100%; padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+  .topnav-links a.active, .topnav-links a:hover { border-bottom-color: var(--line); background: var(--bg); }
+  .nav-dropdown { width: 100%; }
+  .nav-dropdown-body { position: static; box-shadow: none; border: none; padding: 0; margin-top: 0; }
+  .user-chip { width: 100%; justify-content: space-between; padding-top: var(--space-3); }
+}
 
 .main-content { flex: 1; width: 100%; max-width: 1000px; margin: 0 auto; padding: var(--space-6); }
 .main-content--wide { max-width: 1440px; }
@@ -513,8 +636,12 @@ button:not(.btn) {
 }
 
 .kanban-toast {
+  /* Am unteren statt oberen Rand positioniert, damit die Nav-Höhe (auf
+     Mobile durch das Menü-Panel theoretisch variabel, siehe
+     tasks/uiux-audit/UI-015.md) keine Rolle spielt und der Toast nie
+     dahinter verschwinden kann. */
   position: fixed;
-  top: calc(var(--nav-height) + var(--space-4));
+  bottom: var(--space-4);
   right: var(--space-4);
   background: var(--brand-ink);
   color: #fff;
@@ -524,7 +651,7 @@ button:not(.btn) {
   font-weight: 600;
   box-shadow: var(--shadow-card);
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(8px);
   transition: opacity 0.25s ease, transform 0.25s ease;
   z-index: 1000;
   pointer-events: none;
@@ -718,6 +845,16 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 
 .section-divider { border: none; border-top: 1px solid var(--line); margin: var(--space-6) 0; }
 
+/* Wiederkehrendes Muster "aufklappbarer Card-Header" (siehe
+   tasks/uiux-audit/UI-013.md) - vorher an vier Stellen wortgleich als
+   Inline-Style dupliziert. */
+.card-collapsible-summary { cursor: pointer; list-style: none; }
+.card-collapsible-summary h3 { display: inline; }
+
+/* Datei-Zeile (Download-Link + Meta + Löschen), wiederkehrend im
+   Bewerbungsmodul (siehe tasks/uiux-audit/UI-013.md). */
+.datei-zeile { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+
 /* Mein Tag - Emoji-Skala */
 .wochen-nav, .tage-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
 .wochen-nav .wochen-label, .tage-nav .tage-nav-label { font-family: var(--font-display); font-weight: 600; }
@@ -796,7 +933,12 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
   font-size: 0.9375rem;
   background: var(--bg);
   border: 1px solid var(--line);
+  padding: 0;
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
 }
+.heatmap-tag--zukunft { cursor: default; }
 .heatmap-tag--zukunft { visibility: hidden; }
 .heatmap-legende { display: flex; align-items: center; gap: 0.3rem; margin-top: var(--space-3); font-size: 0.75rem; color: var(--ink-soft); }
 .heatmap-legende-farben { display: flex; gap: 2px; }
@@ -835,6 +977,29 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
   padding: var(--space-6);
   width: min(90%, 420px);
 }
+
+/* Gebrandetes Bestätigungs-Modal für destruktive Aktionen (siehe
+   app/static/js/confirm.js, tasks/uiux-audit/UI-005.md) statt native(s)
+   confirm()-Popup(s). */
+.confirm-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 32, 29, 0.45);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.confirm-modal.sichtbar { display: flex; }
+.confirm-modal-box {
+  background: var(--bg-raised);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-6);
+  width: min(90%, 420px);
+}
+.confirm-modal-box p { color: var(--ink); margin-bottom: var(--space-4); }
+.confirm-modal-actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
 
 .auswertung-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); }
 .auswertung-stat { text-align: center; }

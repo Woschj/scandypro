@@ -36,7 +36,8 @@
   <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben" class="form-row" style="margin-top: var(--space-4);">
     <div class="field">
       <label for="gruppe_id">Arbeitsgruppe freigeben</label>
-      <select id="gruppe_id" name="gruppe_id">
+      <select id="gruppe_id" name="gruppe_id" required>
+        <option value="" selected disabled>– Arbeitsgruppe wählen –</option>
         {% for g in freigaben_kontext.verfuegbare_gruppen %}
         <option value="{{ g.id }}">{{ g.name }}</option>
         {% endfor %}
@@ -50,8 +51,8 @@
   {% endif %}
 
   {% if k.darf_board_verwalten %}
-  <form method="post" action="/kanban/boards/{{ k.board.id }}/loeschen" onsubmit="return confirm('Board \'{{ k.board.titel }}\' inkl. aller Spalten und Karten endgültig löschen?');" style="margin-top: var(--space-4);">
-    <button type="submit" class="btn btn-ghost btn-sm">Board löschen</button>
+  <form method="post" action="/kanban/boards/{{ k.board.id }}/loeschen" data-confirm="Board &quot;{{ k.board.titel }}&quot; inkl. aller Spalten und Karten endgültig löschen?" style="margin-top: var(--space-4);">
+    <button type="submit" class="btn btn-danger btn-sm">Board löschen</button>
   </form>
   {% endif %}
 </div>

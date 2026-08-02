@@ -11,6 +11,7 @@
     <div class="field">
       <label for="psm_id">Psychosoziale Mitarbeiter:in</label>
       <select id="psm_id" name="psm_id" required>
+        <option value="" selected disabled>– Psychosoziale Mitarbeiter:in wählen –</option>
         {% for p in alle_psm %}
         <option value="{{ p.id }}">{{ p.name }}</option>
         {% endfor %}
@@ -19,6 +20,7 @@
     <div class="field">
       <label for="teilnehmer_id">Teilnehmer:in</label>
       <select id="teilnehmer_id" name="teilnehmer_id" required>
+        <option value="" selected disabled>– Teilnehmer:in wählen –</option>
         {% for t in alle_teilnehmer %}
         <option value="{{ t.id }}">{{ t.name }}</option>
         {% endfor %}

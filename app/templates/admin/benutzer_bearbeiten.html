@@ -51,7 +51,7 @@
   <form method="post" action="/admin/benutzer/{{ benutzer.id }}/passwort-zuruecksetzen">
     <div class="field">
       <label for="neues_passwort">Neues Passwort (mind. 8 Zeichen)</label>
-      <input type="text" id="neues_passwort" name="neues_passwort" minlength="8" required>
+      <input type="password" id="neues_passwort" name="neues_passwort" minlength="8" required autocomplete="new-password">
     </div>
     <button type="submit" class="btn btn-ghost">Passwort zurücksetzen</button>
   </form>

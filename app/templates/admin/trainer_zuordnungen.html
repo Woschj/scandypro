@@ -12,6 +12,7 @@
     <div class="field">
       <label for="berufstrainer_id">Berufstrainer:in</label>
       <select id="berufstrainer_id" name="berufstrainer_id" required>
+        <option value="" selected disabled>– Berufstrainer:in wählen –</option>
         {% for t in alle_trainer %}
         <option value="{{ t.id }}">{{ t.name }}</option>
         {% endfor %}
@@ -20,6 +21,7 @@
     <div class="field">
       <label for="teilnehmer_id">Teilnehmer:in</label>
       <select id="teilnehmer_id" name="teilnehmer_id" required>
+        <option value="" selected disabled>– Teilnehmer:in wählen –</option>
         {% for t in alle_teilnehmer %}
         <option value="{{ t.id }}">{{ t.name }}</option>
         {% endfor %}

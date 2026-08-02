@@ -62,8 +62,12 @@
 <div class="card">
   <h3>Wer hat auf deine Daten zugegriffen</h3>
   {% if audit_eintraege %}
-  <table>
-    <thead><tr><th>Zeitpunkt</th><th>Wer</th><th>Was</th></tr></thead>
+  <div class="field" style="max-width: 280px;">
+    <label for="audit-suche">Suchen</label>
+    <input type="search" id="audit-suche" data-table-filter="audit-tabelle" placeholder="Name, Datum oder Art …">
+  </div>
+  <table id="audit-tabelle">
+    <thead><tr><th data-sort>Zeitpunkt</th><th data-sort>Wer</th><th data-sort>Was</th></tr></thead>
     <tbody>
     {% for e in audit_eintraege %}
     <tr>
@@ -80,25 +84,25 @@
 </div>
 
 <details class="card">
-  <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Alle Daten in einem Bereich löschen</h3></summary>
+  <summary class="card-collapsible-summary"><h3>Alle Daten in einem Bereich löschen</h3></summary>
   <div style="margin-top: var(--space-4);">
     <p class="karte-meta">Das entfernt deine Einträge unwiderruflich (inkl. Dateien und Freigaben) - dein
       Zugang zu ScandyPro bleibt bestehen. Zur Bestätigung bitte "LÖSCHEN" eintippen.</p>
 
-    <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" onsubmit="return confirm('Wirklich alle Einträge zu &quot;Mein Tag&quot; unwiderruflich löschen?');" class="form-row" style="margin-bottom: var(--space-4);">
+    <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" class="form-row" style="margin-bottom: var(--space-4);">
       <div class="field">
         <label for="bestaetigung-wb">Alle Einträge zu "Mein Tag" löschen</label>
         <input type="text" id="bestaetigung-wb" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
       </div>
-      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+      <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
     </form>
 
-    <form method="post" action="/freigaben/konto/bewerbungen-loeschen" onsubmit="return confirm('Wirklich alle Bewerbungsdaten unwiderruflich löschen?');" class="form-row">
+    <form method="post" action="/freigaben/konto/bewerbungen-loeschen" class="form-row">
       <div class="field">
         <label for="bestaetigung-bw">Alle Bewerbungsdaten löschen</label>
         <input type="text" id="bestaetigung-bw" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
       </div>
-      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+      <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
     </form>
   </div>
 </details>

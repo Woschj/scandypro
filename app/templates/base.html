@@ -5,42 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ScandyPro{% endblock %}</title>
   <link rel="stylesheet" href="{{ static_version('css/style.css') }}">
+  {% if current_user %}
+  <script src="{{ static_version('js/nav-toggle.js') }}" defer></script>
+  {% endif %}
 </head>
 <body>
   <div class="app-shell">
     {% if current_user %}
     <header class="topnav">
       <a class="wordmark" href="/">SCANDY<span class="dot">//</span>PRO</a>
-      <nav class="topnav-links">
-        <a href="/kanban" class="{% if request.url.path.startswith('/kanban') %}active{% endif %}">Projekte</a>
-        {% if current_user.role.value == "berufstrainer" %}
-        <a href="/kanban/gruppen" class="{% if request.url.path.startswith('/kanban/gruppen') %}active{% endif %}">Handlungsfeld-Team</a>
-        {% endif %}
-        {% if current_user.role.value in ["teilnehmer", "berufstrainer"] %}
-        <a href="/wochenberichte" class="{% if request.url.path.startswith('/wochenberichte') %}active{% endif %}">Wochenberichte</a>
-        {% endif %}
-        {% if current_user.role.value == "teilnehmer" %}
-        <a href="/wohlbefinden" class="{% if request.url.path.startswith('/wohlbefinden') %}active{% endif %}">Mein Tag</a>
-        <a href="/bewerbungen" class="{% if request.url.path.startswith('/bewerbungen') %}active{% endif %}">Bewerbungen</a>
-        <a href="/freigaben" class="{% if request.url.path.startswith('/freigaben') %}active{% endif %}">Meine Freigaben</a>
-        {% endif %}
-        {% if current_user.role.value == "einrichtungs_admin" %}
-        <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Abteilungen</a>
-        <details class="nav-dropdown">
-          <summary class="{% if request.url.path.startswith('/admin/psm-zuordnungen') or request.url.path.startswith('/admin/trainer-zuordnungen') or request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Verwaltung</summary>
-          <div class="nav-dropdown-body">
-            <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeiter:innen</a>
-            <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
-            <a href="/admin/benutzer" class="{% if request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Benutzerverwaltung</a>
-          </div>
-        </details>
-        {% endif %}
-      </nav>
-      <div class="user-chip">
-        <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
-        <form method="post" action="/logout" style="margin:0;">
-          <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
-        </form>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-panel" aria-label="Menü öffnen">
+        <span class="nav-toggle-strich"></span>
+      </button>
+      <div class="nav-panel" id="nav-panel">
+        <nav class="topnav-links">
+          <a href="/kanban" class="{% if request.url.path.startswith('/kanban') %}active{% endif %}">Projekte</a>
+          {% if current_user.role.value == "berufstrainer" %}
+          <a href="/kanban/gruppen" class="{% if request.url.path.startswith('/kanban/gruppen') %}active{% endif %}">Handlungsfeld-Team</a>
+          {% endif %}
+          {% if current_user.role.value in ["teilnehmer", "berufstrainer"] %}
+          <a href="/wochenberichte" class="{% if request.url.path.startswith('/wochenberichte') %}active{% endif %}">Wochenberichte</a>
+          {% endif %}
+          {% if current_user.role.value == "teilnehmer" %}
+          <a href="/wohlbefinden" class="{% if request.url.path.startswith('/wohlbefinden') %}active{% endif %}">Mein Tag</a>
+          <a href="/bewerbungen" class="{% if request.url.path.startswith('/bewerbungen') %}active{% endif %}">Bewerbungen</a>
+          <a href="/freigaben" class="{% if request.url.path.startswith('/freigaben') %}active{% endif %}">Meine Freigaben</a>
+          {% endif %}
+          {% if current_user.role.value == "einrichtungs_admin" %}
+          <details class="nav-dropdown">
+            <summary class="{% if request.url.path.startswith('/admin/psm-zuordnungen') or request.url.path.startswith('/admin/trainer-zuordnungen') or request.url.path.startswith('/admin/benutzer') or request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Verwaltung</summary>
+            <div class="nav-dropdown-body">
+              <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">Abteilungen &amp; Handlungsfelder</a>
+              <a href="/admin/psm-zuordnungen" class="{% if request.url.path.startswith('/admin/psm-zuordnungen') %}active{% endif %}">Zuordnungen Psychosoziale Mitarbeiter:innen</a>
+              <a href="/admin/trainer-zuordnungen" class="{% if request.url.path.startswith('/admin/trainer-zuordnungen') %}active{% endif %}">Berufstrainer:innen-Zuordnungen</a>
+              <a href="/admin/benutzer" class="{% if request.url.path.startswith('/admin/benutzer') %}active{% endif %}">Benutzerverwaltung</a>
+            </div>
+          </details>
+          {% endif %}
+        </nav>
+        <div class="user-chip">
+          <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
+          <form method="post" action="/logout" style="margin:0;">
+            <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
+          </form>
+        </div>
       </div>
     </header>
     {% endif %}
@@ -48,5 +56,23 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+
+  {% if current_user %}
+  <div id="confirm-modal" class="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-text">
+    <div class="confirm-modal-box">
+      <p id="confirm-modal-text"></p>
+      <div class="confirm-modal-actions">
+        <button type="button" class="btn btn-ghost btn-sm" data-confirm-abbrechen>Abbrechen</button>
+        <button type="button" class="btn btn-danger btn-sm" data-confirm-bestaetigen>Löschen</button>
+      </div>
+    </div>
+  </div>
+  <script src="{{ static_version('js/confirm.js') }}"></script>
+  <script src="{{ static_version('js/upload-check.js') }}"></script>
+  <script src="{{ static_version('js/form-loading.js') }}"></script>
+  <script src="{{ static_version('js/heatmap.js') }}"></script>
+  <script src="{{ static_version('js/table-tools.js') }}"></script>
+  <script src="{{ static_version('js/leave-warning.js') }}"></script>
+  {% endif %}
 </body>
 </html>

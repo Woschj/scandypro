@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import chevron_up, chevron_down %}
 {% block title %}Bewerbungen – ScandyPro{% endblock %}
 {% block content %}
 <h1>Bewerbungen</h1>
@@ -50,10 +51,10 @@
     <tr>
       <td style="white-space: nowrap;">
         <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-oben" style="display:inline;">
-          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.first %}disabled{% endif %} title="Nach oben">▲</button>
+          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.first %}disabled{% endif %} title="Nach oben" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach oben">{{ chevron_up() }}</button>
         </form>
         <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/nach-unten" style="display:inline;">
-          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.last %}disabled{% endif %} title="Nach unten">▼</button>
+          <button type="submit" class="btn btn-ghost btn-sm" {% if loop.last %}disabled{% endif %} title="Nach unten" aria-label="&quot;{{ u.original_dateiname }}&quot; in der Reihenfolge nach unten">{{ chevron_down() }}</button>
         </form>
       </td>
       <td>{{ u.kategorie.value|capitalize }}</td>
@@ -64,8 +65,8 @@
         {% endif %}
       </td>
       <td>
-        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" onsubmit="return confirm('Datei löschen?');">
-          <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+        <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Datei &quot;{{ u.original_dateiname }}&quot; löschen?">
+          <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
         </form>
       </td>
     </tr>
@@ -83,7 +84,7 @@
     </div>
     <div class="field">
       <label for="datei">Datei (PDF, Word oder Bild, max. 10 MB)</label>
-      <input type="file" id="datei" name="datei" required>
+      <input type="file" id="datei" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
     </div>
     <button type="submit" class="btn btn-primary">Hochladen</button>
   </form>
@@ -91,7 +92,7 @@
 
 <div class="card">
   <h3>Neue Bewerbung</h3>
-  <form method="post" action="/bewerbungen" enctype="multipart/form-data">
+  <form method="post" action="/bewerbungen" enctype="multipart/form-data" data-warn-on-leave>
     <div class="form-row">
       <div class="field">
         <label for="firma">Firma</label>
@@ -118,11 +119,11 @@
     </div>
     <div class="field">
       <label for="deckblatt">Deckblatt (optional, PDF/Bild empfohlen – erscheint im PDF vor dem Anschreiben)</label>
-      <input type="file" id="deckblatt" name="deckblatt">
+      <input type="file" id="deckblatt" name="deckblatt" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png">
     </div>
     <div class="field">
       <label for="anschreiben">Anschreiben (optional, PDF/Bild empfohlen)</label>
-      <input type="file" id="anschreiben" name="anschreiben">
+      <input type="file" id="anschreiben" name="anschreiben" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png">
     </div>
     <button type="submit" class="btn btn-primary">Anlegen</button>
   </form>
@@ -149,11 +150,11 @@
 
   <div class="eyebrow" style="margin-top: var(--space-3); margin-bottom: var(--space-2);">Deckblatt (optional, vor dem Anschreiben)</div>
   {% for u in deckblatt_by_bewerbung.get(b.id, []) %}
-  <div style="display:flex; align-items:center; gap: var(--space-2); margin-bottom: var(--space-2);">
+  <div class="datei-zeile">
     <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
     {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
-    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" onsubmit="return confirm('Deckblatt löschen?');">
-      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Deckblatt löschen?">
+      <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
     </form>
   </div>
   {% else %}
@@ -161,18 +162,18 @@
   {% endfor %}
   <form method="post" action="/bewerbungen/{{ b.id }}/deckblatt" enctype="multipart/form-data" class="form-row">
     <div class="field">
-      <input type="file" name="datei" required>
+      <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
     </div>
     <button type="submit" class="btn btn-ghost btn-sm">Deckblatt hochladen</button>
   </form>
 
   <div class="eyebrow" style="margin-top: var(--space-4); margin-bottom: var(--space-2);">Anschreiben</div>
   {% for u in anschreiben_by_bewerbung.get(b.id, []) %}
-  <div style="display:flex; align-items:center; gap: var(--space-2); margin-bottom: var(--space-2);">
+  <div class="datei-zeile">
     <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
     {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
-    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" onsubmit="return confirm('Anschreiben löschen?');">
-      <button type="submit" class="btn btn-ghost btn-sm">Löschen</button>
+    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Anschreiben löschen?">
+      <button type="submit" class="btn btn-danger btn-sm">Löschen</button>
     </form>
   </div>
   {% else %}
@@ -180,7 +181,7 @@
   {% endfor %}
   <form method="post" action="/bewerbungen/{{ b.id }}/anschreiben" enctype="multipart/form-data" class="form-row">
     <div class="field">
-      <input type="file" name="datei" required>
+      <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
     </div>
     <button type="submit" class="btn btn-ghost btn-sm">Anschreiben hochladen</button>
   </form>
@@ -190,7 +191,7 @@
     <span class="karte-meta">Deckblatt + Anschreiben + Lebenslauf/Zeugnisse (in deiner Sortierung) in einem PDF. Nur PDF-/Bilddateien werden eingebunden, Word-Dokumente bitte separat anhängen.</span>
   </div>
 
-  <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" onsubmit="return confirm('Bewerbung endgültig löschen?');" style="margin-top: var(--space-3);">
+  <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" data-confirm="Bewerbung &quot;{{ b.firma }} — {{ b.position }}&quot; endgültig löschen?" style="margin-top: var(--space-3);">
     <button type="submit" class="btn btn-danger btn-sm">Bewerbung löschen</button>
   </form>
 </div>
@@ -200,7 +201,7 @@
 {% endif %}
 
 <details class="card">
-  <summary style="cursor: pointer; list-style: none;"><h3 style="display:inline;">Für wen freigeben</h3></summary>
+  <summary class="card-collapsible-summary"><h3>Für wen freigeben</h3></summary>
   <div style="margin-top: var(--space-4);">
     {% if trainer_kontakt %}
     <p class="karte-meta">Die zuständige Berufstrainer:in (<strong>{{ trainer_kontakt.name }}</strong>) sieht deine

@@ -18,7 +18,7 @@
     </div>
     <div class="field">
       <label for="passwort">Passwort (mind. 8 Zeichen)</label>
-      <input type="text" id="passwort" name="passwort" minlength="8" required>
+      <input type="password" id="passwort" name="passwort" minlength="8" required autocomplete="new-password">
     </div>
     <div class="field">
       <label for="rolle">Rolle</label>
@@ -43,8 +43,12 @@
 </div>
 
 <h2>Bestehende Accounts</h2>
-<table>
-  <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Abteilung</th><th></th></tr></thead>
+<div class="field" style="max-width: 320px;">
+  <label for="benutzer-suche">Suchen</label>
+  <input type="search" id="benutzer-suche" data-table-filter="benutzer-tabelle" placeholder="Name, E-Mail oder Rolle …">
+</div>
+<table id="benutzer-tabelle">
+  <thead><tr><th data-sort>Name</th><th data-sort>E-Mail</th><th data-sort>Rolle</th><th data-sort>Abteilung</th><th></th></tr></thead>
   <tbody>
   {% for b in benutzer %}
   <tr>
