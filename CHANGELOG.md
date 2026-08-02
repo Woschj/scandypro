@@ -8,6 +8,23 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.1] - 2026-08-02
+
+### Added
+- CSRF-Schutz für alle mutierenden Formulare/Requests.
+
+### Fixed
+- Hauptnav war auf breiten Screens dauerhaft unsichtbar (fehlende
+  Gegenregel zu Alpines `x-show`, siehe Commit `e69b2bc`).
+- Grellweiße native Formularelemente im Dark-Mode (fehlende
+  `color-scheme`-Deklaration).
+- **Wichtig für Cache-Busting**: versionierte Assets (`?v={{ asset_version }}`)
+  werden ein Jahr lang unveränderlich gecacht (`app/core/static_cache.py`) -
+  jede CSS/JS-Änderung MUSS ab sofort mit einem Bump von `__version__`
+  (`app/version.py`) einhergehen, sonst bekommen wiederkehrende Browser
+  die alte, gecachte Datei weiter ausgeliefert (genau das ist bei den
+  beiden obigen Fixes zunächst passiert).
+
 ## [0.1.0] - 2026-08-02
 
 ### Added
