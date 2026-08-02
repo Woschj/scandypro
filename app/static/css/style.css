@@ -36,6 +36,7 @@
 
   --radius: 6px;
   --nav-height: 60px;
+  --tab-bar-height: 64px;
   --shadow-card: 0 1px 2px rgba(20, 32, 29, 0.06), 0 4px 12px rgba(20, 32, 29, 0.06);
 }
 
@@ -544,6 +545,107 @@ button:not(.btn) {
 
 .main-content { flex: 1; width: 100%; max-width: 1000px; margin: 0 auto; padding: var(--space-6); }
 .main-content--wide { max-width: 1440px; }
+
+/* Kachel-Schnellzugriff auf dem Dashboard - 1:1 aus dem Schwestermodul
+   Scandy-Lite übernommen (dort: quick-tiles auf dashboard.html). Redundant
+   zur Topnav, aber bewusst in Kauf genommen: wirkt einladender als reine
+   Textlinks und spart auf Mobile den Umweg über das Hamburger-Menü. */
+.quick-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.quick-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 96px;
+  padding: var(--space-4) var(--space-2);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.01em;
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.quick-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(20, 32, 29, 0.1); }
+.quick-tile svg { width: 28px; height: 28px; flex-shrink: 0; }
+.quick-tile-accent { background: var(--brand); border-color: var(--brand); color: #fff; }
+.quick-tile-accent:hover { background: var(--brand-ink); }
+
+/* Rückblick-Kacheln (Schritte/Stimmung/Bewerbungen) - dieselbe ruhige,
+   nie wertende Optik wie das bestehende .fortschritt-signal, nur als
+   Reihe statt Fließtext. */
+.rueckblick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); }
+.rueckblick-stat {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  text-align: center;
+}
+.rueckblick-stat .rueckblick-emoji { font-size: 2rem; line-height: 1; }
+.rueckblick-stat .rueckblick-zahl { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--ink); }
+.rueckblick-stat .rueckblick-label { font-size: 0.75rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-top: var(--space-2); }
+.rueckblick-stat .auswertung-trend { font-size: 1rem; margin-top: 0.25rem; }
+
+/* Bottom-Tab-Bar für echtes Mobile (siehe app/templates/partials/tabbar.html)
+   - 1:1 aus dem Schwestermodul Scandy-Lite übernommen. Deckt nur die
+   häufigsten Tagesziele ab (siehe tabbar.html); seltenere Ziele (Meine
+   Freigaben, Konto, Admin-Verwaltung) bleiben ausschließlich über das
+   Hamburger-Menü (.topnav-links, siehe oben) erreichbar - der Hamburger
+   bleibt deshalb auch bei aktiver Tab-Bar sichtbar. */
+.tab-bar { display: none; }
+
+@media (max-width: 720px) {
+  :root { --tab-bar-height: 72px; }
+
+  .tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--tab-bar-height);
+    background: var(--bg-raised);
+    border-top: 1px solid var(--line);
+    z-index: 20;
+    padding-bottom: max(env(safe-area-inset-bottom), 8px);
+  }
+
+  .tab-bar a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding-top: var(--space-2);
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    min-height: 44px;
+    transition: background-color 0.1s ease;
+  }
+  .tab-bar a:active { background: var(--bg); }
+  .tab-bar a.active { color: var(--brand); }
+  .tab-bar svg { width: 26px; height: 26px; }
+
+  .main-content { padding-bottom: calc(var(--tab-bar-height) + var(--space-6)); }
+}
 
 /* Kanban */
 .board-columns-wrap { position: relative; }

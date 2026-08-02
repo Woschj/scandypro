@@ -12,11 +12,11 @@ from app.core.access import hat_wohlbefinden_freigabe
 from app.core.config import settings
 from app.core.database import async_session_factory, init_db
 from app.core.deps import SessionDep, get_current_user_optional
-from app.core.fortschritt import woechentliche_schritte
+from app.core.fortschritt import woechentliche_schritte, woechentliche_stimmung
 from app.core.seed import seed_admin, seed_demo_data
 from app.core.static_cache import CachedStaticFiles
 from app.core.templating import templates
-from app.models.bewerbung import BewerbungsFreigabe
+from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, BewerbungStatus
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
 from app.models.user import RoleEnum, User
 from app.routers import admin, auth, bewerbungen, freigaben, kanban, kanban_karten, wochenberichte, wohlbefinden
@@ -113,6 +113,8 @@ async def dashboard(request: Request, session: SessionDep):
     freigegebene_wohlbefinden_ids: set[int] = set()
     freigegebene_bewerbungen_ids: set[int] = set()
     schritte_diese_woche: int | None = None
+    stimmung_woche: dict | None = None
+    bewerbungen_uebersicht: dict | None = None
 
     if current_user.role == RoleEnum.teilnehmer:
         result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id))
@@ -128,6 +130,27 @@ async def dashboard(request: Request, session: SessionDep):
             trainer_kontakt = await session.get(User, trainer_zuordnung.berufstrainer_id)
 
         schritte_diese_woche = await woechentliche_schritte(session, current_user.id)
+        stimmung_woche = await woechentliche_stimmung(session, current_user.id)
+
+        # Sanfter Bewerbungs-Überblick fürs Dashboard (siehe CLAUDE.md Abschnitt
+        # 25 "positive Verstärkung") - bewusst nur Zählwerte, keine Rücklauf-
+        # quote/Bewertung; "aktiv" schließt Entwürfe aus, die noch keine
+        # eigene Handlung der Person waren.
+        aktive_result = await session.execute(
+            select(Bewerbung.id).where(
+                Bewerbung.teilnehmer_id == current_user.id, Bewerbung.status != BewerbungStatus.entwurf
+            )
+        )
+        anzahl_aktiv = len(list(aktive_result.scalars().all()))
+        wartend_result = await session.execute(
+            select(Bewerbung.id).where(
+                Bewerbung.teilnehmer_id == current_user.id,
+                Bewerbung.status.in_([BewerbungStatus.versendet, BewerbungStatus.rueckmeldung_offen]),
+            )
+        )
+        anzahl_wartend = len(list(wartend_result.scalars().all()))
+        if anzahl_aktiv > 0:
+            bewerbungen_uebersicht = {"aktiv": anzahl_aktiv, "wartend": anzahl_wartend}
     elif current_user.role == RoleEnum.psychosoziale_mitarbeit:
         result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.psm_id == current_user.id))
         teilnehmer_ids = [z.teilnehmer_id for z in result.scalars().all()]
@@ -169,5 +192,7 @@ async def dashboard(request: Request, session: SessionDep):
             "freigegebene_wohlbefinden_ids": freigegebene_wohlbefinden_ids,
             "freigegebene_bewerbungen_ids": freigegebene_bewerbungen_ids,
             "schritte_diese_woche": schritte_diese_woche,
+            "stimmung_woche": stimmung_woche,
+            "bewerbungen_uebersicht": bewerbungen_uebersicht,
         },
     )

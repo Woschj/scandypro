@@ -44,3 +44,23 @@ def energie_emoji(wert: float | int | None) -> str:
 def heatmap_farbe(wert: float | int | None) -> str | None:
     idx = _index(wert)
     return HEATMAP_FARBEN[idx] if idx is not None else None
+
+
+def trend(aktuell: float | None, vorwoche: float | None) -> dict | None:
+    """Trend als eingefärbter Pfeil statt Zahlenvergleich - mit
+    Zwischenschritten je nach Stärke der Veränderung (siehe
+    app/templates/wohlbefinden/uebersicht.html, app/templates/dashboard.html).
+    Gemeinsam genutzt, damit "Mein Tag" und das Dashboard-Rückblick-Signal
+    dieselbe Sprache sprechen."""
+    if aktuell is None or vorwoche is None:
+        return None
+    delta = aktuell - vorwoche
+    if delta > 1.5:
+        return {"symbol": "↑↑", "css": "trend-auf", "text": "deutlich im Aufwind"}
+    if delta > 0.3:
+        return {"symbol": "↑", "css": "trend-auf", "text": "etwas im Aufwind"}
+    if delta < -1.5:
+        return {"symbol": "↓↓", "css": "trend-ab", "text": "deutlich schwerer als zuletzt"}
+    if delta < -0.3:
+        return {"symbol": "↓", "css": "trend-ab", "text": "etwas schwerer als zuletzt"}
+    return {"symbol": "→", "css": "trend-gleich", "text": "ähnlich wie zuletzt"}

@@ -11,15 +11,68 @@
 <p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong></p>
 {% endif %}
 
-{% if schritte_diese_woche is not none %}
-<div class="fortschritt-signal">
-  {% if schritte_diese_woche > 0 %}
-  <p>In den letzten 7 Tagen hast du <strong>{{ schritte_diese_woche }}</strong> {{ "Schritt" if schritte_diese_woche == 1 else "Schritte" }} geschafft. Schön, dass du dran bleibst.</p>
-  {% else %}
-  <p>Was möchtest du diese Woche angehen? Jeder kleine Schritt zählt – nur für dich sichtbar.</p>
+{% if current_user.role.value == "teilnehmer" %}
+
+{% if schritte_diese_woche is not none or stimmung_woche is not none or bewerbungen_uebersicht is not none %}
+<h2 style="margin-top: 0;">Deine Woche im Rückblick</h2>
+<div class="rueckblick-grid" style="margin-bottom: var(--space-6);">
+  {% if schritte_diese_woche is not none %}
+  <div class="rueckblick-stat">
+    {% if schritte_diese_woche > 0 %}
+    <div class="rueckblick-zahl">{{ schritte_diese_woche }}</div>
+    <div class="rueckblick-label">{{ "Schritt geschafft" if schritte_diese_woche == 1 else "Schritte geschafft" }}</div>
+    {% else %}
+    <div class="rueckblick-emoji">🌱</div>
+    <div class="rueckblick-label">Was möchtest du angehen?</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if stimmung_woche %}
+  <div class="rueckblick-stat">
+    <div class="rueckblick-emoji">{{ stimmung_woche.emoji }}</div>
+    <div class="rueckblick-label">Stimmung diese Woche</div>
+    {% if stimmung_woche.trend %}
+    <div class="auswertung-trend {{ stimmung_woche.trend.css }}" title="{{ stimmung_woche.trend.text }}">{{ stimmung_woche.trend.symbol }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if bewerbungen_uebersicht %}
+  <div class="rueckblick-stat">
+    <div class="rueckblick-zahl">{{ bewerbungen_uebersicht.aktiv }}</div>
+    <div class="rueckblick-label">Laufende Bewerbung{{ "en" if bewerbungen_uebersicht.aktiv != 1 }}</div>
+    {% if bewerbungen_uebersicht.wartend > 0 %}
+    <div class="karte-meta" style="margin-top: var(--space-2);">Davon {{ bewerbungen_uebersicht.wartend }} auf Rückmeldung wartend</div>
+    {% endif %}
+  </div>
   {% endif %}
 </div>
 {% endif %}
+
+<h2 style="margin-top: 0;">Schnellzugriff</h2>
+<div class="quick-tiles">
+  <a class="quick-tile quick-tile-accent" href="/kanban">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>
+    Projekte
+  </a>
+  <a class="quick-tile" href="/wochenberichte">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
+    Wochenberichte
+  </a>
+  <a class="quick-tile" href="/wohlbefinden">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
+    Mein Tag
+  </a>
+  <a class="quick-tile" href="/bewerbungen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    Bewerbungen
+  </a>
+  <a class="quick-tile" href="/freigaben">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+    Meine Freigaben
+  </a>
+</div>
+
+{% else %}
 
 <div class="card-grid">
   <div class="card">
@@ -28,24 +81,7 @@
     <a class="btn btn-primary" href="/kanban">Öffnen</a>
   </div>
 
-  {% if current_user.role.value == "teilnehmer" %}
-  <div class="card">
-    <h3>Wochenberichte</h3>
-    <p>Tätigkeiten dokumentieren und bei der zuständigen Berufstrainer:in abgeben.</p>
-    <a class="btn btn-primary" href="/wochenberichte">Öffnen</a>
-  </div>
-  <div class="card">
-    <h3>Mein Tag</h3>
-    <p>Nur für dich sichtbar, außer du gibst gezielt frei.</p>
-    <a class="btn btn-primary" href="/wohlbefinden">Öffnen</a>
-  </div>
-  <div class="card">
-    <h3>Bewerbungen</h3>
-    <p>Deine Bewerbungsbemühungen im Überblick.</p>
-    <a class="btn btn-primary" href="/bewerbungen">Öffnen</a>
-  </div>
-
-  {% elif current_user.role.value == "berufstrainer" %}
+  {% if current_user.role.value == "berufstrainer" %}
   <div class="card">
     <h3>Handlungsfeld-Team</h3>
     <p>Mitglieder verwalten, Arbeitsgruppen bilden und Boards für sie freigeben.</p>
@@ -120,4 +156,5 @@
   </div>
   {% endif %}
 </div>
+{% endif %}
 {% endblock %}

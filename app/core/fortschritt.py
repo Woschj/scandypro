@@ -6,12 +6,15 @@ dargestellt. Bewusst kein allgemeines Aktivitäts-Log, nur die zwei
 schmalen Zeitstempel-Felder Karte.abgeschlossen_am / Unteraufgabe.erledigt_am.
 """
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlmodel import func, or_, select
 
 from app.core.deps import SessionDep
+from app.core.skala import stimmung_emoji
+from app.core.skala import trend as _trend
 from app.models.kanban import Karte, KartenZuweisung, Unteraufgabe
+from app.models.wohlbefinden import WohlbefindenEintrag
 
 
 async def woechentliche_schritte(session: SessionDep, teilnehmer_id: int) -> int:
@@ -43,3 +46,47 @@ async def woechentliche_schritte(session: SessionDep, teilnehmer_id: int) -> int
     unteraufgaben_anzahl = unteraufgaben_result.scalar_one()
 
     return karten_anzahl + unteraufgaben_anzahl
+
+
+def _wochenstart(bezugsdatum: date) -> date:
+    return bezugsdatum - timedelta(days=bezugsdatum.weekday())
+
+
+async def woechentliche_stimmung(session: SessionDep, teilnehmer_id: int) -> dict | None:
+    """Kompakte Stimmungs-Zusammenfassung fürs Dashboard (Emoji + Trend-Pfeil
+    gegenüber der Vorwoche) - bewusst nur Stimmung, nicht die volle
+    Auswertung aus app/routers/wohlbefinden.py (Energie, Heatmap): das
+    Dashboard soll auf einen Blick lesbar bleiben, Details bleiben "Mein Tag"
+    vorbehalten. `None`, wenn diese Woche noch kein Eintrag existiert - dann
+    zeigt das Dashboard bewusst gar nichts statt einer leeren/wertenden
+    Anzeige (siehe CLAUDE.md "keine roten Warnsymbole")."""
+    heute = date.today()
+    start = _wochenstart(heute)
+    tage_diese_woche = [start + timedelta(days=i) for i in range(7)]
+    tage_vorwoche = [start - timedelta(days=7 - i) for i in range(7)]
+
+    diese_woche_result = await session.execute(
+        select(WohlbefindenEintrag.stimmung).where(
+            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id,
+            WohlbefindenEintrag.datum.in_(tage_diese_woche),
+        )
+    )
+    werte_diese_woche = list(diese_woche_result.scalars().all())
+    if not werte_diese_woche:
+        return None
+
+    vorwoche_result = await session.execute(
+        select(WohlbefindenEintrag.stimmung).where(
+            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id,
+            WohlbefindenEintrag.datum.in_(tage_vorwoche),
+        )
+    )
+    werte_vorwoche = list(vorwoche_result.scalars().all())
+
+    avg_diese_woche = sum(werte_diese_woche) / len(werte_diese_woche)
+    avg_vorwoche = sum(werte_vorwoche) / len(werte_vorwoche) if werte_vorwoche else None
+
+    return {
+        "emoji": stimmung_emoji(avg_diese_woche),
+        "trend": _trend(avg_diese_woche, avg_vorwoche),
+    }

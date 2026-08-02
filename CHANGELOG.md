@@ -8,6 +8,19 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.2] - 2026-08-02
+
+### Added
+- Bottom-Tab-Bar für echtes Mobile (`partials/tabbar.html`, analog Scandy-
+  Lite): 4 Kernziele für Teilnehmer:innen (Projekte, Wochenberichte, Mein
+  Tag, Bewerbungen), 3 für Berufstrainer:innen; seltenere Ziele bleiben im
+  Hamburger-Menü.
+- Dashboard für Teilnehmer:innen ausgebaut: Kachel-Schnellzugriff
+  (`.quick-tiles`, analog Scandy-Lite) statt reiner Karten, plus
+  "Deine Woche im Rückblick" mit Stimmungs-Trend und Bewerbungs-Überblick
+  neben dem bestehenden Schritte-Signal - durchgehend sanfte Sprache ohne
+  Bewertung (CLAUDE.md Abschnitt 24/25).
+
 ## [0.1.1] - 2026-08-02
 
 ### Added

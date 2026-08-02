@@ -87,6 +87,9 @@
     <main class="main-content {% block content_class %}{% endblock %}">
       {% block content %}{% endblock %}
     </main>
+    {% if current_user %}
+    {% include "partials/tabbar.html" %}
+    {% endif %}
   </div>
 
   {% if current_user %}

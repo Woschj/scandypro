@@ -10,6 +10,7 @@ from app.core.access import hat_wohlbefinden_freigabe, require_owner
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.skala import heatmap_farbe, stimmung_emoji
+from app.core.skala import trend as _trend
 from app.core.templating import templates
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.organisation import PsmZuordnung
@@ -29,24 +30,6 @@ def _wochenstart(bezugsdatum: date) -> date:
 def _mittelwert(eintraege: list[WohlbefindenEintrag], feld: str) -> float | None:
     werte = [getattr(e, feld) for e in eintraege]
     return round(sum(werte) / len(werte), 1) if werte else None
-
-
-def _trend(aktuell: float | None, vorwoche: float | None) -> dict | None:
-    """Trend als eingefärbter Pfeil statt Zahlenvergleich - mit
-    Zwischenschritten je nach Stärke der Veränderung (siehe
-    app/templates/wohlbefinden/uebersicht.html)."""
-    if aktuell is None or vorwoche is None:
-        return None
-    delta = aktuell - vorwoche
-    if delta > 1.5:
-        return {"symbol": "↑↑", "css": "trend-auf", "text": "deutlich im Aufwind"}
-    if delta > 0.3:
-        return {"symbol": "↑", "css": "trend-auf", "text": "etwas im Aufwind"}
-    if delta < -1.5:
-        return {"symbol": "↓↓", "css": "trend-ab", "text": "deutlich schwerer als zuletzt"}
-    if delta < -0.3:
-        return {"symbol": "↓", "css": "trend-ab", "text": "etwas schwerer als zuletzt"}
-    return {"symbol": "→", "css": "trend-gleich", "text": "ähnlich wie zuletzt"}
 
 
 def _heatmap_wochen(eintraege: list[WohlbefindenEintrag], erster_montag: date, heute: date) -> list[list[dict]]:
