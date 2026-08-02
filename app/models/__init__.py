@@ -30,7 +30,7 @@ from app.models.organisation import (
 )
 from app.models.user import RoleEnum, User
 from app.models.wochenbericht import Wochenbericht, WochenberichtStatus
-from app.models.wohlbefinden import WohlbefindenEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
+from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
 
 __all__ = [
     "AuditLogEintrag",
@@ -55,7 +55,7 @@ __all__ = [
     "KartenSichtbarkeit",
     "KartenZuweisung",
     "Unteraufgabe",
-    "WohlbefindenEintrag",
+    "TagebuchEintrag",
     "WohlbefindenFreigabe",
     "WohlbefindenFreigabeUmfang",
     "Bewerbung",

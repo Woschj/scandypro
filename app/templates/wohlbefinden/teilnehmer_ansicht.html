@@ -4,69 +4,42 @@
 <p><a href="/">&larr; Zurück</a></p>
 <h1>"Mein Tag" von {{ teilnehmer.name }}</h1>
 <p class="visibility-hint">Freigegebene Ansicht - nur lesend. {{ teilnehmer.name }} kann diese Freigabe
-  jederzeit widerrufen.</p>
+  jederzeit widerrufen. Zeigt die letzten zwei Wochen mit Einträgen.</p>
 
-<div class="card">
-  <div class="wochen-nav">
-    <a class="btn btn-ghost btn-sm" href="/wohlbefinden/teilnehmer/{{ teilnehmer.id }}?woche_start={{ vorherige_woche }}">&larr; Vorherige Woche</a>
-    <span class="wochen-label">{{ wochenbereich }}{% if ist_aktuelle_woche %} <span class="chip chip-brand">diese Woche</span>{% endif %}</span>
-    <a class="btn btn-ghost btn-sm" href="/wohlbefinden/teilnehmer/{{ teilnehmer.id }}?woche_start={{ naechste_woche }}">Nächste Woche &rarr;</a>
-  </div>
-
-  <table>
-    <thead><tr><th>Tag</th><th>Stimmung</th><th>Energie</th><th>Notiz</th></tr></thead>
-    <tbody>
-    {% for tag in wochendaten %}
-    <tr>
-      <td>{{ tag.label }}</td>
-      <td>{{ tag.stimmung | stimmung_emoji if tag.gesetzt else "–" }}</td>
-      <td>{{ tag.belastbarkeit | energie_emoji if tag.gesetzt else "–" }}</td>
-      <td>{{ tag.kommentar or "" }}</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<div class="card">
-  <h3>Woche im Rückblick</h3>
-  <div class="auswertung-grid">
-    <div class="auswertung-stat">
-      <div class="eyebrow">Stimmung</div>
-      <div class="auswertung-emoji">{{ auswertung.stimmung_avg | stimmung_emoji if auswertung.stimmung_avg is not none else "–" }}</div>
-      {% if auswertung.stimmung_trend %}
-      <div class="auswertung-trend {{ auswertung.stimmung_trend.css }}" title="{{ auswertung.stimmung_trend.text }}">{{ auswertung.stimmung_trend.symbol }}</div>
+{% if verlauf %}
+<div class="zuklapp-liste">
+  {% for eintrag in verlauf %}
+  <details class="zuklapp-eintrag">
+    <summary>
+      <span class="zuklapp-eintrag-chevron">▸</span>
+      <span class="zuklapp-eintrag-titel">{{ eintrag.label }}</span>
+    </summary>
+    <div class="zuklapp-eintrag-body">
+      {% if eintrag.dankbarkeit | select | list %}
+      <div class="eyebrow">Dankbar für</div>
+      <ul style="margin: var(--space-2) 0 var(--space-4);">
+        {% for d in eintrag.dankbarkeit %}{% if d %}<li>{{ d }}</li>{% endif %}{% endfor %}
+      </ul>
+      {% endif %}
+      {% if eintrag.morgen_impuls_antwort %}
+      <div class="eyebrow">{{ eintrag.morgen_impuls_frage }}</div>
+      <p>{{ eintrag.morgen_impuls_antwort }}</p>
+      {% endif %}
+      {% if eintrag.highlights | select | list %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
+      <ul style="margin: var(--space-2) 0 var(--space-4);">
+        {% for h in eintrag.highlights %}{% if h %}<li>{{ h }}</li>{% endif %}{% endfor %}
+      </ul>
+      {% endif %}
+      {% if eintrag.abend_impuls_antwort %}
+      <div class="eyebrow">{{ eintrag.abend_impuls_frage }}</div>
+      <p>{{ eintrag.abend_impuls_antwort }}</p>
       {% endif %}
     </div>
-    <div class="auswertung-stat">
-      <div class="eyebrow">Energie</div>
-      <div class="auswertung-emoji">{{ auswertung.belastbarkeit_avg | energie_emoji if auswertung.belastbarkeit_avg is not none else "–" }}</div>
-      {% if auswertung.belastbarkeit_trend %}
-      <div class="auswertung-trend {{ auswertung.belastbarkeit_trend.css }}" title="{{ auswertung.belastbarkeit_trend.text }}">{{ auswertung.belastbarkeit_trend.symbol }}</div>
-      {% endif %}
-    </div>
-  </div>
+  </details>
+  {% endfor %}
 </div>
-
-<div class="card">
-  <h3>Verlauf</h3>
-  <p class="karte-meta">{{ heatmap_start }} – {{ heatmap_ende }} · Stimmung als Farbe je Tag</p>
-  <div class="heatmap-wochen">
-    {% for woche in heatmap_wochen %}
-    <div class="heatmap-woche">
-      {% for tag in woche %}
-      {% if tag.zukunft %}
-      <div class="heatmap-tag heatmap-tag--zukunft" aria-hidden="true"></div>
-      {% else %}
-      <button type="button" class="heatmap-tag"
-        {% if tag.farbe %}style="background: {{ tag.farbe }}; border-color: transparent;"{% endif %}
-        title="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else '' }}"
-        aria-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ', kein Eintrag' }}"
-        data-heatmap-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ' – kein Eintrag' }}"></button>
-      {% endif %}
-      {% endfor %}
-    </div>
-    {% endfor %}
-  </div>
-</div>
+{% else %}
+<p class="empty-state">Keine Einträge in den letzten zwei Wochen.</p>
+{% endif %}
 {% endblock %}

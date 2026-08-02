@@ -8,6 +8,34 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.5] - 2026-08-02
+
+### Changed
+- **"Mein Tag" komplett auf ein 5-Minuten-Tagebuch umgestellt** (in
+  Anlehnung an das klassische "Five Minute Journal"-Format): die
+  Stimmungs-/Energie-Skala (1-10, Heatmap-Verlauf) wurde vollständig durch
+  ein strukturiertes Tagebuch ersetzt: morgens 3 feste
+  Dankbarkeits-Felder + 1 täglich rotierender Klarheits-/Vorsatz-Impuls,
+  abends 3 feste "großartige Dinge"-Felder + 1 rotierender
+  Abendreflexions-Impuls. Der rotierende Impuls wird deterministisch aus
+  Teilnehmer:in + Datum abgeleitet (`app/core/tagebuch_prompts.py`) - am
+  selben Tag immer derselbe, ohne dass er separat gespeichert werden muss.
+- Neues Datenmodell `TagebuchEintrag` ersetzt `WohlbefindenEintrag`
+  (Migration `e5f6a7b8c9d0`); bestehende Stimmungs-Einträge werden dabei
+  hart gelöscht (siehe CLAUDE.md §10 Löschkonzept - konsistent mit der
+  bestehenden Hard-Delete-Pflicht für diese Datenkategorie).
+- "Dein Verlauf" zeigt jetzt eine lesbare Liste der letzten 14 Tage mit
+  Inhalt statt einer Farbraster-Heatmap - Freitext lässt sich nicht
+  sinnvoll auf eine Farbskala reduzieren, ohne genau die Bewertungs-Optik
+  zu erzeugen, die das neue Format vermeiden soll.
+- Dashboard-Rückblick zählt jetzt Tage mit Tagebuch-Eintrag
+  (`woechentliche_tagebuch_tage`) statt eines Stimmungs-Trends - eine
+  reine Teilnahme-Zählung, die inhaltlich nie negativ ausfallen kann.
+
+### Removed
+- `app/core/skala.py`, `app/static/js/wohlbefinden.js` (nicht mehr
+  benötigt, siehe oben).
+
 ## [0.1.4] - 2026-08-02
 
 ### Changed

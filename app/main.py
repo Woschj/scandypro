@@ -12,7 +12,7 @@ from app.core.access import hat_wohlbefinden_freigabe
 from app.core.config import settings
 from app.core.database import async_session_factory, init_db
 from app.core.deps import SessionDep, get_current_user_optional
-from app.core.fortschritt import woechentliche_schritte, woechentliche_stimmung
+from app.core.fortschritt import woechentliche_schritte, woechentliche_tagebuch_tage
 from app.core.seed import seed_admin, seed_demo_data
 from app.core.static_cache import CachedStaticFiles
 from app.core.templating import templates
@@ -113,7 +113,7 @@ async def dashboard(request: Request, session: SessionDep):
     freigegebene_wohlbefinden_ids: set[int] = set()
     freigegebene_bewerbungen_ids: set[int] = set()
     schritte_diese_woche: int | None = None
-    stimmung_woche: dict | None = None
+    tagebuch_tage_woche: int | None = None
     bewerbungen_uebersicht: dict | None = None
 
     if current_user.role == RoleEnum.teilnehmer:
@@ -130,7 +130,7 @@ async def dashboard(request: Request, session: SessionDep):
             trainer_kontakt = await session.get(User, trainer_zuordnung.berufstrainer_id)
 
         schritte_diese_woche = await woechentliche_schritte(session, current_user.id)
-        stimmung_woche = await woechentliche_stimmung(session, current_user.id)
+        tagebuch_tage_woche = await woechentliche_tagebuch_tage(session, current_user.id)
 
         # Sanfter Bewerbungs-Überblick fürs Dashboard (siehe CLAUDE.md Abschnitt
         # 25 "positive Verstärkung") - bewusst nur Zählwerte, keine Rücklauf-
@@ -192,7 +192,7 @@ async def dashboard(request: Request, session: SessionDep):
             "freigegebene_wohlbefinden_ids": freigegebene_wohlbefinden_ids,
             "freigegebene_bewerbungen_ids": freigegebene_bewerbungen_ids,
             "schritte_diese_woche": schritte_diese_woche,
-            "stimmung_woche": stimmung_woche,
+            "tagebuch_tage_woche": tagebuch_tage_woche,
             "bewerbungen_uebersicht": bewerbungen_uebersicht,
         },
     )

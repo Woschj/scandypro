@@ -2,7 +2,7 @@
 {% block title %}Mein Tag – ScandyPro{% endblock %}
 {% block content %}
 <h1>Mein Tag</h1>
-<p class="visibility-hint">Nur für dich sichtbar, außer du gibst gezielt frei.</p>
+<p class="visibility-hint">Dein 5-Minuten-Tagebuch. Nur für dich sichtbar, außer du gibst gezielt frei.</p>
 
 <div class="card">
   <div class="tage-nav">
@@ -14,112 +14,109 @@
     <span class="btn btn-ghost btn-sm" style="visibility:hidden;">Tag vor &rarr;</span>
     {% endif %}
   </div>
-
-  <p class="karte-meta" style="margin-bottom: var(--space-4);">Zieh den Regler dahin, wo dein Tag gerade steht. Tipp auf 💬 für eine kurze Notiz.</p>
-
-  <div class="tage-widget">
-    <script id="emoji-daten" type="application/json">{{ {"stimmung": STIMMUNG_EMOJI, "belastbarkeit": ENERGIE_EMOJI} | tojson | safe }}</script>
-
-    <div class="tag-eintrag" data-datum="{{ tag.datum }}">
-      <div class="tag-eintrag-kopf">
-        <button type="button" class="tag-kommentar-btn {% if tag.kommentar %}tag-kommentar-btn--gesetzt{% endif %}"
-          data-kommentar-btn="{{ tag.datum }}"
-          title="{{ 'Kommentar: ' ~ tag.kommentar if tag.kommentar else 'Kommentar hinzufügen' }}">💬 Kommentar</button>
-      </div>
-      <div class="emoji-picker" data-feld="stimmung">
-        <div class="emoji-picker-kopf">
-          <span class="emoji-picker-label">Stimmung</span>
-          <span class="emoji-picker-preview" data-preview="stimmung">{{ tag.stimmung | stimmung_emoji }}</span>
-        </div>
-        <input type="range" class="emoji-slider emoji-slider--stimmung" data-feld="stimmung"
-          min="1" max="10" step="1" value="{{ tag.stimmung }}" aria-label="Stimmung">
-      </div>
-      <div class="emoji-picker" data-feld="belastbarkeit">
-        <div class="emoji-picker-kopf">
-          <span class="emoji-picker-label">Energie</span>
-          <span class="emoji-picker-preview" data-preview="belastbarkeit">{{ tag.belastbarkeit | energie_emoji }}</span>
-        </div>
-        <input type="range" class="emoji-slider emoji-slider--energie" data-feld="belastbarkeit"
-          min="1" max="10" step="1" value="{{ tag.belastbarkeit }}" aria-label="Energie">
-      </div>
-    </div>
-
-    <div id="zeitlinie-toast" class="zeitlinie-toast" role="status" aria-live="polite"></div>
-
-    <div id="kommentar-panel" class="kommentar-panel">
-      <div class="kommentar-panel-box">
-        <h3 id="kommentar-titel">Kommentar</h3>
-        <div class="field">
-          <textarea id="kommentar-text" rows="4" placeholder="Was war an diesem Tag los?"></textarea>
-        </div>
-        <div style="display:flex; gap: var(--space-2); justify-content: flex-end;">
-          <button type="button" id="kommentar-schliessen" class="btn btn-ghost btn-sm">Abbrechen</button>
-          <button type="button" id="kommentar-speichern" class="btn btn-primary btn-sm">Speichern</button>
-        </div>
-      </div>
-    </div>
-
-    <script id="tag-data" type="application/json">{{ tag_json | safe }}</script>
-  </div>
 </div>
 
 <div class="card">
-  <h3>Deine Woche im Rückblick</h3>
-  <div class="auswertung-grid">
-    <div class="auswertung-stat">
-      <div class="eyebrow">Stimmung</div>
-      <div class="auswertung-emoji">{{ auswertung.stimmung_avg | stimmung_emoji if auswertung.stimmung_avg is not none else "–" }}</div>
-      {% if auswertung.stimmung_trend %}
-      <div class="auswertung-trend {{ auswertung.stimmung_trend.css }}" title="{{ auswertung.stimmung_trend.text }}">{{ auswertung.stimmung_trend.symbol }}</div>
-      {% endif %}
-    </div>
-    <div class="auswertung-stat">
-      <div class="eyebrow">Energie</div>
-      <div class="auswertung-emoji">{{ auswertung.belastbarkeit_avg | energie_emoji if auswertung.belastbarkeit_avg is not none else "–" }}</div>
-      {% if auswertung.belastbarkeit_trend %}
-      <div class="auswertung-trend {{ auswertung.belastbarkeit_trend.css }}" title="{{ auswertung.belastbarkeit_trend.text }}">{{ auswertung.belastbarkeit_trend.symbol }}</div>
-      {% endif %}
-    </div>
+  <div class="form-row" style="align-items:center; margin-bottom: var(--space-2);">
+    <h3 style="margin:0; flex:1;">Morgens</h3>
+    {% if tag.morgen_erledigt %}<span class="chip chip-success">erledigt</span>{% endif %}
   </div>
+  <form method="post" action="/wohlbefinden/morgen">
+    {% include "partials/csrf_field.html" %}
+    <input type="hidden" name="datum" value="{{ tag.datum }}">
+    <input type="hidden" name="morgen_impuls_frage" value="{{ tag.morgen_impuls_frage }}">
+
+    <div class="field">
+      <label>Ich bin dankbar für …</label>
+      <input type="text" name="dankbarkeit_1" value="{{ tag.dankbarkeit[0] }}" placeholder="1.">
+      <input type="text" name="dankbarkeit_2" value="{{ tag.dankbarkeit[1] }}" placeholder="2." style="margin-top: var(--space-2);">
+      <input type="text" name="dankbarkeit_3" value="{{ tag.dankbarkeit[2] }}" placeholder="3." style="margin-top: var(--space-2);">
+    </div>
+
+    <div class="field">
+      <label>{{ tag.morgen_impuls_frage }}</label>
+      <textarea name="morgen_impuls_antwort" rows="2">{{ tag.morgen_impuls_antwort }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-sm">Morgens speichern</button>
+  </form>
 </div>
 
 <div class="card">
-  <h3>Dein Verlauf</h3>
-  <p class="karte-meta">{{ heatmap_start }} – {{ heatmap_ende }} · Stimmung als Farbe je Tag</p>
-  <div class="heatmap-wochen">
-    {% for woche in heatmap_wochen %}
-    <div class="heatmap-woche">
-      {% for tag in woche %}
-      {% if tag.zukunft %}
-      <div class="heatmap-tag heatmap-tag--zukunft" aria-hidden="true"></div>
-      {% else %}
-      <button type="button" class="heatmap-tag"
-        {% if tag.farbe %}style="background: {{ tag.farbe }}; border-color: transparent;"{% endif %}
-        title="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else '' }}"
-        aria-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ', kein Eintrag' }}"
-        data-heatmap-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ' – kein Eintrag' }}"></button>
-      {% endif %}
-      {% endfor %}
+  <div class="form-row" style="align-items:center; margin-bottom: var(--space-2);">
+    <h3 style="margin:0; flex:1;">Abends</h3>
+    {% if tag.abend_erledigt %}<span class="chip chip-success">erledigt</span>{% endif %}
+  </div>
+  <form method="post" action="/wohlbefinden/abend">
+    {% include "partials/csrf_field.html" %}
+    <input type="hidden" name="datum" value="{{ tag.datum }}">
+    <input type="hidden" name="abend_impuls_frage" value="{{ tag.abend_impuls_frage }}">
+
+    <div class="field">
+      <label>3 großartige Dinge, die heute passiert sind</label>
+      <input type="text" name="highlight_1" value="{{ tag.highlights[0] }}" placeholder="1.">
+      <input type="text" name="highlight_2" value="{{ tag.highlights[1] }}" placeholder="2." style="margin-top: var(--space-2);">
+      <input type="text" name="highlight_3" value="{{ tag.highlights[2] }}" placeholder="3." style="margin-top: var(--space-2);">
     </div>
-    {% endfor %}
-  </div>
-  <div class="heatmap-legende">
-    <span>eher schwer</span>
-    <span class="heatmap-legende-farben">
-      {% for farbe in ["#e8a33d", "#ba9443", "#8d844a", "#5f7550", "#326657", "#1b5e5a"] %}
-      <span class="heatmap-legende-swatch" style="background: {{ farbe }};"></span>
-      {% endfor %}
-    </span>
-    <span>eher leicht</span>
-  </div>
+
+    <div class="field">
+      <label>{{ tag.abend_impuls_frage }}</label>
+      <textarea name="abend_impuls_antwort" rows="2">{{ tag.abend_impuls_antwort }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-sm">Abends speichern</button>
+  </form>
 </div>
+
+<h2>Dein Verlauf</h2>
+{% if verlauf %}
+<div class="zuklapp-liste">
+  {% for eintrag in verlauf %}
+  <details class="zuklapp-eintrag">
+    <summary>
+      <span class="zuklapp-eintrag-chevron">▸</span>
+      <span class="zuklapp-eintrag-titel">{{ eintrag.label }}</span>
+    </summary>
+    <div class="zuklapp-eintrag-body">
+      {% if eintrag.dankbarkeit | select | list %}
+      <div class="eyebrow">Dankbar für</div>
+      <ul style="margin: var(--space-2) 0 var(--space-4);">
+        {% for d in eintrag.dankbarkeit %}{% if d %}<li>{{ d }}</li>{% endif %}{% endfor %}
+      </ul>
+      {% endif %}
+      {% if eintrag.morgen_impuls_antwort %}
+      <div class="eyebrow">{{ eintrag.morgen_impuls_frage }}</div>
+      <p>{{ eintrag.morgen_impuls_antwort }}</p>
+      {% endif %}
+      {% if eintrag.highlights | select | list %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
+      <ul style="margin: var(--space-2) 0 var(--space-4);">
+        {% for h in eintrag.highlights %}{% if h %}<li>{{ h }}</li>{% endif %}{% endfor %}
+      </ul>
+      {% endif %}
+      {% if eintrag.abend_impuls_antwort %}
+      <div class="eyebrow">{{ eintrag.abend_impuls_frage }}</div>
+      <p>{{ eintrag.abend_impuls_antwort }}</p>
+      {% endif %}
+      <form method="post" action="/wohlbefinden/tag/loeschen" data-confirm="Eintrag vom {{ eintrag.label }} unwiderruflich löschen?" style="margin-top: var(--space-3);">
+        {% include "partials/csrf_field.html" %}
+        <input type="hidden" name="datum" value="{{ eintrag.datum }}">
+        <button type="submit" class="link-btn danger">Diesen Tag löschen</button>
+      </form>
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty-state">Noch keine Einträge in den letzten zwei Wochen.</p>
+{% endif %}
 
 <details class="card">
   <summary class="card-collapsible-summary"><h3>Für wen freigeben</h3></summary>
   <div style="margin-top: var(--space-4);">
     {% if psm_kontakt %}
-    <p class="karte-meta">Die zuständige psychosoziale Mitarbeiter:in (<strong>{{ psm_kontakt.name }}</strong>) sieht deine
-      Einträge erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
+    <p class="karte-meta">Die zuständige psychosoziale Mitarbeiter:in (<strong>{{ psm_kontakt.name }}</strong>) sieht dein
+      Tagebuch erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
     <form method="post" action="/wohlbefinden/freigaben" class="form-row">
       {% include "partials/csrf_field.html" %}
       <input type="hidden" name="empfaenger_id" value="{{ psm_kontakt.id }}">
@@ -162,6 +159,4 @@
     {% endif %}
   </div>
 </details>
-
-<script src="/static/js/wohlbefinden.js?v={{ asset_version }}" defer></script>
 {% endblock %}

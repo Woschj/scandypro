@@ -54,27 +54,56 @@ async def test_post_mit_korrektem_csrf_token_geht_durch(client: AsyncClient, see
     assert "form-success" in resp.text
 
 
+async def _karte_fuer_json_test(session_maker, teilnehmer_id):
+    from app.models.kanban import Board, BoardTyp, Karte, Spalte
+
+    async with session_maker() as session:
+        board = Board(
+            titel="Meine Aufgaben",
+            typ=BoardTyp.person,
+            person_teilnehmer_id=teilnehmer_id,
+            ersteller_id=teilnehmer_id,
+        )
+        session.add(board)
+        await session.commit()
+        await session.refresh(board)
+
+        spalte = Spalte(board_id=board.id, name="Offen", reihenfolge=0)
+        session.add(spalte)
+        await session.commit()
+        await session.refresh(spalte)
+
+        karte = Karte(spalte_id=spalte.id, titel="Testkarte", ersteller_id=teilnehmer_id)
+        session.add(karte)
+        await session.commit()
+        await session.refresh(karte)
+
+        return spalte, karte
+
+
 @pytest.mark.asyncio
-async def test_json_post_mit_csrf_header_geht_durch(client: AsyncClient, seed_data):
-    """Deckt den fetch()-Pfad ab (app/static/js/wohlbefinden.js): JSON-Body,
+async def test_json_post_mit_csrf_header_geht_durch(client: AsyncClient, seed_data, session_maker):
+    """Deckt den fetch()-Pfad ab (app/static/js/kanban.js): JSON-Body,
     Token im X-CSRF-Token-Header statt im Formularfeld."""
+    spalte, karte = await _karte_fuer_json_test(session_maker, seed_data["teilnehmer_id"])
     await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
     konto_seite = await client.get("/konto")
     token = _csrf_token_aus_html(konto_seite.text)
 
     resp = await client.post(
-        "/wohlbefinden/tag",
-        json={"datum": "2026-01-05", "stimmung": 7, "belastbarkeit": 6},
+        f"/kanban/spalten/{spalte.id}/reihenfolge",
+        json={"karten_ids": [karte.id]},
         headers={"X-CSRF-Token": token},
     )
     assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_json_post_ohne_csrf_header_wird_abgelehnt(client: AsyncClient, seed_data):
+async def test_json_post_ohne_csrf_header_wird_abgelehnt(client: AsyncClient, seed_data, session_maker):
+    spalte, karte = await _karte_fuer_json_test(session_maker, seed_data["teilnehmer_id"])
     await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
     resp = await client.post(
-        "/wohlbefinden/tag",
-        json={"datum": "2026-01-05", "stimmung": 7, "belastbarkeit": 6},
+        f"/kanban/spalten/{spalte.id}/reihenfolge",
+        json={"karten_ids": [karte.id]},
     )
     assert resp.status_code == 403

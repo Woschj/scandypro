@@ -7,16 +7,20 @@ from tests.conftest import login
 
 
 async def test_dashboard_zeigt_stimmung_und_bewerbungen(client, seed_data, session_maker):
+    from datetime import datetime
+
     from app.models.bewerbung import Bewerbung, BewerbungStatus
-    from app.models.wohlbefinden import WohlbefindenEintrag
+    from app.models.wohlbefinden import TagebuchEintrag
 
     async with session_maker() as session:
         session.add(
-            WohlbefindenEintrag(
+            TagebuchEintrag(
                 teilnehmer_id=seed_data["teilnehmer_id"],
                 datum=date.today(),
-                stimmung=8,
-                belastbarkeit=7,
+                dankbarkeit_1="Sonne",
+                dankbarkeit_2="Kaffee",
+                dankbarkeit_3="Ruhe",
+                morgen_ausgefuellt_am=datetime.utcnow(),
             )
         )
         session.add(

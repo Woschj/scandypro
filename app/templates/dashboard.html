@@ -13,7 +13,7 @@
 
 {% if current_user.role.value == "teilnehmer" %}
 
-{% if schritte_diese_woche is not none or stimmung_woche is not none or bewerbungen_uebersicht is not none %}
+{% if schritte_diese_woche is not none or tagebuch_tage_woche is not none or bewerbungen_uebersicht is not none %}
 <h2 style="margin-top: 0;">Deine Woche im Rückblick</h2>
 <div class="rueckblick-grid" style="margin-bottom: var(--space-6);">
   {% if schritte_diese_woche is not none %}
@@ -27,14 +27,14 @@
     {% endif %}
   </div>
   {% endif %}
-  {% if stimmung_woche %}
+  {% if tagebuch_tage_woche is not none %}
   <div class="rueckblick-stat">
-    {% if stimmung_woche.trend %}
-    <div class="rueckblick-zahl auswertung-trend {{ stimmung_woche.trend.css }}" style="font-size: 2rem;">{{ stimmung_woche.trend.symbol }}</div>
-    <div class="rueckblick-label">{{ stimmung_woche.trend.text }}</div>
+    {% if tagebuch_tage_woche > 0 %}
+    <div class="rueckblick-zahl">{{ tagebuch_tage_woche }}</div>
+    <div class="rueckblick-label">{{ "Tag ins Tagebuch geschrieben" if tagebuch_tage_woche == 1 else "Tage ins Tagebuch geschrieben" }}</div>
     {% else %}
-    <div class="rueckblick-emoji">{{ stimmung_woche.emoji }}</div>
-    <div class="rueckblick-label">Erster Eintrag diese Woche</div>
+    <div class="rueckblick-emoji">📝</div>
+    <div class="rueckblick-label">Magst du heute reinschreiben?</div>
     {% endif %}
   </div>
   {% endif %}

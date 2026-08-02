@@ -1,189 +1,105 @@
-import json
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel, Field as PydanticField
 from sqlmodel import select
 
 from app.core.access import hat_wohlbefinden_freigabe, require_owner
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
-from app.core.skala import heatmap_farbe, stimmung_emoji
-from app.core.skala import trend as _trend
+from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
 from app.core.templating import templates
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.organisation import PsmZuordnung
 from app.models.user import RoleEnum, User
-from app.models.wohlbefinden import WohlbefindenEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
+from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
 
 router = APIRouter(prefix="/wohlbefinden", tags=["wohlbefinden"], dependencies=[Depends(verify_csrf)])
 
 WOCHENTAG_NAMEN = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-HEATMAP_WOCHEN_ANZAHL = 8
+VERLAUF_TAGE_ANZAHL = 14
 
 
-def _wochenstart(bezugsdatum: date) -> date:
-    return bezugsdatum - timedelta(days=bezugsdatum.weekday())
+def _tag_label(d: date) -> str:
+    return f"{WOCHENTAG_NAMEN[d.weekday()]}, {d.strftime('%d.%m.%Y')}"
 
 
-def _mittelwert(eintraege: list[WohlbefindenEintrag], feld: str) -> float | None:
-    werte = [getattr(e, feld) for e in eintraege]
-    return round(sum(werte) / len(werte), 1) if werte else None
-
-
-def _heatmap_wochen(eintraege: list[WohlbefindenEintrag], erster_montag: date, heute: date) -> list[list[dict]]:
-    """Baut das Wochen-Raster für die Verlaufs-Heatmap ("Mood-Heatmap"):
-    eine Zeile pro Woche, sieben Tageskacheln je Zeile, eingefärbt nach
-    Stimmungswert (siehe app/core/skala.py:HEATMAP_FARBEN).
-
-    Neueste Woche zuerst (oben) - alles andere liest sich von oben nach
-    unten wie "rückwärts in der Zeit", was unintuitiv wäre."""
-    eintrag_by_datum = {e.datum: e for e in eintraege}
-    wochen = []
-    for w in range(HEATMAP_WOCHEN_ANZAHL):
-        wochen_start = erster_montag + timedelta(weeks=w)
-        tage = []
-        for d in range(7):
-            tag = wochen_start + timedelta(days=d)
-            eintrag = eintrag_by_datum.get(tag)
-            tage.append(
-                {
-                    "datum": tag.isoformat(),
-                    "label": tag.strftime("%d.%m."),
-                    "emoji": stimmung_emoji(eintrag.stimmung) if eintrag else None,
-                    "farbe": heatmap_farbe(eintrag.stimmung) if eintrag else None,
-                    "zukunft": tag > heute,
-                }
-            )
-        wochen.append(tage)
-    wochen.reverse()
-    return wochen
-
-
-async def _wochenansicht_kontext(session: SessionDep, teilnehmer_id: int, woche_start: str | None) -> dict:
-    """Baut den kompletten Render-Kontext einer Wochenansicht - gemeinsam
-    genutzt von der eigenen Ansicht (Teilnehmer:in, mit Drag-Interaktion)
-    und der PSM-Ansicht (rein lesend, nur bei aktiver Freigabe)."""
-    if woche_start:
-        try:
-            start = _wochenstart(date.fromisoformat(woche_start))
-        except ValueError:
-            start = _wochenstart(date.today())
-    else:
-        start = _wochenstart(date.today())
-
-    tage_der_woche = [start + timedelta(days=i) for i in range(7)]
+async def _hole_eintrag(session: SessionDep, teilnehmer_id: int, datum: date) -> TagebuchEintrag | None:
     result = await session.execute(
-        select(WohlbefindenEintrag).where(
-            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id,
-            WohlbefindenEintrag.datum.in_(tage_der_woche),
+        select(TagebuchEintrag).where(
+            TagebuchEintrag.teilnehmer_id == teilnehmer_id, TagebuchEintrag.datum == datum
         )
     )
-    eintraege_by_datum = {e.datum: e for e in result.scalars().all()}
+    return result.scalar_one_or_none()
 
-    wochendaten = []
-    for i, tag in enumerate(tage_der_woche):
-        eintrag = eintraege_by_datum.get(tag)
-        wochendaten.append(
-            {
-                "datum": tag.isoformat(),
-                "label": f"{WOCHENTAG_NAMEN[i]} {tag.strftime('%d.%m.')}",
-                "stimmung": eintrag.stimmung if eintrag else 5,
-                "belastbarkeit": eintrag.belastbarkeit if eintrag else 5,
-                "kommentar": eintrag.kommentar if eintrag else None,
-                "gesetzt": eintrag is not None,
-            }
-        )
 
-    vorwoche_tage = [start - timedelta(days=7) + timedelta(days=i) for i in range(7)]
-    vorwoche_result = await session.execute(
-        select(WohlbefindenEintrag).where(
-            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id,
-            WohlbefindenEintrag.datum.in_(vorwoche_tage),
-        )
-    )
-    diese_woche_eintraege = list(eintraege_by_datum.values())
-    vorwoche_eintraege = list(vorwoche_result.scalars().all())
+async def _hole_oder_erstelle(session: SessionDep, teilnehmer_id: int, datum: date) -> TagebuchEintrag:
+    eintrag = await _hole_eintrag(session, teilnehmer_id, datum)
+    if eintrag is None:
+        eintrag = TagebuchEintrag(teilnehmer_id=teilnehmer_id, datum=datum)
+    return eintrag
 
-    stimmung_avg = _mittelwert(diese_woche_eintraege, "stimmung")
-    belastbarkeit_avg = _mittelwert(diese_woche_eintraege, "belastbarkeit")
-    stimmung_avg_vorwoche = _mittelwert(vorwoche_eintraege, "stimmung")
-    belastbarkeit_avg_vorwoche = _mittelwert(vorwoche_eintraege, "belastbarkeit")
 
-    auswertung = {
-        "stimmung_avg": stimmung_avg,
-        "belastbarkeit_avg": belastbarkeit_avg,
-        "stimmung_avg_vorwoche": stimmung_avg_vorwoche,
-        "belastbarkeit_avg_vorwoche": belastbarkeit_avg_vorwoche,
-        "stimmung_trend": _trend(stimmung_avg, stimmung_avg_vorwoche),
-        "belastbarkeit_trend": _trend(belastbarkeit_avg, belastbarkeit_avg_vorwoche),
-    }
-
-    heute = date.today()
-    erster_montag_heatmap = _wochenstart(heute) - timedelta(weeks=HEATMAP_WOCHEN_ANZAHL - 1)
-    heatmap_result = await session.execute(
-        select(WohlbefindenEintrag).where(
-            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id,
-            WohlbefindenEintrag.datum >= erster_montag_heatmap,
-        )
-    )
-    heatmap_wochen = _heatmap_wochen(list(heatmap_result.scalars().all()), erster_montag_heatmap, heute)
-
-    wochendaten_json = json.dumps(wochendaten).replace("</", "<\\/")
-
+def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
+    """Einheitliche Anzeige-Struktur für einen Tag - auch wenn noch kein
+    Eintrag existiert (dann mit heutigen/aktuellen Impuls-Vorschau-Fragen,
+    aber ohne Antworten), damit das Template nicht zwischen "gibt es schon"
+    und "gibt es noch nicht" unterscheiden muss."""
+    if eintrag is None:
+        return {
+            "datum": datum,
+            "label": _tag_label(datum),
+            "dankbarkeit": ["", "", ""],
+            "morgen_impuls_frage": None,
+            "morgen_impuls_antwort": "",
+            "morgen_erledigt": False,
+            "highlights": ["", "", ""],
+            "abend_impuls_frage": None,
+            "abend_impuls_antwort": "",
+            "abend_erledigt": False,
+        }
     return {
-        "wochendaten": wochendaten,
-        "wochendaten_json": wochendaten_json,
-        "woche_start": start.isoformat(),
-        "vorherige_woche": (start - timedelta(days=7)).isoformat(),
-        "naechste_woche": (start + timedelta(days=7)).isoformat(),
-        "ist_aktuelle_woche": start == _wochenstart(date.today()),
-        "wochenbereich": f"{start.strftime('%d.%m.')} – {(start + timedelta(days=6)).strftime('%d.%m.%Y')}",
-        "auswertung": auswertung,
-        "heatmap_wochen": heatmap_wochen,
-        "heatmap_start": erster_montag_heatmap.strftime("%d.%m."),
-        "heatmap_ende": heute.strftime("%d.%m."),
+        "datum": eintrag.datum,
+        "label": _tag_label(eintrag.datum),
+        "dankbarkeit": [eintrag.dankbarkeit_1 or "", eintrag.dankbarkeit_2 or "", eintrag.dankbarkeit_3 or ""],
+        "morgen_impuls_frage": eintrag.morgen_impuls_frage,
+        "morgen_impuls_antwort": eintrag.morgen_impuls_antwort or "",
+        "morgen_erledigt": eintrag.morgen_ausgefuellt_am is not None,
+        "highlights": [eintrag.highlight_1 or "", eintrag.highlight_2 or "", eintrag.highlight_3 or ""],
+        "abend_impuls_frage": eintrag.abend_impuls_frage,
+        "abend_impuls_antwort": eintrag.abend_impuls_antwort or "",
+        "abend_erledigt": eintrag.abend_ausgefuellt_am is not None,
     }
 
 
-async def _tag_kontext(session: SessionDep, teilnehmer_id: int, tag_param: str | None) -> dict:
-    """Baut den Render-Kontext für die kompakte Einzeltag-Ansicht (eigene
-    Ansicht der/des Teilnehmer:in): ein Regler-Paar für genau einen Tag,
-    mit Vor-/Zurück-Navigation - nie in die Zukunft."""
-    heute = date.today()
-    if tag_param:
-        try:
-            ausgewaehlter_tag = date.fromisoformat(tag_param)
-        except ValueError:
-            ausgewaehlter_tag = heute
-    else:
-        ausgewaehlter_tag = heute
-    ausgewaehlter_tag = min(ausgewaehlter_tag, heute)
+def _hat_inhalt(anzeige: dict) -> bool:
+    return (
+        any(anzeige["dankbarkeit"])
+        or anzeige["morgen_impuls_antwort"]
+        or any(anzeige["highlights"])
+        or anzeige["abend_impuls_antwort"]
+    )
 
+
+async def _verlauf(session: SessionDep, teilnehmer_id: int, bis_datum: date) -> list[dict]:
+    """Liste der letzten VERLAUF_TAGE_ANZAHL Tage mit Inhalt, neueste zuerst -
+    ersetzt die frühere Mood-Heatmap (siehe CHANGELOG). Bewusst als lesbare
+    Liste statt Farbraster: Freitext lässt sich nicht sinnvoll auf eine
+    Farbskala reduzieren, ohne genau die Bewertungs-Optik zu erzeugen, die
+    das Tagebuch-Format vermeiden soll."""
+    start = bis_datum - timedelta(days=VERLAUF_TAGE_ANZAHL - 1)
     result = await session.execute(
-        select(WohlbefindenEintrag).where(
-            WohlbefindenEintrag.teilnehmer_id == teilnehmer_id, WohlbefindenEintrag.datum == ausgewaehlter_tag
+        select(TagebuchEintrag)
+        .where(
+            TagebuchEintrag.teilnehmer_id == teilnehmer_id,
+            TagebuchEintrag.datum >= start,
+            TagebuchEintrag.datum <= bis_datum,
         )
+        .order_by(TagebuchEintrag.datum.desc())
     )
-    eintrag = result.scalar_one_or_none()
-
-    tag = {
-        "datum": ausgewaehlter_tag.isoformat(),
-        "label": f"{WOCHENTAG_NAMEN[ausgewaehlter_tag.weekday()]}, {ausgewaehlter_tag.strftime('%d.%m.%Y')}",
-        "stimmung": eintrag.stimmung if eintrag else 5,
-        "belastbarkeit": eintrag.belastbarkeit if eintrag else 5,
-        "kommentar": eintrag.kommentar if eintrag else None,
-        "gesetzt": eintrag is not None,
-    }
-
-    return {
-        "tag": tag,
-        "tag_json": json.dumps(tag).replace("</", "<\\/"),
-        "ist_heute": ausgewaehlter_tag == heute,
-        "vorheriger_tag": (ausgewaehlter_tag - timedelta(days=1)).isoformat(),
-        "naechster_tag": (ausgewaehlter_tag + timedelta(days=1)).isoformat() if ausgewaehlter_tag < heute else None,
-    }
+    eintraege = result.scalars().all()
+    anzeigen = [_eintrag_anzeige(e, e.datum) for e in eintraege]
+    return [a for a in anzeigen if _hat_inhalt(a)]
 
 
 @router.get("", response_class=HTMLResponse)
@@ -193,8 +109,20 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             request, "wohlbefinden/kein_zugriff.html", {"current_user": current_user}, status_code=403
         )
 
-    kontext = await _wochenansicht_kontext(session, current_user.id, None)
-    kontext.update(await _tag_kontext(session, current_user.id, tag))
+    heute = date.today()
+    try:
+        ausgewaehlter_tag = min(date.fromisoformat(tag), heute) if tag else heute
+    except ValueError:
+        ausgewaehlter_tag = heute
+
+    eintrag = await _hole_eintrag(session, current_user.id, ausgewaehlter_tag)
+    anzeige = _eintrag_anzeige(eintrag, ausgewaehlter_tag)
+    if anzeige["morgen_impuls_frage"] is None:
+        anzeige["morgen_impuls_frage"] = morgen_impuls_des_tages(current_user.id, ausgewaehlter_tag)
+    if anzeige["abend_impuls_frage"] is None:
+        anzeige["abend_impuls_frage"] = abend_impuls_des_tages(current_user.id, ausgewaehlter_tag)
+
+    verlauf = await _verlauf(session, current_user.id, heute)
 
     freigaben_result = await session.execute(
         select(WohlbefindenFreigabe)
@@ -214,9 +142,13 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         "wohlbefinden/uebersicht.html",
         {
             "current_user": current_user,
+            "tag": anzeige,
+            "ist_heute": ausgewaehlter_tag == heute,
+            "vorheriger_tag": (ausgewaehlter_tag - timedelta(days=1)).isoformat(),
+            "naechster_tag": (ausgewaehlter_tag + timedelta(days=1)).isoformat() if ausgewaehlter_tag < heute else None,
+            "verlauf": verlauf,
             "freigaben": freigaben,
             "psm_kontakt": psm_kontakt,
-            **kontext,
         },
     )
 
@@ -227,7 +159,6 @@ async def teilnehmer_ansicht(
     teilnehmer_id: int,
     current_user: CurrentUser,
     session: SessionDep,
-    woche_start: str | None = None,
 ):
     """Rein lesende Ansicht für psychosoziale Mitarbeiter:innen - erfordert sowohl
     eine organisatorische PsmZuordnung als auch eine aktive, von der/dem
@@ -259,7 +190,7 @@ async def teilnehmer_ansicht(
         ziel_teilnehmer_id=teilnehmer_id,
     )
 
-    kontext = await _wochenansicht_kontext(session, teilnehmer_id, woche_start)
+    verlauf = await _verlauf(session, teilnehmer_id, date.today())
 
     return templates.TemplateResponse(
         request,
@@ -267,7 +198,7 @@ async def teilnehmer_ansicht(
         {
             "current_user": current_user,
             "teilnehmer": teilnehmer,
-            **kontext,
+            "verlauf": verlauf,
         },
     )
 
@@ -312,73 +243,66 @@ async def freigabe_widerrufen(freigabe_id: int, current_user: CurrentUser, sessi
     return RedirectResponse(url="/wohlbefinden", status_code=303)
 
 
-class TagWertePayload(BaseModel):
-    datum: date
-    stimmung: int = PydanticField(ge=1, le=10)
-    belastbarkeit: int = PydanticField(ge=1, le=10)
-
-
-class TagKommentarPayload(BaseModel):
-    datum: date
-    kommentar: str
-
-
-class TagLoeschenPayload(BaseModel):
-    datum: date
-
-
-async def _hole_oder_erstelle(session: SessionDep, current_user, datum: date) -> WohlbefindenEintrag:
-    result = await session.execute(
-        select(WohlbefindenEintrag).where(
-            WohlbefindenEintrag.teilnehmer_id == current_user.id, WohlbefindenEintrag.datum == datum
-        )
-    )
-    eintrag = result.scalar_one_or_none()
-    if eintrag is None:
-        eintrag = WohlbefindenEintrag(
-            teilnehmer_id=current_user.id, datum=datum, stimmung=5, belastbarkeit=5
-        )
-    return eintrag
-
-
-@router.post("/tag")
-async def tag_speichern(payload: TagWertePayload, current_user: CurrentUser, session: SessionDep):
+@router.post("/morgen")
+async def morgen_speichern(
+    current_user: CurrentUser,
+    session: SessionDep,
+    datum: str = Form(...),
+    dankbarkeit_1: str = Form(""),
+    dankbarkeit_2: str = Form(""),
+    dankbarkeit_3: str = Form(""),
+    morgen_impuls_frage: str = Form(""),
+    morgen_impuls_antwort: str = Form(""),
+):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
 
-    eintrag = await _hole_oder_erstelle(session, current_user, payload.datum)
-    eintrag.stimmung = payload.stimmung
-    eintrag.belastbarkeit = payload.belastbarkeit
-    eintrag.aktualisiert_am = datetime.utcnow()
+    tag_datum = date.fromisoformat(datum)
+    eintrag = await _hole_oder_erstelle(session, current_user.id, tag_datum)
+    eintrag.dankbarkeit_1 = dankbarkeit_1 or None
+    eintrag.dankbarkeit_2 = dankbarkeit_2 or None
+    eintrag.dankbarkeit_3 = dankbarkeit_3 or None
+    eintrag.morgen_impuls_frage = morgen_impuls_frage or morgen_impuls_des_tages(current_user.id, tag_datum)
+    eintrag.morgen_impuls_antwort = morgen_impuls_antwort or None
+    eintrag.morgen_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
     await session.commit()
-    return {"ok": True}
+    return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)
 
 
-@router.post("/tag/kommentar")
-async def kommentar_speichern(payload: TagKommentarPayload, current_user: CurrentUser, session: SessionDep):
+@router.post("/abend")
+async def abend_speichern(
+    current_user: CurrentUser,
+    session: SessionDep,
+    datum: str = Form(...),
+    highlight_1: str = Form(""),
+    highlight_2: str = Form(""),
+    highlight_3: str = Form(""),
+    abend_impuls_frage: str = Form(""),
+    abend_impuls_antwort: str = Form(""),
+):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
 
-    eintrag = await _hole_oder_erstelle(session, current_user, payload.datum)
-    eintrag.kommentar = payload.kommentar or None
-    eintrag.aktualisiert_am = datetime.utcnow()
+    tag_datum = date.fromisoformat(datum)
+    eintrag = await _hole_oder_erstelle(session, current_user.id, tag_datum)
+    eintrag.highlight_1 = highlight_1 or None
+    eintrag.highlight_2 = highlight_2 or None
+    eintrag.highlight_3 = highlight_3 or None
+    eintrag.abend_impuls_frage = abend_impuls_frage or abend_impuls_des_tages(current_user.id, tag_datum)
+    eintrag.abend_impuls_antwort = abend_impuls_antwort or None
+    eintrag.abend_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
     await session.commit()
-    return {"ok": True}
+    return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)
 
 
 @router.post("/tag/loeschen")
-async def tag_loeschen(payload: TagLoeschenPayload, current_user: CurrentUser, session: SessionDep):
-    result = await session.execute(
-        select(WohlbefindenEintrag).where(
-            WohlbefindenEintrag.teilnehmer_id == current_user.id, WohlbefindenEintrag.datum == payload.datum
-        )
-    )
-    eintrag = result.scalar_one_or_none()
-    if eintrag is None:
-        return {"ok": True}
-    require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diesen Eintrag.")
-    await session.delete(eintrag)
-    await session.commit()
-    return {"ok": True}
+async def tag_loeschen(current_user: CurrentUser, session: SessionDep, datum: str = Form(...)):
+    tag_datum = date.fromisoformat(datum)
+    eintrag = await _hole_eintrag(session, current_user.id, tag_datum)
+    if eintrag is not None:
+        require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diesen Eintrag.")
+        await session.delete(eintrag)
+        await session.commit()
+    return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)

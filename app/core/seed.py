@@ -15,6 +15,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.security import hash_password
+from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenSichtbarkeit, KartenZuweisung, Spalte, Unteraufgabe
 from app.models.organisation import (
     Abteilung,
@@ -28,7 +29,7 @@ from app.models.organisation import (
 )
 from app.models.user import RoleEnum, User
 from app.models.wochenbericht import Wochenbericht, WochenberichtStatus, leere_tage
-from app.models.wohlbefinden import WohlbefindenEintrag
+from app.models.wohlbefinden import TagebuchEintrag
 
 logger = logging.getLogger(__name__)
 
@@ -256,23 +257,43 @@ async def seed_demo_data(session: AsyncSession) -> None:
         )
     )
 
-    demo_werte = [
-        (6, 5, 6, None),
-        (5, 6, 5, None),
-        (4, 3, 2, "Anstrengender Tag im Praktikum, aber gut durchgehalten."),
-        (3, 6, 6, None),
-        (2, 7, 6, None),
-        (1, 8, 7, "Gutes Gespräch mit dem Berufstrainer."),
-        (0, 7, 8, None),
+    demo_tagebuch = [
+        (6, ["Sonnenschein am Morgen", "Ein guter Kaffee", "Ruhige Busfahrt"], None, ["Drehbuch-Idee gefunden"], None),
+        (5, ["Ein nettes Gespräch", "Mein Lieblingslied im Radio", "Pünktlich angekommen"], None, ["Konzept steht"], None),
+        (
+            4,
+            ["Durchgehalten trotz Anstrengung", "Unterstützung vom Team", "Ein ruhiger Feierabend"],
+            "Anstrengender Tag im Praktikum, aber gut durchgehalten.",
+            ["Trotzdem alles geschafft"],
+            None,
+        ),
+        (3, ["Guter Schlaf", "Neue Idee fürs Projekt", "Ein Lob bekommen"], None, ["Storyboard-Skizze fertig"], None),
+        (2, ["Sonniges Wetter", "Mittagessen mit Klaus", "Aufgabe erledigt"], None, ["Equipment-Liste fertig"], None),
+        (
+            1,
+            ["Ehrliches Feedback", "Gutes Gespräch mit dem Berufstrainer.", "Klarheit über nächste Schritte"],
+            "Gutes Gespräch mit dem Berufstrainer.",
+            ["Wichtiges Gespräch geführt"],
+            None,
+        ),
+        (0, ["Guter Start in den Tag", "Kurze Pause gemacht", "Etwas Neues gelernt"], None, ["Kickoff vorbereitet"], None),
     ]
-    for tage_zurueck, stimmung, belastbarkeit, kommentar in demo_werte:
+    for tage_zurueck, dankbarkeit, morgen_antwort, highlights, abend_antwort in demo_tagebuch:
+        datum = heute - timedelta(days=tage_zurueck)
         session.add(
-            WohlbefindenEintrag(
+            TagebuchEintrag(
                 teilnehmer_id=tanja.id,
-                datum=heute - timedelta(days=tage_zurueck),
-                stimmung=stimmung,
-                belastbarkeit=belastbarkeit,
-                kommentar=kommentar,
+                datum=datum,
+                dankbarkeit_1=dankbarkeit[0],
+                dankbarkeit_2=dankbarkeit[1],
+                dankbarkeit_3=dankbarkeit[2],
+                morgen_impuls_frage=morgen_impuls_des_tages(tanja.id, datum),
+                morgen_impuls_antwort=morgen_antwort,
+                morgen_ausgefuellt_am=datetime.utcnow(),
+                highlight_1=highlights[0],
+                abend_impuls_frage=abend_impuls_des_tages(tanja.id, datum),
+                abend_impuls_antwort=abend_antwort,
+                abend_ausgefuellt_am=datetime.utcnow() if abend_antwort else None,
             )
         )
 

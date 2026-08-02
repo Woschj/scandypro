@@ -32,14 +32,25 @@ Wenn nicht: nicht bauen.
 
 ## 1. Baustein A – Kurz-Check-in (Grundlage)
 
-- 2–4 Skalen (Stimmung, Energie, Belastung, optional Schlaf), 1–5,
-  ca. 20–30 Sekunden
-- Ein Tap für "alles wie immer" möglich (keine Pflicht, jedes Feld
-  auszufüllen)
+> **Umgesetzt als 5-Minuten-Tagebuch** (siehe `app/models/wohlbefinden.py:
+> TagebuchEintrag`, `app/core/tagebuch_prompts.py`): Die ursprünglich hier
+> geplanten Skalen (Stimmung/Energie/Belastung 1–5) wurden verworfen, da
+> jede numerische Skala – egal wie sie eingefärbt wird – bei fallenden
+> Werten wie eine Bewertung wirkt (siehe CLAUDE.md "keine roten
+> Warnsymbole"). Stattdessen: freier Text in festen Kategorien (morgens 3x
+> "Ich bin dankbar für" + 1 rotierender Klarheits-/Vorsatz-Impuls; abends
+> 3x "großartige Dinge" + 1 rotierender Abendreflexions-Impuls), pro
+> Tageszeit deterministisch aus Teilnehmer:in + Datum abgeleitet. Das
+> Dashboard-Signal zählt nur noch reine Teilnahme (Tage mit Eintrag), nie
+> Inhalt/Stimmung (siehe `app/core/fortschritt.py:
+> woechentliche_tagebuch_tage`).
+>
+> Die Bausteine B–F unten bleiben unverändert als **zukünftige Roadmap**
+> stehen; sie setzen keine Skalenwerte mehr voraus, sondern könnten auf
+> Basis der Tagebuch-Texte/Teilnahme neu gedacht werden, falls sie
+> tatsächlich umgesetzt werden.
+
 - Freitext optional, nie Pflichtfeld
-- Frei wählbare, vom Teilnehmer selbst gepflegte Tags (z. B.
-  "Bewerbungsgespräch", "guter Tag im Werkstattprojekt", "Konflikt") –
-  eigene Sprache statt vorgegebener klinischer Begriffe
 - Erinnerung: sanft, konfigurierbar (täglich/mehrmals wöchentlich/aus),
   keine Streak-Zwänge, kein Schuldgefühl bei Auslassen ("3 Tage nicht
   ausgefüllt" wird nicht negativ dargestellt)

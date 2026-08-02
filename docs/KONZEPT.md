@@ -212,11 +212,14 @@ speichern, `Hard` = Hard-Delete-Pflicht, `Soft` = Soft-Delete zulässig.
   erstellt_am. Sichtbarkeit für Berufstrainer:innen ergibt sich aus
   Handlungsfeld-Leitung + Teilnehmergruppen-Mitgliedschaft.
 
-### Wohlbefinden (Hard, 🔒)
+### Wohlbefinden / 5-Minuten-Tagebuch (Hard, 🔒)
 
-- **WohlbefindenEintrag**: id, teilnehmer_id, datum, stimmung (1–5),
-  energie (1–5), belastung (1–5), schlaf (1–5, optional), 🔒 freitext,
-  tags[], erstellt_am
+- **TagebuchEintrag**: id, teilnehmer_id, datum (eindeutig je Person+Tag),
+  🔒 dankbarkeit_1/2/3, morgen_impuls_frage, 🔒 morgen_impuls_antwort,
+  morgen_ausgefuellt_am, 🔒 highlight_1/2/3, abend_impuls_frage,
+  🔒 abend_impuls_antwort, abend_ausgefuellt_am, erstellt_am. Je Tageszeit
+  ein fester Kernimpuls + ein deterministisch rotierender Zusatzimpuls
+  (siehe app/core/tagebuch_prompts.py, docs/WOHLBEFINDEN_KONZEPT.md).
 - **WohlbefindenFreigabe**: id, teilnehmer_id, empfaenger_id,
   umfang (alle | zeitraum | einzelne_ids), gueltig_von, gueltig_bis,
   widerrufen_am (nullable)
