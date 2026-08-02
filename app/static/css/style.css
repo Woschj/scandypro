@@ -1207,6 +1207,10 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 .auswertung-stat { text-align: center; }
 .auswertung-stat .auswertung-emoji { font-size: 2.5rem; line-height: 1; }
 .auswertung-stat .auswertung-trend { font-size: 1.25rem; font-weight: 700; margin-top: 0.25rem; cursor: default; }
+/* trend-auf bewusst deutlich hervorgehoben (Erfolgsfarbe), trend-ab UND
+   trend-gleich bewusst in derselben neutralen Farbe - ein rückläufiger
+   Wert soll sichtbar, aber nie wie eine Warnung wirken (siehe
+   app/core/skala.py:trend, CLAUDE.md "keine roten Warnsymbole"). */
 .auswertung-trend.trend-auf { color: var(--success); }
-.auswertung-trend.trend-ab { color: var(--danger); }
+.auswertung-trend.trend-ab { color: var(--ink-soft); }
 .auswertung-trend.trend-gleich { color: var(--ink-soft); }

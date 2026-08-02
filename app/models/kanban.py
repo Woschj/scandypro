@@ -90,6 +90,22 @@ class Karte(SQLModel, table=True):
     Aktivitäts-/Audit-Log, nur dieses eine schmale Feld."""
 
 
+class KartenBewegung(SQLModel, table=True):
+    """Protokolliert jede Vorwärtsbewegung einer Karte (Ziel-Spalte hat eine
+    höhere `reihenfolge` als die Ausgangs-Spalte) - Grundlage für das
+    private Wochen-Fortschritts-Signal (siehe app/core/fortschritt.py:
+    woechentliche_schritte). Bewusst nur Vorwärtsbewegungen: Zurückziehen
+    einer Karte wird nicht protokolliert, zählt aber auch nirgends negativ
+    (siehe CLAUDE.md "keine Leistungsbegriffe"). Kein allgemeines
+    Aktivitäts-/Audit-Log - nur dieses eine schmale, zweckgebundene Signal,
+    wer eine Karte wann einen Schritt weitergebracht hat."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    karte_id: int = Field(foreign_key="karte.id", index=True)
+    bewegt_von_id: int = Field(foreign_key="user.id", index=True)
+    bewegt_am: datetime = Field(default_factory=datetime.utcnow)
+
+
 class KartenZuweisung(SQLModel, table=True):
     """Zuweisung einer Karte an eine Person (m:n - eine Karte kann mehrere
     Zuständige haben)."""

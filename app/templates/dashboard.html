@@ -29,10 +29,12 @@
   {% endif %}
   {% if stimmung_woche %}
   <div class="rueckblick-stat">
-    <div class="rueckblick-emoji">{{ stimmung_woche.emoji }}</div>
-    <div class="rueckblick-label">Stimmung diese Woche</div>
     {% if stimmung_woche.trend %}
-    <div class="auswertung-trend {{ stimmung_woche.trend.css }}" title="{{ stimmung_woche.trend.text }}">{{ stimmung_woche.trend.symbol }}</div>
+    <div class="rueckblick-zahl auswertung-trend {{ stimmung_woche.trend.css }}" style="font-size: 2rem;">{{ stimmung_woche.trend.symbol }}</div>
+    <div class="rueckblick-label">{{ stimmung_woche.trend.text }}</div>
+    {% else %}
+    <div class="rueckblick-emoji">{{ stimmung_woche.emoji }}</div>
+    <div class="rueckblick-label">Erster Eintrag diese Woche</div>
     {% endif %}
   </div>
   {% endif %}

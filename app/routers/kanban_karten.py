@@ -14,7 +14,16 @@ from sqlmodel import select
 
 from app.core.access import boardmitglieder_ids, ist_leiter_von_handlungsfeld, require_kanban_access
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
-from app.models.kanban import Board, BoardTyp, Karte, KartenSichtbarkeit, KartenZuweisung, Spalte, Unteraufgabe
+from app.models.kanban import (
+    Board,
+    BoardTyp,
+    Karte,
+    KartenBewegung,
+    KartenSichtbarkeit,
+    KartenZuweisung,
+    Spalte,
+    Unteraufgabe,
+)
 from app.models.user import RoleEnum
 
 router = APIRouter(prefix="/kanban", tags=["kanban"], dependencies=[Depends(verify_csrf)])
@@ -46,6 +55,21 @@ async def _karte_ist_gesperrt(session: SessionDep, karte: Karte) -> bool:
     erlaubt und hebt die Sperre auf."""
     spalte = await session.get(Spalte, karte.spalte_id)
     return spalte is not None and spalte.ist_system_erledigt
+
+
+def _protokolliere_falls_vorwaerts(
+    session: SessionDep, karte_id: int, von_spalte: Spalte | None, nach_spalte: Spalte, bewegt_von_id: int
+) -> None:
+    """Schreibt einen KartenBewegung-Eintrag, wenn die Karte tatsächlich in
+    eine Spalte weiter rechts gewandert ist (siehe app/models/kanban.py:
+    KartenBewegung, app/core/fortschritt.py:woechentliche_schritte) - reines
+    Umsortieren innerhalb derselben Spalte oder Zurückziehen zählt bewusst
+    nicht."""
+    if von_spalte is None or von_spalte.id == nach_spalte.id:
+        return
+    if nach_spalte.reihenfolge <= von_spalte.reihenfolge:
+        return
+    session.add(KartenBewegung(karte_id=karte_id, bewegt_von_id=bewegt_von_id))
 
 
 async def _require_karte_entsperrt(session: SessionDep, karte: Karte) -> None:
@@ -189,6 +213,8 @@ async def karte_verschieben(
     if ziel_spalte is None or ziel_spalte.board_id != board.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Zielspalte.")
 
+    alte_spalte = await session.get(Spalte, karte.spalte_id)
+
     max_reihenfolge_result = await session.execute(
         select(Karte.reihenfolge).where(Karte.spalte_id == ziel_spalte_id).order_by(Karte.reihenfolge.desc())
     )
@@ -200,6 +226,7 @@ async def karte_verschieben(
     else:
         karte.abgeschlossen_am = None
     session.add(karte)
+    _protokolliere_falls_vorwaerts(session, karte.id, alte_spalte, ziel_spalte, current_user.id)
     await session.commit()
     return RedirectResponse(url=f"/kanban/boards/{board.id}", status_code=303)
 
@@ -233,6 +260,7 @@ async def spalte_reihenfolge_setzen(
         else:
             karte.abgeschlossen_am = None
         session.add(karte)
+        _protokolliere_falls_vorwaerts(session, karte.id, vorherige_spalte, ziel_spalte, current_user.id)
 
     await session.commit()
     return {"ok": True}

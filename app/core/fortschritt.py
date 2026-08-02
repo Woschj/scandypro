@@ -1,9 +1,11 @@
 """Privates Wochen-Fortschritts-Signal für Teilnehmer:innen (siehe CLAUDE.md
 Abschnitt 25 "Wohlbefinden-Trend für den Nutzer selbst" / positive
-Verstärkung). Zählt Karten- und Unteraufgaben-Abschlüsse der letzten 7 Tage -
-nur für die Person selbst sichtbar, nie als Vergleich oder Bewertung
-dargestellt. Bewusst kein allgemeines Aktivitäts-Log, nur die zwei
-schmalen Zeitstempel-Felder Karte.abgeschlossen_am / Unteraufgabe.erledigt_am.
+Verstärkung). Zählt jede Karte, die die Person diese Woche mindestens einen
+Schritt weitergezogen hat (nicht erst bei vollständigem Abschluss - siehe
+app/models/kanban.py:KartenBewegung), plus abgeschlossene Unteraufgaben.
+Nur für die Person selbst sichtbar, nie als Vergleich oder Bewertung
+dargestellt. Bewusst kein allgemeines Aktivitäts-Log, nur dieses eine
+zweckgebundene Signal.
 """
 
 from datetime import date, datetime, timedelta
@@ -13,26 +15,23 @@ from sqlmodel import func, or_, select
 from app.core.deps import SessionDep
 from app.core.skala import stimmung_emoji
 from app.core.skala import trend as _trend
-from app.models.kanban import Karte, KartenZuweisung, Unteraufgabe
+from app.models.kanban import Karte, KartenBewegung, Unteraufgabe
 from app.models.wohlbefinden import WohlbefindenEintrag
 
 
 async def woechentliche_schritte(session: SessionDep, teilnehmer_id: int) -> int:
-    """Anzahl Karten- und Unteraufgaben-Abschlüsse der/des Teilnehmer:in in
-    den letzten 7 Tagen (eigene Karten oder ihr zugewiesene)."""
+    """Anzahl Karten, die die Person in den letzten 7 Tagen mindestens einen
+    Schritt weitergezogen hat (jede Karte zählt nur einmal, egal wie oft sie
+    bewegt wurde), plus abgeschlossene Unteraufgaben."""
     seit = datetime.utcnow() - timedelta(days=7)
 
-    zugewiesene_karten_ids = select(KartenZuweisung.karte_id).where(
-        KartenZuweisung.teilnehmer_id == teilnehmer_id
-    )
-    karten_result = await session.execute(
-        select(func.count(Karte.id)).where(
-            Karte.abgeschlossen_am.is_not(None),
-            Karte.abgeschlossen_am >= seit,
-            or_(Karte.ersteller_id == teilnehmer_id, Karte.id.in_(zugewiesene_karten_ids)),
+    bewegte_karten_result = await session.execute(
+        select(func.count(func.distinct(KartenBewegung.karte_id))).where(
+            KartenBewegung.bewegt_von_id == teilnehmer_id,
+            KartenBewegung.bewegt_am >= seit,
         )
     )
-    karten_anzahl = karten_result.scalar_one()
+    bewegte_karten_anzahl = bewegte_karten_result.scalar_one()
 
     unteraufgaben_result = await session.execute(
         select(func.count(Unteraufgabe.id))
@@ -45,7 +44,7 @@ async def woechentliche_schritte(session: SessionDep, teilnehmer_id: int) -> int
     )
     unteraufgaben_anzahl = unteraufgaben_result.scalar_one()
 
-    return karten_anzahl + unteraufgaben_anzahl
+    return bewegte_karten_anzahl + unteraufgaben_anzahl
 
 
 def _wochenstart(bezugsdatum: date) -> date:

@@ -8,6 +8,27 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.3] - 2026-08-02
+
+### Changed
+- **Neue Definition von "Schritte geschafft"**: zählt jetzt jede Karte, die
+  mindestens einen Schritt nach rechts (in eine Spalte mit höherer
+  Reihenfolge) gezogen wurde - nicht mehr erst bei vollständigem Abschluss.
+  Neue Tabelle `kartenbewegung` protokolliert Vorwärtsbewegungen (Migration
+  `d4e5f6a7b8c9`); Zurückziehen wird nicht negativ gewertet, zählt aber auch
+  nicht doppelt.
+- **Stimmungs-Trend statt Emoji als Primäranzeige** im Dashboard-Rückblick:
+  großer Pfeil zeigt die Entwicklung, Emoji nur noch als Rückfall-Anzeige
+  vor dem ersten Vergleichswert.
+- **Trend-Sprache/-Farbe nie mehr wertend**: `app/core/skala.py:trend()`
+  vermeidet jetzt Formulierungen wie "schwerer" zugunsten neutraler
+  Beschreibungen ("diese Woche ruhiger"); die CSS-Klasse für rückläufige
+  Werte ist bewusst NICHT mehr rot eingefärbt (wirkt auf Dashboard UND
+  "Mein Tag" gleichermaßen, da beide dieselbe Funktion nutzen).
+- Mood-Heatmap-Kacheln ("Mein Tag" → Verlauf) zeigen kein kleines,
+  schlecht lesbares Emoji mehr - Farbe bleibt das alleinige Signal in der
+  Kachel, Details weiterhin per Tooltip/Antippen abrufbar.
+
 ## [0.1.2] - 2026-08-02
 
 ### Added

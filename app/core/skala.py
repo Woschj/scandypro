@@ -51,16 +51,24 @@ def trend(aktuell: float | None, vorwoche: float | None) -> dict | None:
     Zwischenschritten je nach Stärke der Veränderung (siehe
     app/templates/wohlbefinden/uebersicht.html, app/templates/dashboard.html).
     Gemeinsam genutzt, damit "Mein Tag" und das Dashboard-Rückblick-Signal
-    dieselbe Sprache sprechen."""
+    dieselbe Sprache sprechen.
+
+    Bewusst durchgehend nicht-wertend formuliert, auch bei rückläufigen
+    Werten (siehe CLAUDE.md "keine Leistungsbegriffe", "keine roten
+    Warnsymbole") - kein "schlechter"/"schwerer", sondern neutrale
+    Beschreibungen wie "ruhiger". Die zugehörige CSS-Klasse `trend-ab`
+    (siehe app/static/css/style.css) ist bewusst NICHT rot eingefärbt: ein
+    rückläufiger Wert soll sichtbar bleiben, aber nie wie eine Warnung oder
+    negative Rückmeldung wirken."""
     if aktuell is None or vorwoche is None:
         return None
     delta = aktuell - vorwoche
     if delta > 1.5:
-        return {"symbol": "↑↑", "css": "trend-auf", "text": "deutlich im Aufwind"}
+        return {"symbol": "↑↑", "css": "trend-auf", "text": "Deutlich im Aufwind"}
     if delta > 0.3:
-        return {"symbol": "↑", "css": "trend-auf", "text": "etwas im Aufwind"}
+        return {"symbol": "↑", "css": "trend-auf", "text": "Etwas im Aufwind"}
     if delta < -1.5:
-        return {"symbol": "↓↓", "css": "trend-ab", "text": "deutlich schwerer als zuletzt"}
+        return {"symbol": "↓", "css": "trend-ab", "text": "Diese Woche spürbar ruhiger"}
     if delta < -0.3:
-        return {"symbol": "↓", "css": "trend-ab", "text": "etwas schwerer als zuletzt"}
-    return {"symbol": "→", "css": "trend-gleich", "text": "ähnlich wie zuletzt"}
+        return {"symbol": "↓", "css": "trend-ab", "text": "Diese Woche etwas ruhiger"}
+    return {"symbol": "→", "css": "trend-gleich", "text": "Ähnlich wie zuletzt"}

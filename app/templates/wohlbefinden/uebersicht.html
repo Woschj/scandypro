@@ -97,7 +97,7 @@
         {% if tag.farbe %}style="background: {{ tag.farbe }}; border-color: transparent;"{% endif %}
         title="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else '' }}"
         aria-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ', kein Eintrag' }}"
-        data-heatmap-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ' – kein Eintrag' }}">{{ tag.emoji or "" }}</button>
+        data-heatmap-label="{{ tag.label }}{{ ': ' ~ tag.emoji if tag.emoji else ' – kein Eintrag' }}"></button>
       {% endif %}
       {% endfor %}
     </div>
