@@ -7,6 +7,7 @@
   <meta name="csrf-token" content="{{ csrf_token(request) }}">
   {% endif %}
   <title>{% block title %}ScandyPro{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v={{ asset_version }}">
   <link rel="stylesheet" href="/static/css/style.css?v={{ asset_version }}">
   <script>
     /* Muss synchron und vor dem Stylesheet-Rendering laufen, sonst blitzt
