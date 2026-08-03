@@ -24,7 +24,7 @@ from app.models.bewerbung import Bewerbung, BewerbungsFreigabe
 from app.models.kanban import Board, BoardFreigabe
 from app.models.organisation import HandlungsfeldMitglied, Teilnehmergruppe, TeilnehmergruppeMitglied
 from app.models.user import RoleEnum, User
-from app.models.wohlbefinden import WohlbefindenFreigabe
+from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe
 
 router = APIRouter(prefix="/freigaben", tags=["freigaben"], dependencies=[Depends(verify_csrf)])
 
@@ -47,6 +47,14 @@ async def meine_freigaben(request: Request, current_user: CurrentUser, session: 
         .order_by(WohlbefindenFreigabe.erstellt_am.desc())
     )
     wohlbefinden_freigaben = list(wohlbefinden_result.scalars().all())
+
+    eintrag_ids = {f.tagebuch_eintrag_id for f in wohlbefinden_freigaben if f.tagebuch_eintrag_id is not None}
+    eintrag_datum_by_id: dict[int, object] = {}
+    if eintrag_ids:
+        eintrag_datum_result = await session.execute(
+            select(TagebuchEintrag.id, TagebuchEintrag.datum).where(TagebuchEintrag.id.in_(eintrag_ids))
+        )
+        eintrag_datum_by_id = dict(eintrag_datum_result.all())
 
     bewerbungs_result = await session.execute(
         select(BewerbungsFreigabe)
@@ -125,6 +133,7 @@ async def meine_freigaben(request: Request, current_user: CurrentUser, session: 
         {
             "current_user": current_user,
             "wohlbefinden_freigaben": wohlbefinden_freigaben,
+            "eintrag_datum_by_id": eintrag_datum_by_id,
             "bewerbungs_freigaben": bewerbungs_freigaben,
             "board_freigaben": board_freigaben,
             "empfaenger_by_id": empfaenger_by_id,

@@ -114,6 +114,7 @@ class TagebuchEintrag(SQLModel, table=True):
 class WohlbefindenFreigabeUmfang(str, Enum):
     alle = "alle"
     zeitraum = "zeitraum"
+    einzeln = "einzeln"
 
 
 class WohlbefindenFreigabe(SQLModel, table=True):
@@ -125,12 +126,19 @@ class WohlbefindenFreigabe(SQLModel, table=True):
     Ersetzt NICHT die organisatorische PsmZuordnung - beide müssen aktiv
     sein, damit die PSM tatsächlich lesen darf (Zuordnung = "wer ist
     zuständig", Freigabe = "darf auch wirklich sehen").
+
+    Bei umfang=einzeln ist `tagebuch_eintrag_id` gesetzt und beschränkt die
+    Freigabe auf genau diesen einen Tag - analog zu
+    BewerbungsFreigabe.bewerbung_id bei umfang=einzeln dort. `gueltig_bis`
+    bleibt bei einzeln ungenutzt (None): ein bereits geschriebener Tag
+    bekommt kein Ablaufdatum, nur einen expliziten Widerruf.
     """
 
     id: int | None = Field(default=None, primary_key=True)
     teilnehmer_id: int = Field(foreign_key="user.id", index=True)
     empfaenger_id: int = Field(foreign_key="user.id", index=True)
     umfang: WohlbefindenFreigabeUmfang = WohlbefindenFreigabeUmfang.alle
+    tagebuch_eintrag_id: int | None = Field(default=None, foreign_key="tagebucheintrag.id", index=True)
     gueltig_bis: date | None = None
     widerrufen_am: datetime | None = None
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)

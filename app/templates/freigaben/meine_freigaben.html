@@ -14,7 +14,11 @@
     {% for f in wohlbefinden_freigaben %}
     <tr>
       <td>{{ empfaenger_by_id[f.empfaenger_id].name if f.empfaenger_id in empfaenger_by_id else "?" }}</td>
-      <td>{{ "Gesamter Verlauf" if f.umfang.value == "alle" else "Befristet" }}</td>
+      <td>
+        {% if f.umfang.value == "einzeln" %}Einzelner Tag{% if f.tagebuch_eintrag_id in eintrag_datum_by_id %} ({{ eintrag_datum_by_id[f.tagebuch_eintrag_id].strftime("%d.%m.%Y") }}){% endif %}
+        {% elif f.umfang.value == "alle" %}Gesamter Verlauf
+        {% else %}Befristet{% endif %}
+      </td>
       <td>{{ f.gueltig_bis or "unbefristet" }}</td>
       <td>
         <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">

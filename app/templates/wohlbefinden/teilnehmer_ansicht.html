@@ -3,8 +3,13 @@
 {% block content %}
 <p><a href="/">&larr; Zurück</a></p>
 <h1>"Mein Tag" von {{ teilnehmer.name }}</h1>
+{% if eingeschraenkt %}
+<p class="visibility-hint">Freigegebene Ansicht - nur lesend. {{ teilnehmer.name }} hat dir gezielt einzelne Tage
+  freigegeben (nicht das ganze Tagebuch) und kann jede Freigabe jederzeit widerrufen.</p>
+{% else %}
 <p class="visibility-hint">Freigegebene Ansicht - nur lesend. {{ teilnehmer.name }} kann diese Freigabe
   jederzeit widerrufen. Zeigt die letzten zwei Wochen mit Einträgen.</p>
+{% endif %}
 
 {% if verlauf %}
 <div class="zuklapp-liste">

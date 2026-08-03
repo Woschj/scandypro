@@ -21,7 +21,7 @@ from app.models.organisation import (
     TeilnehmergruppeMitglied,
 )
 from app.models.user import RoleEnum, User
-from app.models.wohlbefinden import WohlbefindenFreigabe
+from app.models.wohlbefinden import WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
 
 
 async def ist_leiter_von_handlungsfeld(session: AsyncSession, berufstrainer_id: int, handlungsfeld_id: int) -> bool:
@@ -263,11 +263,17 @@ def require_role(current_user: User, role: RoleEnum, message: str) -> None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, message)
 
 
-async def hat_wohlbefinden_freigabe(session: AsyncSession, empfaenger_id: int, teilnehmer_id: int) -> bool:
-    """Aktive (nicht widerrufene, nicht abgelaufene) Freigabe der/des
-    Teilnehmer:in für diese PSM-Person - siehe
-    app/models/wohlbefinden.py:WohlbefindenFreigabe. Ersetzt nicht die
-    organisatorische PsmZuordnung, sondern ergänzt sie (beide nötig)."""
+async def sichtbare_wohlbefinden_tage(
+    session: AsyncSession, empfaenger_id: int, teilnehmer_id: int
+) -> set[int] | None:
+    """Welche TagebuchEintrag-IDs diese PSM-Person aktuell sehen darf.
+
+    `None` bedeutet uneingeschränkten Zugriff (mindestens eine aktive
+    Freigabe mit umfang=alle/zeitraum liegt vor); eine (ggf. leere) Menge
+    bedeutet: nur einzeln freigegebene Tage (umfang=einzeln), begrenzt auf
+    genau die darin enthaltenen IDs. So kann eine/ein Teilnehmer:in gezielt
+    nur bestimmte Tage teilen, statt zwingend das ganze Tagebuch (siehe
+    app/routers/wohlbefinden.py:tag_freigeben)."""
     heute = date.today()
     result = await session.execute(
         select(WohlbefindenFreigabe).where(
@@ -277,7 +283,18 @@ async def hat_wohlbefinden_freigabe(session: AsyncSession, empfaenger_id: int, t
             or_(WohlbefindenFreigabe.gueltig_bis.is_(None), WohlbefindenFreigabe.gueltig_bis >= heute),
         )
     )
-    return result.first() is not None
+    freigaben = list(result.scalars().all())
+    if any(f.umfang != WohlbefindenFreigabeUmfang.einzeln for f in freigaben):
+        return None
+    return {f.tagebuch_eintrag_id for f in freigaben if f.tagebuch_eintrag_id is not None}
+
+
+async def hat_wohlbefinden_freigabe(session: AsyncSession, empfaenger_id: int, teilnehmer_id: int) -> bool:
+    """Ob diese PSM-Person überhaupt irgendetwas sehen darf (mindestens ein
+    Tag oder uneingeschränkt) - für die grobe Zugriffsprüfung/Anzeige, siehe
+    sichtbare_wohlbefinden_tage() für die genaue Einschränkung."""
+    sichtbare_ids = await sichtbare_wohlbefinden_tage(session, empfaenger_id, teilnehmer_id)
+    return sichtbare_ids is None or len(sichtbare_ids) > 0
 
 
 async def hat_bewerbungs_freigabe(session: AsyncSession, empfaenger_id: int, bewerbung: Bewerbung) -> bool:

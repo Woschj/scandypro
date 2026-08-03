@@ -193,10 +193,15 @@ async def dashboard(request: Request, session: SessionDep):
         )
         for freigabe in freigaben_result.scalars().all():
             teilnehmer = await session.get(User, freigabe.teilnehmer_id)
+            text = (
+                "hat dir einen einzelnen Tag freigegeben"
+                if freigabe.umfang.value == "einzeln"
+                else "hat dir 'Mein Tag' freigegeben"
+            )
             neu_geteilt.append(
                 {
                     "teilnehmer": teilnehmer,
-                    "text": "hat dir 'Mein Tag' freigegeben",
+                    "text": text,
                     "erstellt_am": freigabe.erstellt_am,
                     "link": f"/wohlbefinden/teilnehmer/{freigabe.teilnehmer_id}",
                 }

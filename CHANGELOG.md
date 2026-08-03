@@ -8,6 +8,21 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.19] - 2026-08-03
+
+### Added
+- **Einzelne "Mein Tag"-Einträge gezielt freigeben**, statt nur "Gesamter
+  Verlauf" oder "Bis zu einem Datum" (beides teilte immer das komplette
+  Tagebuch, nur die Dauer unterschied sich). Neuer Umfang `einzeln` bei
+  `WohlbefindenFreigabe` mit `tagebuch_eintrag_id` (analog
+  `BewerbungsFreigabe.bewerbung_id`, Migration `c0d1e2f3a4b5`). Jeder Tag
+  in "Dein Verlauf" hat jetzt einen eigenen "Nur diesen Tag für ... freigeben"-
+  Button. Die PSM-Ansicht (`/wohlbefinden/teilnehmer/{id}`) zeigt bei einer
+  reinen Einzeltag-Freigabe wirklich nur die freigegebenen Tage - nicht
+  mehr automatisch die letzten zwei Wochen (neue Funktion
+  `app/core/access.py:sichtbare_wohlbefinden_tage`, ersetzt die reine
+  Ja/Nein-Prüfung von `hat_wohlbefinden_freigabe`).
+
 ## [0.1.18] - 2026-08-03
 
 ### Added

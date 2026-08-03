@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
-from app.core.access import hat_wohlbefinden_freigabe, require_owner, require_role
+from app.core.access import hat_wohlbefinden_freigabe, require_owner, require_role, sichtbare_wohlbefinden_tage
 from app.core.atemuebungen import atemuebung_des_tages, atemuebung_punkte
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
@@ -207,6 +207,20 @@ async def _verlauf(session: SessionDep, teilnehmer_id: int, bis_datum: date) -> 
     return [a for a in anzeigen if _hat_inhalt(a)]
 
 
+async def _eintraege_nach_ids(session: SessionDep, ids: set[int]) -> list[dict]:
+    """Wie _verlauf, aber für eine feste Menge von TagebuchEintrag-IDs statt
+    eines Zeitfensters - für PSM-Ansichten mit nur einzeln freigegebenen
+    Tagen (siehe app/core/access.py:sichtbare_wohlbefinden_tage), die auch
+    älter als VERLAUF_TAGE_ANZAHL Tage sein dürfen."""
+    if not ids:
+        return []
+    result = await session.execute(
+        select(TagebuchEintrag).where(TagebuchEintrag.id.in_(ids)).order_by(TagebuchEintrag.datum.desc())
+    )
+    eintraege = result.scalars().all()
+    return [_eintrag_anzeige(e, e.datum) for e in eintraege]
+
+
 @router.get("", response_class=HTMLResponse)
 async def uebersicht(request: Request, current_user: CurrentUser, session: SessionDep, tag: str | None = None):
     if current_user.role != RoleEnum.teilnehmer:
@@ -248,11 +262,30 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
     )
     freigaben = list(freigaben_result.scalars().all())
 
+    eintrag_ids_in_freigaben = {f.tagebuch_eintrag_id for f in freigaben if f.tagebuch_eintrag_id is not None}
+    eintrag_datum_by_id: dict[int, date] = {}
+    if eintrag_ids_in_freigaben:
+        eintrag_datum_result = await session.execute(
+            select(TagebuchEintrag.id, TagebuchEintrag.datum).where(TagebuchEintrag.id.in_(eintrag_ids_in_freigaben))
+        )
+        eintrag_datum_by_id = dict(eintrag_datum_result.all())
+
     psm_result = await session.execute(
         select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id)
     )
     psm_zuordnung = psm_result.scalar_one_or_none()
     psm_kontakt = await session.get(User, psm_zuordnung.psm_id) if psm_zuordnung else None
+
+    # Tage, die schon einzeln an psm_kontakt freigegeben sind - fürs
+    # "Diesen Tag freigeben"-Kontrollkästchen je Tag im Verlauf unten.
+    einzeln_geteilte_tage: set[int] = {
+        f.tagebuch_eintrag_id
+        for f in freigaben
+        if f.umfang == WohlbefindenFreigabeUmfang.einzeln
+        and f.tagebuch_eintrag_id is not None
+        and psm_kontakt is not None
+        and f.empfaenger_id == psm_kontakt.id
+    }
 
     # Weitere psychosoziale Mitarbeiter:innen derselben Abteilung als
     # zusätzliche Kontaktoption (siehe VB-002-Feedback) - unabhängig von der
@@ -290,6 +323,8 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "naechster_tag": (ausgewaehlter_tag + timedelta(days=1)).isoformat() if ausgewaehlter_tag < heute else None,
             "verlauf": verlauf,
             "freigaben": freigaben,
+            "eintrag_datum_by_id": eintrag_datum_by_id,
+            "einzeln_geteilte_tage": einzeln_geteilte_tage,
             "psm_kontakt": psm_kontakt,
             "andere_psm": andere_psm,
             "wort_optionen": WORT_DES_TAGES_OPTIONEN,
@@ -401,7 +436,12 @@ async def teilnehmer_ansicht(
     if zuordnung_result.first() is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Diese Person ist dir nicht zugeordnet.")
 
-    if not await hat_wohlbefinden_freigabe(session, current_user.id, teilnehmer_id):
+    sichtbare_ids = await sichtbare_wohlbefinden_tage(session, current_user.id, teilnehmer_id)
+    if sichtbare_ids is None:
+        eingeschraenkt = False
+    elif sichtbare_ids:
+        eingeschraenkt = True
+    else:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Keine aktive Freigabe für diese Person.")
 
     teilnehmer = await session.get(User, teilnehmer_id)
@@ -416,7 +456,11 @@ async def teilnehmer_ansicht(
         ziel_teilnehmer_id=teilnehmer_id,
     )
 
-    verlauf = await _verlauf(session, teilnehmer_id, date.today())
+    verlauf = (
+        await _eintraege_nach_ids(session, sichtbare_ids)
+        if eingeschraenkt
+        else await _verlauf(session, teilnehmer_id, date.today())
+    )
 
     return templates.TemplateResponse(
         request,
@@ -425,6 +469,7 @@ async def teilnehmer_ansicht(
             "current_user": current_user,
             "teilnehmer": teilnehmer,
             "verlauf": verlauf,
+            "eingeschraenkt": eingeschraenkt,
         },
     )
 
@@ -453,6 +498,45 @@ async def freigabe_erstellen(
         )
     )
     await session.commit()
+    return RedirectResponse(url="/wohlbefinden", status_code=303)
+
+
+@router.post("/eintraege/{eintrag_id}/freigeben")
+async def eintrag_freigeben(eintrag_id: int, current_user: CurrentUser, session: SessionDep):
+    """Gibt genau einen Tagebuch-Tag an die zuständige PSM frei - Ergänzung
+    zu freigabe_erstellen (dort: ganzes Tagebuch/befristet). Direkt an
+    psm_kontakt statt an eine frei wählbare Person, weil das Formular je
+    Tag in "Dein Verlauf" sitzt und keine weitere Auswahl anzeigen soll."""
+    require_role(current_user, RoleEnum.teilnehmer, "Nur Teilnehmer:innen geben eigene Tage frei.")
+
+    eintrag = await session.get(TagebuchEintrag, eintrag_id)
+    if eintrag is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diesen Tag.")
+
+    psm_result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id))
+    psm_zuordnung = psm_result.scalar_one_or_none()
+    if psm_zuordnung is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Dir ist noch keine psychosoziale Mitarbeiter:in zugeordnet.")
+
+    bereits_geteilt = await session.execute(
+        select(WohlbefindenFreigabe.id).where(
+            WohlbefindenFreigabe.teilnehmer_id == current_user.id,
+            WohlbefindenFreigabe.empfaenger_id == psm_zuordnung.psm_id,
+            WohlbefindenFreigabe.tagebuch_eintrag_id == eintrag_id,
+            WohlbefindenFreigabe.widerrufen_am.is_(None),
+        )
+    )
+    if bereits_geteilt.first() is None:
+        session.add(
+            WohlbefindenFreigabe(
+                teilnehmer_id=current_user.id,
+                empfaenger_id=psm_zuordnung.psm_id,
+                umfang=WohlbefindenFreigabeUmfang.einzeln,
+                tagebuch_eintrag_id=eintrag_id,
+            )
+        )
+        await session.commit()
     return RedirectResponse(url="/wohlbefinden", status_code=303)
 
 

@@ -346,6 +346,18 @@
         {% if eintrag.check_kleines_erfolgserlebnis %}<span class="chip chip-neutral">Kleines Erfolgserlebnis</span>{% endif %}
       </div>
       {% endif %}
+      <div style="margin-top: var(--space-4); display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap;">
+        {% if psm_kontakt %}
+        {% if eintrag.eintrag_id in einzeln_geteilte_tage %}
+        <span class="chip chip-success">Für {{ psm_kontakt.name }} freigegeben</span>
+        {% else %}
+        <form method="post" action="/wohlbefinden/eintraege/{{ eintrag.eintrag_id }}/freigeben">
+          {% include "partials/csrf_field.html" %}
+          <button type="submit" class="btn btn-ghost btn-sm">Nur diesen Tag für {{ psm_kontakt.name }} freigeben</button>
+        </form>
+        {% endif %}
+        {% endif %}
+      </div>
       <form method="post" action="/wohlbefinden/tag/loeschen" data-confirm="Eintrag vom {{ eintrag.label }} unwiderruflich löschen?" style="margin-top: var(--space-3);">
         {% include "partials/csrf_field.html" %}
         <input type="hidden" name="datum" value="{{ eintrag.datum }}">
@@ -392,7 +404,11 @@
       {% for f in freigaben %}
       <tr>
         <td>{{ psm_kontakt.name if psm_kontakt and psm_kontakt.id == f.empfaenger_id else "Psychosoziale Mitarbeiter:in #" ~ f.empfaenger_id }}</td>
-        <td>{{ "Gesamter Verlauf" if f.umfang.value == "alle" else "Befristet" }}</td>
+        <td>
+          {% if f.umfang.value == "einzeln" %}Einzelner Tag{% if f.tagebuch_eintrag_id in eintrag_datum_by_id %} ({{ eintrag_datum_by_id[f.tagebuch_eintrag_id].strftime("%d.%m.%Y") }}){% endif %}
+          {% elif f.umfang.value == "alle" %}Gesamter Verlauf
+          {% else %}Befristet{% endif %}
+        </td>
         <td>{{ f.gueltig_bis or "unbefristet" }}</td>
         <td>
           <form method="post" action="/wohlbefinden/freigaben/{{ f.id }}/widerrufen">
