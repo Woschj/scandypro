@@ -35,9 +35,11 @@ analog zum Schwestermodul Scandy-Lite.
     Alternative einzurichten (ohne "aktuelles Passwort", da noch keins
     existiert).
 - **[SSO_AUTHENTIK.md](SSO_AUTHENTIK.md)**: vollständige Installations- und
-  Anbindungsanleitung - eigene Authentik-Instanz aufsetzen (Docker Compose,
-  analog zur offiziellen Authentik-Doku), Provider/Application anlegen,
-  ScandyPro konfigurieren, End-to-End-Testablauf, Fehlerbehebungstabelle.
+  Anbindungsanleitung - eigene Authentik-Instanz aufsetzen, wahlweise als
+  natives LXC über das Community-Skript (passt zum bestehenden Muster
+  `scandypro.sh`/`scandy-lite.sh`) oder per Docker Compose (offizieller
+  Authentik-Weg), danach Provider/Application anlegen, ScandyPro
+  konfigurieren, End-to-End-Testablauf, Fehlerbehebungstabelle.
   `.env.example` um die vier `OIDC_*`-Variablen ergänzt, README.md verweist
   darauf.
 

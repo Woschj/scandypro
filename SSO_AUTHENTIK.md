@@ -52,7 +52,42 @@ kann direkt zu Teil B springen.
 
 ## Teil A: Authentik installieren
 
-Überspringen, falls bereits eine Authentik-Instanz läuft.
+Überspringen, falls bereits eine Authentik-Instanz läuft. Zwei gleichwertige
+Wege, je nachdem wie ihr ScandyPro/Scandy-Lite selbst schon betreibt:
+
+- **Option 1 (empfohlen bei Proxmox VE)**: natives LXC-Container über das
+  Community-Skript — passt zum bestehenden Muster (`scandypro.sh`,
+  `scandy-lite.sh`), ein Skript pro Dienst, alle drei einzeln snapshotbar.
+- **Option 2**: Docker Compose — der von den Authentik-Entwicklern selbst
+  offiziell dokumentierte und gepflegte Weg, unabhängig von Proxmox.
+
+Beide Wege führen zum selben Ergebnis (Teil B braucht nur die erreichbare
+URL, unabhängig davon, wie Authentik betrieben wird).
+
+### Option 1: LXC-Container per Community-Skript
+
+Das [community-scripts-Projekt](https://community-scripts.github.io/ProxmoxVE/)
+(Nachfolger der bekannten tteck-Proxmox-Skripte) pflegt ein eigenes
+Authentik-Skript: natives LXC mit PostgreSQL, Redis und dem Authentik-Build
+selbst über systemd-Units — kein Docker im Container nötig.
+
+**Wichtig, weil von Dritten gepflegt statt von Authentik selbst**: Versionen
+folgen mit etwas Verzögerung, und bei Update-Problemen ist die
+community-scripts-Community die erste Anlaufstelle, nicht die
+Authentik-Doku. Vor dem Ausführen kurz reinschauen, wie bei jedem
+Drittanbieter-Skript, das per `curl | bash` läuft:
+
+```bash
+# auf dem Proxmox-Host (als root) - Skript-Übersicht/Details:
+# https://community-scripts.github.io/ProxmoxVE/scripts?id=authentik
+bash -c "$(curl -fsSL https://community-scripts.github.io/ProxmoxVE/ct/authentik.sh)"
+```
+
+Legt einen eigenen LXC-Container an, installiert Authentik nativ und zeigt
+am Ende die IP sowie die Erstzugangsdaten (`akadmin`) an. Danach weiter mit
+**A.3 (Domain/HTTPS)** unten.
+
+### Option 2: Docker Compose
 
 Authentik lebt **nicht** in ScandyPros `compose.yaml` — es ist ein eigener,
 von ScandyPro und Scandy-Lite unabhängiger Dienst. Eigenes Verzeichnis
@@ -62,7 +97,7 @@ anlegen, z. B. neben den beiden App-Installationen:
 mkdir -p ~/authentik && cd ~/authentik
 ```
 
-### A.1 `.env` anlegen
+#### A.1 `.env` anlegen
 
 ```bash
 cat > .env <<'EOF'
@@ -79,7 +114,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"   # für PG_PASS
 python3 -c "import secrets; print(secrets.token_urlsafe(50))"  # für AUTHENTIK_SECRET_KEY
 ```
 
-### A.2 `compose.yaml` anlegen
+#### A.2 `compose.yaml` anlegen
 
 ```yaml
 services:
@@ -171,7 +206,7 @@ Aktuelle Image-Version vor dem ersten Start prüfen unter
 `2024.10` oben ist ein Platzhalter für "eine funktionierende, zum
 Erstellungszeitpunkt aktuelle Version", keine feste Empfehlung.
 
-### A.3 Starten
+Starten:
 
 ```bash
 docker compose up -d
@@ -183,13 +218,12 @@ Erststart dauert einen Moment (Datenbank-Migrationen). Fortschritt prüfen:
 docker compose logs -f server
 ```
 
-### A.4 Auf Domain/HTTPS bringen
+### A.3 Auf Domain/HTTPS bringen
 
-Wie bei ScandyPro braucht Authentik selbst auch HTTPS mit eigener Domain,
-sobald andere Apps produktiv dagegen laufen sollen (nicht nur `:9000` im
-lokalen Netz). Am einfachsten mit einem eigenen Caddy davor, analog zum
-ScandyPro-Setup — einen weiteren kleinen Service im selben `compose.yaml`
-oder einen bereits vorhandenen Reverse-Proxy auf dem Host nutzen:
+Unabhängig von Option 1 oder 2 braucht Authentik selbst HTTPS mit eigener
+Domain, sobald andere Apps produktiv dagegen laufen sollen (nicht nur
+`:9000`/die Container-IP im lokalen Netz). Am einfachsten mit einem eigenen
+Caddy davor:
 
 ```caddyfile
 authentik.eure-domain.de {
@@ -197,12 +231,18 @@ authentik.eure-domain.de {
 }
 ```
 
-### A.5 Ersteinrichtung (Setup-Wizard)
+(Bei Option 1 läuft Authentik direkt im LXC auf Port 9000 - Caddy entweder
+im selben Container oder in einem weiteren kleinen LXC/auf dem
+Proxmox-Host selbst.)
+
+### A.4 Ersteinrichtung (Setup-Wizard)
 
 Im Browser `https://authentik.eure-domain.de/if/flow/initial-setup/` öffnen
 (oder `http://<host>:9000/if/flow/initial-setup/` bei reinem Test ohne
 Domain). Dort wird beim allerersten Aufruf ein `akadmin`-Konto mit Passwort
-eurer Wahl angelegt — danach ist die Instanz einsatzbereit für Teil B.
+eurer Wahl angelegt (bei Option 1 zeigt das Skript ggf. schon fertige
+Zugangsdaten an - dann diesen Schritt nur zur Kontrolle öffnen) — danach ist
+die Instanz einsatzbereit für Teil B.
 
 ---
 
@@ -312,7 +352,7 @@ Button "Mit \<OIDC_PROVIDER_NAME\> anmelden".
 |---|---|---|
 | Button "Mit ... anmelden" erscheint nicht | `OIDC_ISSUER`/`OIDC_CLIENT_ID`/`OIDC_CLIENT_SECRET` nicht (vollständig) gesetzt | alle drei in `.env` prüfen, `docker compose up -d app` erneut ausführen |
 | Nach Klick auf den Button: Fehlerseite bei Authentik ("invalid redirect_uri" o. ä.) | Redirect-URI in Authentik weicht ab | in Authentik exakt `https://<domain>/auth/oidc/callback` eintragen (Schema, Domain, Pfad müssen exakt passen) |
-| Nach Authentik-Login zurück bei ScandyPro: Fehlerseite/500 | `OIDC_ISSUER` falsch/unerreichbar, `OIDC_CLIENT_SECRET` falsch, oder Authentik nutzt ein selbstsigniertes Zertifikat, das der App-Container nicht vertraut | Werte prüfen; bei selbstsigniertem Zertifikat auf Authentik-Seite ein von der Umgebung vertrauenswürdiges Zertifikat verwenden (z. B. via Caddy/Let's Encrypt wie in Teil A.4) |
+| Nach Authentik-Login zurück bei ScandyPro: Fehlerseite/500 | `OIDC_ISSUER` falsch/unerreichbar, `OIDC_CLIENT_SECRET` falsch, oder Authentik nutzt ein selbstsigniertes Zertifikat, das der App-Container nicht vertraut | Werte prüfen; bei selbstsigniertem Zertifikat auf Authentik-Seite ein von der Umgebung vertrauenswürdiges Zertifikat verwenden (z. B. via Caddy/Let's Encrypt wie in Teil A.3) |
 | Bei Authentik: "Access denied" vor der Weiterleitung | Nutzer:in/Gruppe hat in Authentik keinen Zugriff auf die Application | unter der Application in Authentik den Zugriff freigeben (siehe Schritt 2) |
 | Konto bleibt dauerhaft auf "Wartet auf Freischaltung" | Noch niemand hat es freigeschaltet | als Admin unter Benutzerverwaltung freischalten (siehe Schritt 6) |
 | "Bitte zuerst eine Rolle zuweisen und speichern." beim Aktivieren-Versuch | Rolle wurde noch nicht gespeichert, bevor auf "Account reaktivieren" geklickt wurde | zuerst Rolle wählen und **Speichern**, danach erst aktivieren (zwei getrennte Formulare, bewusst so - siehe `app/routers/admin.py:benutzer_aktiv_umschalten`) |
