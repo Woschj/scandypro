@@ -301,7 +301,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         )
         andere_psm = list(andere_psm_result.scalars().all())
 
-    anfrage_offen = False
+    offene_anfrage_id: int | None = None
     if psm_kontakt is not None:
         offene_anfrage = await session.execute(
             select(Unterstuetzungsanfrage.id).where(
@@ -310,7 +310,8 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
                 Unterstuetzungsanfrage.gesehen_am.is_(None),
             )
         )
-        anfrage_offen = offene_anfrage.first() is not None
+        offene_anfrage_id = offene_anfrage.scalar_one_or_none()
+    anfrage_offen = offene_anfrage_id is not None
 
     return templates.TemplateResponse(
         request,
@@ -329,6 +330,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "andere_psm": andere_psm,
             "wort_optionen": WORT_DES_TAGES_OPTIONEN,
             "anfrage_offen": anfrage_offen,
+            "offene_anfrage_id": offene_anfrage_id,
         },
     )
 
@@ -357,6 +359,21 @@ async def unterstuetzung_anfragen(current_user: CurrentUser, session: SessionDep
     if bereits_offen.first() is None:
         session.add(Unterstuetzungsanfrage(teilnehmer_id=current_user.id, empfaenger_id=psm_zuordnung.psm_id))
         await session.commit()
+    return RedirectResponse(url="/wohlbefinden", status_code=303)
+
+
+@router.post("/unterstuetzung-anfragen/{anfrage_id}/zurueckziehen")
+async def unterstuetzung_anfrage_zurueckziehen(anfrage_id: int, current_user: CurrentUser, session: SessionDep):
+    """Erlaubt der/dem Teilnehmer:in, eine versehentlich abgeschickte, noch
+    unerledigte Unterstützungsanfrage wieder zurückzuziehen."""
+    require_role(current_user, RoleEnum.teilnehmer, "Nur Teilnehmer:innen können ihre Anfrage zurückziehen.")
+    anfrage = await session.get(Unterstuetzungsanfrage, anfrage_id)
+    if anfrage is None or anfrage.teilnehmer_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if anfrage.gesehen_am is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Diese Anfrage wurde bereits gesehen und kann nicht mehr zurückgezogen werden.")
+    await session.delete(anfrage)
+    await session.commit()
     return RedirectResponse(url="/wohlbefinden", status_code=303)
 
 

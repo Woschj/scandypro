@@ -1148,6 +1148,16 @@ table { width: 100%; border-collapse: collapse; }
    Benutzerverwaltung mit 8 Spalten) auf schmalen Screens die ganze Seite
    horizontal statt nur innerhalb der Tabelle zu scrollen. */
 .table-scroll { overflow-x: auto; }
+/* Erste Spalte (i.d.R. Name) bleibt beim horizontalen Scrollen sichtbar, damit
+   in breiten Tabellen (z.B. Benutzerverwaltung) der Zeilenbezug nicht verloren
+   geht - siehe app/templates/admin/benutzer.html. */
+.table-scroll table th:first-child,
+.table-scroll table td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--bg-raised);
+  z-index: 1;
+}
 th {
   text-align: left;
   padding: var(--space-2) var(--space-3);

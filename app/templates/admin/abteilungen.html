@@ -4,6 +4,7 @@
 <h1>Abteilungen &amp; Handlungsfelder</h1>
 <p class="visibility-hint">Handlungsfelder sind die operativen Arbeitsgruppen innerhalb einer Abteilung.
   Jedes Handlungsfeld braucht mindestens eine Leitung (Berufstrainer:in), damit dort Boards angelegt werden können.</p>
+{% if fehler %}<div class="form-error">{{ fehler }}</div>{% endif %}
 
 <div class="seiten-tabs" x-data="{ tab: 'neu' }">
   <nav class="seiten-tabs-nav" aria-label="Abteilungs-Bereiche">
@@ -119,7 +120,7 @@
                         <select name="berufstrainer_id" required>
                           <option value="" selected disabled>– Berufstrainer:in wählen –</option>
                           {% for t in alle_trainer %}
-                          <option value="{{ t.id }}">{{ t.name }}</option>
+                          <option value="{{ t.id }}">{{ t.name }} ({{ t.email }})</option>
                           {% endfor %}
                         </select>
                       </div>

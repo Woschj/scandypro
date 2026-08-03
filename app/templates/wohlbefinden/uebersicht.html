@@ -17,6 +17,10 @@
     {% if anfrage_offen %}
     <p class="karte-meta" style="margin-top: var(--space-3);">Deine Anfrage ist unterwegs - {{ psm_kontakt.name }}
       sieht sie beim nächsten Login.</p>
+    <form method="post" action="/wohlbefinden/unterstuetzung-anfragen/{{ offene_anfrage_id }}/zurueckziehen" style="margin-top: var(--space-2);">
+      {% include "partials/csrf_field.html" %}
+      <button type="submit" class="btn btn-ghost btn-sm">Anfrage zurückziehen</button>
+    </form>
     {% else %}
     <form method="post" action="/wohlbefinden/unterstuetzung-anfragen" style="margin-top: var(--space-3);">
       {% include "partials/csrf_field.html" %}

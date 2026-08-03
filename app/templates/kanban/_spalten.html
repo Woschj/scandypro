@@ -2,8 +2,8 @@
    kanban/board.html (Einzelansicht) und kanban/liste.html (alle Boards
    direkt mit vollen Spalten aufgeklappt). Erwartet eine Variable `k` mit den
    Feldern board, spalten, karten_by_spalte, zuweisungen_by_karte,
-   unteraufgaben_by_karte, boardmitglieder, darf_sichtbarkeit_aendern, heute
-   (siehe app/routers/kanban.py, _board_kontext). #}
+   unteraufgaben_by_karte, boardmitglieder, anzeige_personen,
+   darf_sichtbarkeit_aendern, heute (siehe app/routers/kanban.py, _board_kontext). #}
 <div class="board-columns-wrap">
   {% if k.darf_board_verwalten %}
   <details class="spalte-hinzufuegen-leiste">
@@ -81,7 +81,7 @@
           {% if zuweisungen %}
           <div class="avatar-row">
             {% for z in zuweisungen %}
-            {% set person = k.boardmitglieder.get(z.teilnehmer_id) %}
+            {% set person = k.anzeige_personen.get(z.teilnehmer_id) %}
             <span class="avatar avatar-{{ z.teilnehmer_id % 5 }}" title="{{ person.name if person else '?' }}" aria-label="{{ person.name if person else '?' }}">{{ (person.name | initialen) if person else "?" }}</span>
             {% endfor %}
           </div>
@@ -92,8 +92,6 @@
           {% if ist_gesperrt %}
           <p class="karte-gesperrt-hinweis">✓ Abgeschlossen – zum Bearbeiten zurück in eine andere Spalte ziehen.</p>
           {% endif %}
-          {% if karte.beschreibung %}<p>{{ karte.beschreibung }}</p>{% endif %}
-
           {% if k.spalten | length > 1 %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/verschieben" class="form-row">
             {% include "partials/csrf_field.html" %}
@@ -137,15 +135,15 @@
           </form>
           {% endif %}
 
-          {% if k.boardmitglieder %}
+          {% if k.boardmitglieder and k.board.typ.value != "person" %}
           <div class="eyebrow" style="margin-top: var(--space-4);">Zugewiesen</div>
           {% if zuweisungen %}
           <div class="avatar-liste" style="margin: var(--space-2) 0;">
             {% for z in zuweisungen %}
-            {% set person = k.boardmitglieder.get(z.teilnehmer_id) %}
+            {% set person = k.anzeige_personen.get(z.teilnehmer_id) %}
             <div class="avatar-liste-eintrag">
               <span class="avatar avatar-{{ z.teilnehmer_id % 5 }}">{{ (person.name | initialen) if person else "?" }}</span>
-              <span style="flex:1;">{{ person.name if person else "?" }}</span>
+              <span style="flex:1;">{{ person.name if person else "?" }}{% if person and person.id not in k.boardmitglieder %} <span class="karte-meta">(nicht mehr im Team)</span>{% endif %}</span>
               {% if not ist_gesperrt %}
               <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen/{{ z.id }}/entfernen">
                 {% include "partials/csrf_field.html" %}
@@ -189,8 +187,8 @@
             </form>
             {% endif %}
             <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
-            {% if u.zugewiesen_an and u.zugewiesen_an in k.boardmitglieder %}
-            <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.boardmitglieder[u.zugewiesen_an].name }}">{{ k.boardmitglieder[u.zugewiesen_an].name | initialen }}</span>
+            {% if u.zugewiesen_an and u.zugewiesen_an in k.anzeige_personen %}
+            <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.anzeige_personen[u.zugewiesen_an].name }}">{{ k.anzeige_personen[u.zugewiesen_an].name | initialen }}</span>
             {% endif %}
             {% if not ist_gesperrt %}
             <form method="post" action="/kanban/unteraufgaben/{{ u.id }}/loeschen" data-confirm="Unteraufgabe &quot;{{ u.titel }}&quot; löschen?">
@@ -208,7 +206,7 @@
             <div class="field">
               <input type="text" name="titel" placeholder="Neue Unteraufgabe" required>
             </div>
-            {% if k.boardmitglieder %}
+            {% if k.boardmitglieder and k.board.typ.value != "person" %}
             <div class="field">
               <select name="zugewiesen_an">
                 <option value="">– niemand –</option>
@@ -245,7 +243,7 @@
           <input type="text" name="titel" placeholder="Titel" required style="margin-bottom: var(--space-2);">
           <textarea name="beschreibung" placeholder="Beschreibung (optional)"></textarea>
         </div>
-        {% if k.boardmitglieder %}
+        {% if k.boardmitglieder and k.board.typ.value != "person" %}
         <div class="field">
           <label>Zuweisen</label>
           <div class="checkbox-list">

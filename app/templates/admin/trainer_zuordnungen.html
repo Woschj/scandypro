@@ -15,7 +15,7 @@
       <select id="berufstrainer_id" name="berufstrainer_id" required>
         <option value="" selected disabled>– Berufstrainer:in wählen –</option>
         {% for t in alle_trainer %}
-        <option value="{{ t.id }}">{{ t.name }}</option>
+        <option value="{{ t.id }}">{{ t.name }} ({{ t.email }})</option>
         {% endfor %}
       </select>
     </div>
@@ -24,7 +24,7 @@
       <select id="teilnehmer_id" name="teilnehmer_id" required>
         <option value="" selected disabled>– Teilnehmer:in wählen –</option>
         {% for t in alle_teilnehmer %}
-        <option value="{{ t.id }}">{{ t.name }}</option>
+        <option value="{{ t.id }}">{{ t.name }} ({{ t.email }})</option>
         {% endfor %}
       </select>
     </div>
@@ -40,7 +40,7 @@
 <details class="zuklapp-eintrag">
   <summary>
     <span class="zuklapp-eintrag-chevron">▸</span>
-    <span class="zuklapp-eintrag-titel">{{ trainer.name }}</span>
+    <span class="zuklapp-eintrag-titel">{{ trainer.name }} <span class="karte-meta">{{ trainer.email }}</span></span>
     <span class="chip chip-neutral">{{ zugeordnete_ids | length }} Teilnehmer:in{{ "nen" if zugeordnete_ids | length != 1 }}</span>
   </summary>
   <div class="zuklapp-eintrag-body">

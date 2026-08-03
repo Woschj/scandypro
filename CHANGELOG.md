@@ -8,6 +8,54 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.25] - 2026-08-03
+
+Fixes aus einem gezielten Chrome-Klickthrough über alle vier Rollen
+(Teilnehmer:in, Berufstrainer:in, Psychosoziale Mitarbeiter:in,
+Einrichtungs-Admin).
+
+### Fixed
+- **Verwaiste Kartenzuweisungen zeigten "?" statt Namen** - wenn eine
+  Person eine Arbeitsgruppe/ein Handlungsfeld verlässt, das einem Board
+  Zugriff gewährt, blieb ihre bestehende Kartenzuweisung bestehen, aber
+  ihr Name/Avatar wurde nur noch als "?" angezeigt (weder auf der Karte
+  noch im "Entfernen"-Formular erkennbar). `_board_kontext` löst jetzt
+  zusätzlich alle referenzierten, aber nicht mehr board-berechtigten
+  Personen separat auf (`anzeige_personen`) und zeigt ihren echten
+  Namen mit dem Hinweis "(nicht mehr im Team)" an - ohne sie erneut
+  zuweisbar zu machen.
+- **Doppelte Handlungsfeld-Namen ohne Prüfung möglich** - `POST
+  /admin/handlungsfelder` und `.../umbenennen` prüfen jetzt auf
+  Namensgleichheit (case-insensitive) innerhalb derselben Abteilung und
+  lehnen mit Fehlermeldung ab, statt stillschweigend ein zweites
+  gleichnamiges Handlungsfeld anzulegen (das in jedem Dropdown, z.B.
+  bei "Neues Board", nicht mehr unterscheidbar gewesen wäre). Gleiche
+  Prüfung jetzt auch für `POST /admin/abteilungen`.
+- **Namensgleiche Berufstrainer:innen/PSM in Zuordnungslisten nicht
+  unterscheidbar** - "Zuordnungen Berufstrainer:innen" und "Zuordnungen
+  Psychosoziale Mitarbeiter:innen" zeigen jetzt die E-Mail-Adresse
+  neben dem Namen (Akkordeon-Kopfzeile und alle betroffenen
+  Auswahllisten, inkl. Handlungsfeld-Leitung in
+  "Abteilungen & Handlungsfelder").
+
+### Changed
+- **Redundante Kartenbeschreibung entfernt** - Beschreibungstext wurde
+  auf Kanban-Karten doppelt angezeigt (einmal statisch, einmal im
+  editierbaren Textfeld direkt darunter). Die statische Anzeige wurde
+  entfernt.
+- **"Zuweisen"-UI auf persönlichen Boards ausgeblendet** - auf
+  Ein-Personen-Boards (`BoardTyp.person`) ergab die Möglichkeit, sich
+  selbst zuzuweisen, keinen Sinn und wurde entfernt (Karten, neue
+  Karte anlegen, Unteraufgaben).
+- **Unterstützungsanfrage lässt sich zurückziehen** - Teilnehmer:innen
+  können eine versehentlich abgeschickte, noch nicht von der PSM
+  gesehene Anfrage jetzt selbst zurückziehen (`POST
+  /wohlbefinden/unterstuetzung-anfragen/{id}/zurueckziehen`).
+- **Erste Spalte bleibt beim horizontalen Scrollen sichtbar** - in
+  breiten Tabellen mit `.table-scroll` (z.B. Benutzerverwaltung mit
+  ~150 Accounts) bleibt die Name-Spalte jetzt via `position: sticky`
+  stehen, damit der Zeilenbezug beim Scrollen nicht verloren geht.
+
 ## [0.1.24] - 2026-08-03
 
 ### Added

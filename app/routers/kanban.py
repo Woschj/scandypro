@@ -212,6 +212,21 @@ async def _board_kontext(session: SessionDep, current_user: User, board: Board) 
         mitglieder_result = await session.execute(select(User).where(User.id.in_(boardmitglieder_ids_liste)))
         boardmitglieder = {u.id: u for u in mitglieder_result.scalars().all()}
 
+    # Zuweisungen/Unteraufgaben können auf Personen verweisen, die seither aus
+    # der Arbeitsgruppe/dem Handlungsfeld entfernt wurden und daher nicht mehr
+    # in boardmitglieder stehen - für die Anzeige (Name/Avatar) brauchen wir
+    # sie trotzdem, ohne sie erneut zuweisbar zu machen.
+    referenzierte_ids: set[int] = set(boardmitglieder_ids_liste)
+    for zuweisungen in zuweisungen_by_karte.values():
+        referenzierte_ids.update(z.teilnehmer_id for z in zuweisungen)
+    for unteraufgaben in unteraufgaben_by_karte.values():
+        referenzierte_ids.update(u.zugewiesen_an for u in unteraufgaben if u.zugewiesen_an is not None)
+    fehlende_ids = referenzierte_ids - boardmitglieder.keys()
+    anzeige_personen = dict(boardmitglieder)
+    if fehlende_ids:
+        fehlende_result = await session.execute(select(User).where(User.id.in_(fehlende_ids)))
+        anzeige_personen.update({u.id: u for u in fehlende_result.scalars().all()})
+
     handlungsfeld = None
     if board.handlungsfeld_id is not None:
         handlungsfeld = await session.get(Handlungsfeld, board.handlungsfeld_id)
@@ -226,6 +241,7 @@ async def _board_kontext(session: SessionDep, current_user: User, board: Board) 
         "zuweisungen_by_karte": zuweisungen_by_karte,
         "unteraufgaben_by_karte": unteraufgaben_by_karte,
         "boardmitglieder": boardmitglieder,
+        "anzeige_personen": anzeige_personen,
         "darf_sichtbarkeit_aendern": darf_sichtbarkeit_aendern,
         "darf_board_verwalten": await kann_board_verwalten(session, current_user, board),
         "heute": date.today(),

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.core.access import require_role
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
@@ -23,7 +23,9 @@ async def _require_admin(current_user: CurrentUser) -> None:
 
 
 @router.get("/abteilungen", response_class=HTMLResponse)
-async def abteilungen_uebersicht(request: Request, current_user: CurrentUser, session: SessionDep):
+async def abteilungen_uebersicht(
+    request: Request, current_user: CurrentUser, session: SessionDep, fehler: str | None = None
+):
     await _require_admin(current_user)
 
     abteilungen_result = await session.execute(select(Abteilung).order_by(Abteilung.name))
@@ -54,6 +56,7 @@ async def abteilungen_uebersicht(request: Request, current_user: CurrentUser, se
             "leitungen_by_handlungsfeld": leitungen_by_handlungsfeld,
             "trainer_by_id": trainer_by_id,
             "alle_trainer": list(trainer_by_id.values()),
+            "fehler": fehler,
         },
     )
 
@@ -61,7 +64,12 @@ async def abteilungen_uebersicht(request: Request, current_user: CurrentUser, se
 @router.post("/abteilungen")
 async def abteilung_erstellen(current_user: CurrentUser, session: SessionDep, name: str = Form(...)):
     await _require_admin(current_user)
-    session.add(Abteilung(name=name))
+    vorhandene = await session.execute(select(Abteilung).where(Abteilung.name == name.strip()))
+    if vorhandene.scalars().first() is not None:
+        return RedirectResponse(
+            url="/admin/abteilungen?fehler=Eine+Abteilung+mit+diesem+Namen+existiert+bereits.", status_code=303
+        )
+    session.add(Abteilung(name=name.strip()))
     await session.commit()
     return RedirectResponse(url="/admin/abteilungen", status_code=303)
 
@@ -88,7 +96,19 @@ async def handlungsfeld_erstellen(
     abteilung = await session.get(Abteilung, abteilung_id)
     if abteilung is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannte Abteilung.")
-    session.add(Handlungsfeld(name=name, abteilung_id=abteilung_id))
+    name_bereinigt = name.strip()
+    vorhandene = await session.execute(
+        select(Handlungsfeld).where(
+            Handlungsfeld.abteilung_id == abteilung_id,
+            func.lower(Handlungsfeld.name) == name_bereinigt.lower(),
+        )
+    )
+    if vorhandene.scalars().first() is not None:
+        return RedirectResponse(
+            url="/admin/abteilungen?fehler=In+dieser+Abteilung+gibt+es+bereits+ein+Handlungsfeld+mit+diesem+Namen.",
+            status_code=303,
+        )
+    session.add(Handlungsfeld(name=name_bereinigt, abteilung_id=abteilung_id))
     await session.commit()
     return RedirectResponse(url="/admin/abteilungen", status_code=303)
 
@@ -101,7 +121,20 @@ async def handlungsfeld_umbenennen(
     handlungsfeld = await session.get(Handlungsfeld, handlungsfeld_id)
     if handlungsfeld is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    handlungsfeld.name = name
+    name_bereinigt = name.strip()
+    vorhandene = await session.execute(
+        select(Handlungsfeld).where(
+            Handlungsfeld.abteilung_id == handlungsfeld.abteilung_id,
+            Handlungsfeld.id != handlungsfeld_id,
+            func.lower(Handlungsfeld.name) == name_bereinigt.lower(),
+        )
+    )
+    if vorhandene.scalars().first() is not None:
+        return RedirectResponse(
+            url="/admin/abteilungen?fehler=In+dieser+Abteilung+gibt+es+bereits+ein+Handlungsfeld+mit+diesem+Namen.",
+            status_code=303,
+        )
+    handlungsfeld.name = name_bereinigt
     session.add(handlungsfeld)
     await session.commit()
     return RedirectResponse(url="/admin/abteilungen", status_code=303)
