@@ -190,8 +190,8 @@ async def uebersicht(
 
     if current_user.role == RoleEnum.berufstrainer:
         teilnehmer_ids = await betreute_teilnehmer_ids(session, current_user.id)
-        berichte_anzeige = []
         teilnehmer_by_id: dict[int, User] = {}
+        berichte_by_teilnehmer: dict[int, list[dict]] = {}
         ausgewaehlter_teilnehmer_id = int(teilnehmer_id) if teilnehmer_id else None
         if teilnehmer_ids:
             gefilterte_ids = teilnehmer_ids
@@ -208,8 +208,8 @@ async def uebersicht(
                 )
                 .order_by(Wochenbericht.kw_jahr.desc(), Wochenbericht.kw_nummer.desc())
             )
-            berichte = list(result.scalars().all())
-            berichte_anzeige = [{"bericht": b, "tage": _tage_mit_datum(b)} for b in berichte]
+            for b in result.scalars().all():
+                berichte_by_teilnehmer.setdefault(b.teilnehmer_id, []).append({"bericht": b, "tage": _tage_mit_datum(b)})
             teilnehmer_result = await session.execute(
                 select(User).where(User.id.in_(teilnehmer_ids)).order_by(User.name)
             )
@@ -219,8 +219,8 @@ async def uebersicht(
             "wochenberichte/trainer_uebersicht.html",
             {
                 "current_user": current_user,
-                "berichte_anzeige": berichte_anzeige,
                 "teilnehmer_by_id": teilnehmer_by_id,
+                "berichte_by_teilnehmer": berichte_by_teilnehmer,
                 "ausgewaehlter_teilnehmer_id": ausgewaehlter_teilnehmer_id,
             },
         )

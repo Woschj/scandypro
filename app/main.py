@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -16,9 +16,10 @@ from app.core.fortschritt import woechentliche_schritte, woechentliche_tagebuch_
 from app.core.seed import seed_admin, seed_demo_data
 from app.core.static_cache import CachedStaticFiles
 from app.core.templating import templates
-from app.models.bewerbung import Bewerbung, BewerbungStatus
+from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, BewerbungStatus
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
 from app.models.user import RoleEnum, User
+from app.models.wohlbefinden import Unterstuetzungsanfrage, WohlbefindenFreigabe
 from app.routers import admin, auth, bewerbungen, freigaben, kanban, kanban_karten, wochenberichte, wohlbefinden
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
@@ -113,6 +114,8 @@ async def dashboard(request: Request, session: SessionDep):
     tagebuch_tage_woche: int | None = None
     bewerbungen_uebersicht: dict | None = None
     was_steht_an: list[dict] = []
+    neu_geteilt: list[dict] = []
+    offene_unterstuetzungsanfragen: list[dict] = []
 
     if current_user.role in (RoleEnum.teilnehmer, RoleEnum.berufstrainer):
         was_steht_an = await faellige_karten(session, current_user)
@@ -153,6 +156,64 @@ async def dashboard(request: Request, session: SessionDep):
         if anzahl_aktiv > 0:
             bewerbungen_uebersicht = {"aktiv": anzahl_aktiv, "wartend": anzahl_wartend}
 
+    # "Neu geteilt" fürs Dashboard von Berufstrainer:in/PSM: bewusst nur ein
+    # schmaler Hinweis (letzte 14 Tage, jederzeit widerrufbare Freigabe),
+    # kein separates Postfach/Ungelesen-System - passend zu CLAUDE.md
+    # Abschnitt 24 "keine automatischen Eskalationen".
+    stichtag_neu = datetime.utcnow() - timedelta(days=14)
+    if current_user.role == RoleEnum.berufstrainer:
+        freigaben_result = await session.execute(
+            select(BewerbungsFreigabe)
+            .where(
+                BewerbungsFreigabe.empfaenger_id == current_user.id,
+                BewerbungsFreigabe.widerrufen_am.is_(None),
+                BewerbungsFreigabe.erstellt_am >= stichtag_neu,
+            )
+            .order_by(BewerbungsFreigabe.erstellt_am.desc())
+        )
+        for freigabe in freigaben_result.scalars().all():
+            teilnehmer = await session.get(User, freigabe.teilnehmer_id)
+            neu_geteilt.append(
+                {
+                    "teilnehmer": teilnehmer,
+                    "text": "hat dir Bewerbungsdaten freigegeben",
+                    "erstellt_am": freigabe.erstellt_am,
+                    "link": f"/bewerbungen/teilnehmer/{freigabe.teilnehmer_id}",
+                }
+            )
+    elif current_user.role == RoleEnum.psychosoziale_mitarbeit:
+        freigaben_result = await session.execute(
+            select(WohlbefindenFreigabe)
+            .where(
+                WohlbefindenFreigabe.empfaenger_id == current_user.id,
+                WohlbefindenFreigabe.widerrufen_am.is_(None),
+                WohlbefindenFreigabe.erstellt_am >= stichtag_neu,
+            )
+            .order_by(WohlbefindenFreigabe.erstellt_am.desc())
+        )
+        for freigabe in freigaben_result.scalars().all():
+            teilnehmer = await session.get(User, freigabe.teilnehmer_id)
+            neu_geteilt.append(
+                {
+                    "teilnehmer": teilnehmer,
+                    "text": "hat dir 'Mein Tag' freigegeben",
+                    "erstellt_am": freigabe.erstellt_am,
+                    "link": f"/wohlbefinden/teilnehmer/{freigabe.teilnehmer_id}",
+                }
+            )
+
+        anfragen_result = await session.execute(
+            select(Unterstuetzungsanfrage)
+            .where(
+                Unterstuetzungsanfrage.empfaenger_id == current_user.id,
+                Unterstuetzungsanfrage.gesehen_am.is_(None),
+            )
+            .order_by(Unterstuetzungsanfrage.erstellt_am.desc())
+        )
+        for anfrage in anfragen_result.scalars().all():
+            teilnehmer = await session.get(User, anfrage.teilnehmer_id)
+            offene_unterstuetzungsanfragen.append({"anfrage": anfrage, "teilnehmer": teilnehmer})
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -164,5 +225,7 @@ async def dashboard(request: Request, session: SessionDep):
             "tagebuch_tage_woche": tagebuch_tage_woche,
             "bewerbungen_uebersicht": bewerbungen_uebersicht,
             "was_steht_an": was_steht_an,
+            "neu_geteilt": neu_geteilt,
+            "offene_unterstuetzungsanfragen": offene_unterstuetzungsanfragen,
         },
     )

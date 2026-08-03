@@ -134,3 +134,21 @@ class WohlbefindenFreigabe(SQLModel, table=True):
     gueltig_bis: date | None = None
     widerrufen_am: datetime | None = None
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Unterstuetzungsanfrage(SQLModel, table=True):
+    """Bewusst eigenständige, freiwillige Aktion einer/eines Teilnehmer:in
+    ("Ich möchte jetzt Unterstützung" in app/templates/wohlbefinden/
+    uebersicht.html) - komplett unabhängig von Tagebuch-Inhalten und ohne
+    jeden Freitext, nur Zeitpunkt + wer + an wen. Erscheint auf dem
+    Dashboard der/des Empfänger:in (siehe app/main.py), bis sie/er die
+    Anfrage als gesehen markiert (app/routers/wohlbefinden.py). Kein
+    Status "erledigt" - das würde eine Bewertung der psychosozialen
+    Situation durch die Empfänger:in nahelegen, die hier nicht Aufgabe der
+    App ist."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    teilnehmer_id: int = Field(foreign_key="user.id", index=True)
+    empfaenger_id: int = Field(foreign_key="user.id", index=True)
+    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    gesehen_am: datetime | None = None

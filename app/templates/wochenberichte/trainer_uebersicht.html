@@ -16,32 +16,45 @@
 </form>
 {% endif %}
 
-{% if berichte_anzeige %}
+{% if berichte_by_teilnehmer %}
 <div class="zuklapp-liste">
-{% for eintrag in berichte_anzeige %}
-{% set b = eintrag.bericht %}
-<details class="zuklapp-eintrag">
+{% for t in teilnehmer_by_id.values() if t.id in berichte_by_teilnehmer %}
+<details class="zuklapp-eintrag" {% if ausgewaehlter_teilnehmer_id %}open{% endif %}>
   <summary>
     <span class="zuklapp-eintrag-chevron">▸</span>
-    <span class="chip chip-success">abgegeben</span>
-    <span class="zuklapp-eintrag-titel">{{ teilnehmer_by_id[b.teilnehmer_id].name }} — KW {{ b.kw_nummer }}/{{ b.kw_jahr }}</span>
+    <span class="zuklapp-eintrag-titel">{{ t.name }}</span>
+    <span class="chip chip-neutral">{{ berichte_by_teilnehmer[t.id] | length }} Bericht{{ "e" if berichte_by_teilnehmer[t.id] | length != 1 }}</span>
   </summary>
   <div class="zuklapp-eintrag-body">
-    <table>
-      <thead><tr><th>Tag</th><th>Zeit</th><th>Tätigkeiten</th></tr></thead>
-      <tbody>
-      {% for tag in eintrag.tage %}
-      <tr>
-        <td>{{ tag.key|capitalize }}<br><span class="karte-meta">{{ tag.datum.strftime("%d.%m.") }}</span></td>
-        <td>{% if tag.start or tag.ende %}{{ tag.start or "?" }}–{{ tag.ende or "?" }}{% else %}<span class="empty-state">–</span>{% endif %}</td>
-        <td>{{ tag.taetigkeiten or "" }}</td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% if b.besonderheiten %}<p style="margin-top: var(--space-3);"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
-    <p class="karte-meta">Abgegeben am {{ b.abgegeben_am.strftime("%d.%m.%Y %H:%M") }}</p>
-    <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
+    <div class="zuklapp-liste">
+    {% for eintrag in berichte_by_teilnehmer[t.id] %}
+    {% set b = eintrag.bericht %}
+    <details class="zuklapp-eintrag">
+      <summary>
+        <span class="zuklapp-eintrag-chevron">▸</span>
+        <span class="chip chip-success">abgegeben</span>
+        <span class="zuklapp-eintrag-titel">KW {{ b.kw_nummer }}/{{ b.kw_jahr }}</span>
+      </summary>
+      <div class="zuklapp-eintrag-body">
+        <table>
+          <thead><tr><th>Tag</th><th>Zeit</th><th>Tätigkeiten</th></tr></thead>
+          <tbody>
+          {% for tag in eintrag.tage %}
+          <tr>
+            <td>{{ tag.key|capitalize }}<br><span class="karte-meta">{{ tag.datum.strftime("%d.%m.") }}</span></td>
+            <td>{% if tag.start or tag.ende %}{{ tag.start or "?" }}–{{ tag.ende or "?" }}{% else %}<span class="empty-state">–</span>{% endif %}</td>
+            <td>{{ tag.taetigkeiten or "" }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% if b.besonderheiten %}<p style="margin-top: var(--space-3);"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
+        <p class="karte-meta">Abgegeben am {{ b.abgegeben_am.strftime("%d.%m.%Y %H:%M") }}</p>
+        <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
+      </div>
+    </details>
+    {% endfor %}
+    </div>
   </div>
 </details>
 {% endfor %}

@@ -14,6 +14,15 @@
       <strong>{{ psm_kontakt.name }}</strong> -
       <a href="mailto:{{ psm_kontakt.email }}">{{ psm_kontakt.email }}</a>{% if psm_kontakt.telefon %},
       {{ psm_kontakt.telefon }}{% endif %}.</p>
+    {% if anfrage_offen %}
+    <p class="karte-meta" style="margin-top: var(--space-3);">Deine Anfrage ist unterwegs - {{ psm_kontakt.name }}
+      sieht sie beim nächsten Login.</p>
+    {% else %}
+    <form method="post" action="/wohlbefinden/unterstuetzung-anfragen" style="margin-top: var(--space-3);">
+      {% include "partials/csrf_field.html" %}
+      <button type="submit" class="btn btn-primary btn-sm">Jetzt Unterstützung anfragen</button>
+    </form>
+    {% endif %}
     {% endif %}
     {% if andere_psm %}
     <div class="eyebrow" style="margin-top: var(--space-4);">Weitere psychosoziale Mitarbeiter:innen deiner Abteilung</div>

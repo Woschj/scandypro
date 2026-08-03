@@ -8,6 +8,39 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.18] - 2026-08-03
+
+### Added
+- **Unterstützungsanfrage**: der "Ich möchte jetzt Unterstützung"-Bereich in
+  "Mein Tag" hat jetzt einen echten Button, der - komplett unabhängig von
+  Tagebuch-Inhalten - eine bewusste, freiwillige Anfrage an die zuständige
+  PSM auslöst (neues Modell `Unterstuetzungsanfrage`,
+  `app/models/wohlbefinden.py`, Migration `b9c0d1e2f3a4`). Erscheint auf
+  dem PSM-Dashboard mit Zeitpunkt und "Als gesehen markieren" - keine
+  automatische Eskalation, kein Status "erledigt" (siehe CLAUDE.md
+  Abschnitt 24).
+- **Dashboard "Neu geteilt"**: Berufstrainer:innen sehen dort neu erteilte
+  Bewerbungsfreigaben, PSM neu erteilte "Mein Tag"-Freigaben (jeweils
+  letzte 14 Tage) - direkt auf der Startseite, kein zusätzlicher Klick
+  nötig (`app/main.py`, `app/templates/dashboard.html`).
+
+### Changed
+- **Wochenberichte (Berufstrainer:in-Ansicht) jetzt nach Teilnehmer:in
+  gruppiert** statt einer einzigen flachen Liste aller Berichte aller
+  betreuten Personen (bei realistischer Datenmenge mehrere hundert
+  Einträge) - ein aufklappbarer Eintrag pro Person, darin die eigenen
+  Wochenberichte, analog zu den Admin-Zuordnungsseiten aus [0.1.17].
+- Dashboard-Kachel "Projekte" erscheint nur noch für Berufstrainer:innen -
+  PSM und Einrichtungs-Admin hatten dort ohnehin nie sichtbare Boards
+  (der Nav-Punkt war das bereits, die Dashboard-Kachel war übersehen worden).
+
+### Fixed
+- Zwei Teilnehmer:innen-Zuordnungs-Duplikate aus dem letzten Testdaten-
+  Top-up bereinigt (14× doppelte PSM-, 10× doppelte Berufstrainer:in-
+  Zuordnung) - hätten das Dashboard bzw. "Mein Tag" der betroffenen
+  Teilnehmer:innen zum Absturz gebracht (`scalar_one_or_none()` erwartet
+  höchstens eine Zuordnung).
+
 ## [0.1.17] - 2026-08-03
 
 ### Changed

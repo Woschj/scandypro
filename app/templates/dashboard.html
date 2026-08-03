@@ -30,6 +30,40 @@
 </div>
 {% endif %}
 
+{% if offene_unterstuetzungsanfragen %}
+<div class="card" style="margin-bottom: var(--space-6);">
+  <h3 style="margin-top:0;">Unterstützungsanfragen</h3>
+  <p class="karte-meta">Jemand hat aktiv um Unterstützung gebeten - unabhängig davon, was sonst im Tagebuch steht.</p>
+  <ul class="checkbox-list" style="gap: var(--space-2); margin-top: var(--space-3);">
+    {% for eintrag in offene_unterstuetzungsanfragen %}
+    <li style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3);">
+      <span><strong>{{ eintrag.teilnehmer.name }}</strong>
+        <span class="karte-meta">— {{ eintrag.anfrage.erstellt_am.strftime("%d.%m.%Y %H:%M") }}</span>
+      </span>
+      <form method="post" action="/wohlbefinden/unterstuetzung-anfragen/{{ eintrag.anfrage.id }}/gesehen">
+        {% include "partials/csrf_field.html" %}
+        <button type="submit" class="btn btn-ghost btn-sm">Als gesehen markieren</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if neu_geteilt %}
+<div class="card" style="margin-bottom: var(--space-6);">
+  <h3 style="margin-top:0;">Neu geteilt</h3>
+  <ul class="checkbox-list" style="gap: var(--space-2);">
+    {% for eintrag in neu_geteilt %}
+    <li>
+      <a href="{{ eintrag.link }}">{{ eintrag.teilnehmer.name }}</a>
+      <span class="karte-meta">{{ eintrag.text }}, {{ eintrag.erstellt_am.strftime("%d.%m.%Y") }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 {% if current_user.role.value == "teilnehmer" %}
 
 {% if schritte_diese_woche is not none or tagebuch_tage_woche is not none or bewerbungen_uebersicht is not none %}
@@ -96,11 +130,13 @@
 {% else %}
 
 <div class="card-grid">
+  {% if current_user.role.value == "berufstrainer" %}
   <div class="card">
     <h3>Projekte</h3>
     <p>Projekte deiner Handlungsfelder, gemeinsam mit anderen Teilnehmenden.</p>
     <a class="btn btn-primary" href="/kanban">Öffnen</a>
   </div>
+  {% endif %}
 
   {% if current_user.role.value == "berufstrainer" %}
   <div class="card">

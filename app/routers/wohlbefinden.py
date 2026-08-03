@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
-from app.core.access import hat_wohlbefinden_freigabe, require_owner
+from app.core.access import hat_wohlbefinden_freigabe, require_owner, require_role
 from app.core.atemuebungen import atemuebung_des_tages, atemuebung_punkte
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
@@ -25,7 +25,12 @@ from app.core.uploads import datei_lesen_entschluesselt, datei_loeschen, datei_s
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.organisation import Abteilung, PsmZuordnung
 from app.models.user import RoleEnum, User
-from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
+from app.models.wohlbefinden import (
+    TagebuchEintrag,
+    Unterstuetzungsanfrage,
+    WohlbefindenFreigabe,
+    WohlbefindenFreigabeUmfang,
+)
 
 router = APIRouter(prefix="/wohlbefinden", tags=["wohlbefinden"], dependencies=[Depends(verify_csrf)])
 
@@ -263,6 +268,17 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         )
         andere_psm = list(andere_psm_result.scalars().all())
 
+    anfrage_offen = False
+    if psm_kontakt is not None:
+        offene_anfrage = await session.execute(
+            select(Unterstuetzungsanfrage.id).where(
+                Unterstuetzungsanfrage.teilnehmer_id == current_user.id,
+                Unterstuetzungsanfrage.empfaenger_id == psm_kontakt.id,
+                Unterstuetzungsanfrage.gesehen_am.is_(None),
+            )
+        )
+        anfrage_offen = offene_anfrage.first() is not None
+
     return templates.TemplateResponse(
         request,
         "wohlbefinden/uebersicht.html",
@@ -277,8 +293,48 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "psm_kontakt": psm_kontakt,
             "andere_psm": andere_psm,
             "wort_optionen": WORT_DES_TAGES_OPTIONEN,
+            "anfrage_offen": anfrage_offen,
         },
     )
+
+
+@router.post("/unterstuetzung-anfragen")
+async def unterstuetzung_anfragen(current_user: CurrentUser, session: SessionDep):
+    """Freiwillige, bewusste Aktion aus "Ich möchte jetzt Unterstützung" -
+    komplett unabhängig von Tagebuch-Inhalten (siehe Modul-Docstring von
+    Unterstuetzungsanfrage). Legt nur an, wenn noch keine unerledigte
+    Anfrage an dieselbe PSM vorliegt, damit Mehrfach-Klicks nicht mehrere
+    Einträge im PSM-Dashboard erzeugen."""
+    require_role(current_user, RoleEnum.teilnehmer, "Nur Teilnehmer:innen können Unterstützung anfragen.")
+
+    psm_result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id))
+    psm_zuordnung = psm_result.scalar_one_or_none()
+    if psm_zuordnung is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Dir ist noch keine psychosoziale Mitarbeiter:in zugeordnet.")
+
+    bereits_offen = await session.execute(
+        select(Unterstuetzungsanfrage.id).where(
+            Unterstuetzungsanfrage.teilnehmer_id == current_user.id,
+            Unterstuetzungsanfrage.empfaenger_id == psm_zuordnung.psm_id,
+            Unterstuetzungsanfrage.gesehen_am.is_(None),
+        )
+    )
+    if bereits_offen.first() is None:
+        session.add(Unterstuetzungsanfrage(teilnehmer_id=current_user.id, empfaenger_id=psm_zuordnung.psm_id))
+        await session.commit()
+    return RedirectResponse(url="/wohlbefinden", status_code=303)
+
+
+@router.post("/unterstuetzung-anfragen/{anfrage_id}/gesehen")
+async def unterstuetzung_anfrage_gesehen(anfrage_id: int, current_user: CurrentUser, session: SessionDep):
+    require_role(current_user, RoleEnum.psychosoziale_mitarbeit, "Nur psychosoziale Mitarbeiter:innen bearbeiten Anfragen.")
+    anfrage = await session.get(Unterstuetzungsanfrage, anfrage_id)
+    if anfrage is None or anfrage.empfaenger_id != current_user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    anfrage.gesehen_am = datetime.utcnow()
+    session.add(anfrage)
+    await session.commit()
+    return RedirectResponse(url="/", status_code=303)
 
 
 @router.get("/teilnehmer", response_class=HTMLResponse)
