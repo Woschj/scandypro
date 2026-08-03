@@ -11,16 +11,26 @@ analog zum Schwestermodul Scandy-Lite.
 ## [0.1.29] - 2026-08-03
 
 ### Added
-- **TLS/Domain-Produktivbetrieb vorbereitet** - `caddy/Caddyfile.domain-example`
-  als fertige Vorlage für eine echte Domain mit automatischem
-  Let's-Encrypt-Zertifikat; README.md neuer Abschnitt "TLS/Domain
-  (Produktivbetrieb)" mit Schritt-für-Schritt-Anleitung, "Bekannte Lücken"
-  verweist jetzt darauf statt die Lücke nur zu benennen. `SESSION_COOKIE_SECURE`-
-  Setting ergänzt (`app/core/config.py`, `app/main.py`) für das Secure-Flag
-  am Session-Cookie nach der Umstellung. Standard-HTTP-Setup bleibt
-  unverändert (Default weiterhin unverschlüsselt, nur für lokale
-  Bewertung). `SSO_AUTHENTIK.md` verweist jetzt auf dieselbe Anleitung
-  statt eine zweite, separat gepflegte Caddyfile-Vorlage vorzuhalten.
+- **TLS-Produktivbetrieb vorbereitet, zwei Varianten** - README.md neuer
+  Abschnitt "TLS (Produktivbetrieb)" mit Schritt-für-Schritt-Anleitung für
+  beide, "Bekannte Lücken" verweist jetzt darauf statt die Lücke nur zu
+  benennen:
+  - **Variante A**: `caddy/Caddyfile.domain-example` - echte Domain mit
+    automatischem Let's-Encrypt-Zertifikat.
+  - **Variante B**: `caddy/Caddyfile.internal-tls-example` - selbstsigniertes
+    Zertifikat (Caddy `tls internal`, port-basiert per IP) für Server, die
+    nur intern (LAN/VPN) erreichbar sind und keine Domain/öffentliche
+    Zertifikatsausstellung haben; neue `APP_HTTPS_PORT`-Variable
+    (`.env.example`). Browser zeigen dabei einmalig pro Gerät eine
+    Zertifikatswarnung, funktioniert aber genauso für SSO/Authentik, da
+    dieses nur `https://` in der Redirect-URI prüft, nicht die
+    Vertrauenswürdigkeit des Zertifikats.
+  - `SESSION_COOKIE_SECURE`-Setting ergänzt (`app/core/config.py`,
+    `app/main.py`) für das Secure-Flag am Session-Cookie, unabhängig von
+    der gewählten Variante. Standard-HTTP-Setup bleibt unverändert (Default
+    weiterhin unverschlüsselt, nur für lokale Bewertung). `SSO_AUTHENTIK.md`
+    verweist auf dieselbe Anleitung statt separat gepflegter
+    Caddyfile-Vorlagen.
 
 ## [0.1.28] - 2026-08-03
 

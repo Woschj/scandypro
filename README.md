@@ -90,7 +90,7 @@ Berufstrainer) in der Abteilung Medien & Digital, die Teilnehmergruppe
 Tanja Teilnehmer – so sind Kanban-Zusammenarbeit und Wochenberichte
 direkt sichtbar, ohne erst Grunddaten anlegen zu müssen.
 
-## TLS/Domain (Produktivbetrieb)
+## TLS (Produktivbetrieb)
 
 Im Standard-Setup läuft ScandyPro **unverschlüsselt über HTTP** (Caddy ohne
 Domain, siehe `caddy/Caddyfile`) – nur für lokale Bewertung geeignet. Da
@@ -98,10 +98,17 @@ ScandyPro besondere Kategorien personenbezogener Daten nach Art. 9 DSGVO
 verarbeitet (Wohlbefinden, Bewerbungsdetails, siehe CLAUDE.md Abschnitt 2),
 ist TLS für jeden Betrieb mit echten Teilnehmerdaten **zwingend** – ohne
 TLS werden Login-Formular und Session-Cookie unverschlüsselt über das Netz
-übertragen. TLS wird außerdem für SSO/Authentik vorausgesetzt (siehe unten).
+übertragen. Das gilt genauso, wenn der Server **nur intern** (LAN/VPN,
+keine Verbindung ins öffentliche Internet) erreichbar ist – "intern" heißt
+nicht "vertrauenswürdiges Netz", jedes Mitlesen im selben Netzsegment
+(kompromittiertes Gerät, offenes WLAN, o. Ä.) betrifft echte Gesundheits-
+und Bewerbungsdaten. Zwei gleichwertige Wege, je nachdem ob eine Domain
+existiert:
 
-Umstellung auf eine echte Domain mit automatischem Let's-Encrypt-Zertifikat
-(Caddy übernimmt Ausstellung und Erneuerung selbständig):
+### Variante A: echte Domain (öffentlich erreichbar)
+
+Automatisches Let's-Encrypt-Zertifikat, Caddy übernimmt Ausstellung und
+Erneuerung selbständig – kein manuelles Zertifikats-Handling nötig:
 
 1. Domain per DNS-A-Record auf die öffentliche IP dieses Hosts zeigen
    lassen
@@ -114,12 +121,33 @@ Umstellung auf eine echte Domain mit automatischem Let's-Encrypt-Zertifikat
    sorgt dafür, dass das Login-Cookie das Secure-Flag bekommt
 5. `docker compose up -d --build`
 
-Bei reinem LAN-Betrieb ohne öffentliche Domain (kein DNS-Eintrag möglich)
-ist ein selbstsigniertes Zertifikat die Alternative - siehe
-`caddy/Caddyfile` im Schwestermodul
-[Scandy-Lite](https://github.com/Woschj/scandy-lite) (`tls internal`) als
-Vorlage; Browser zeigen dabei einmalig pro Gerät eine
-Zertifikatswarnung.
+### Variante B: rein internes Netz, keine Domain
+
+Für einen Server, der nur intern erreichbar ist (z. B. LAN/VPN ohne
+öffentliche IP oder DNS-Eintrag) – Caddy erzeugt eine eigene, lokale CA und
+stellt sich selbst ein Zertifikat aus, funktioniert per nackter IP
+(`https://<server-ip>:8443`), kein DNS-Eintrag nötig. Einziger Unterschied
+zu Variante A für Nutzer:innen: Browser zeigen beim ersten Aufruf **pro
+Gerät einmalig** eine Zertifikatswarnung (unbekannte CA, nicht öffentlich
+vertrauenswürdig) – "Erweitert -> Trotzdem fortfahren" bestätigen, danach
+funktioniert die Seite wie gewohnt. Ausdrücklich für ein wirklich internes
+Netz gedacht – diesen Port nicht zusätzlich per Portweiterleitung ins
+Internet öffnen (siehe Warnhinweis in `caddy/Caddyfile.internal-tls-example`
+zu ungeschütztem On-Demand-TLS).
+
+1. `caddy/Caddyfile.internal-tls-example` nach `caddy/Caddyfile` kopieren
+   (keine Anpassung nötig - kein Domain-Platzhalter enthalten)
+2. In `compose.yaml` beim `caddy`-Service den `ports`-Eintrag von
+   `${APP_PORT:-8080}:80` auf `${APP_HTTPS_PORT:-8443}:8443` ändern
+3. In `.env` `SESSION_COOKIE_SECURE=true` setzen
+4. `docker compose up -d --build`
+5. Aufrufen über `https://<server-ip>:8443`
+
+Funktioniert auch für SSO/Authentik (siehe unten) – Authentik prüft beim
+Redirect nur, dass die Redirect-URI mit `https://` beginnt, nicht ob das
+Zertifikat öffentlich vertrauenswürdig ist. Einzige Einschränkung:
+Authentik selbst braucht ebenfalls HTTPS (egal ob Variante A oder B), sonst
+lehnt es die Redirect-URI unter Umständen ab.
 
 ## Single Sign-On (SSO)
 
@@ -189,10 +217,10 @@ noch zwingend:
   Inhaltsdaten löschbar, siehe oben
 - **Key-Rotation** für die Feldverschlüsselung
 - **TLS im Standard-Setup** – Caddy läuft ohne eigene Domain auf Port 8080
-  ohne Verschlüsselung (nur für lokale Bewertung, nicht so deployen). Eine
-  echte Domain mit automatischem HTTPS ist bereits vorbereitet, aber ein
-  bewusster manueller Schritt – siehe Abschnitt "TLS/Domain
-  (Produktivbetrieb)" unten.
+  ohne Verschlüsselung (nur für lokale Bewertung, nicht so deployen). Sowohl
+  echte Domain mit automatischem HTTPS als auch selbstsigniertes HTTPS
+  fürs rein interne Netz sind bereits vorbereitet, aber ein bewusster
+  manueller Schritt – siehe Abschnitt "TLS (Produktivbetrieb)" unten.
 - Tests (Berechtigungs-/Löschtests laut CLAUDE.md-Review-Checkliste)
 
 Diese Punkte sind kein Versehen, sondern bewusst auf spätere Phasen

@@ -1,0 +1,46 @@
+# Caddyfile für reine LAN-Nutzung ohne öffentliche Domain - Caddy erzeugt
+# eine eigene lokale CA und stellt sich selbst ein Zertifikat aus ("tls
+# internal"), kein Let's Encrypt, keine öffentliche Erreichbarkeit nötig.
+#
+# Port-basiert statt Hostname-basiert (":8443" statt "meinhost:8443"),
+# damit der Zugriff per nackter IP funktioniert (z.B. 192.168.x.x) - kein
+# interner DNS-Eintrag nötig, muss aber nicht extra eingerichtet werden.
+#
+# WICHTIG: "on_demand" ist hier notwendig, nicht optional. Ohne Hostnamen
+# im Adressfeld weiß Caddy sonst beim Start nicht, für welchen Namen/welche
+# IP es überhaupt ein Zertifikat ausstellen soll - jede Verbindung mit
+# einer SNI, die Caddy nicht kennt (z.B. eure IP), würde sonst mit
+# SSL_ERROR_INTERNAL_ERROR_ALERT abgelehnt. "on_demand" lässt Caddy beim
+# ERSTEN Kontakt mit einer neuen SNI/IP spontan (mit der internen CA, also
+# ohne Rate-Limit-Risiko wie bei Let's Encrypt) ein passendes Zertifikat
+# ausstellen.
+#
+# Caddy warnt beim Start bewusst: "on-demand TLS is enabled, but no
+# protections are in place" - ohne Einschränkung könnte jede erreichbare
+# Gegenstelle beliebig viele Zertifikate anfragen (Ressourcen-Verschwendung,
+# kein Rate-Limit-Risiko wie bei Let's Encrypt, aber trotzdem unnötige
+# Last). Für ein rein internes, nicht aus dem Internet erreichbares Netz
+# unkritisch (siehe Moduldocstring "keine öffentliche Erreichbarkeit
+# nötig") - bei Zweifel zusätzlich per Firewall/Netzsegment absichern, statt
+# den Port aus Bequemlichkeit doch nach außen zu öffnen.
+#
+# Browser zeigen beim ersten Aufruf eine Zertifikatswarnung (unbekannte
+# CA, nicht öffentlich vertrauenswürdig) - "Erweitert -> Trotzdem
+# fortfahren" einmalig pro Gerät bestätigen, danach funktioniert die Seite
+# wie gewohnt.
+#
+# Einrichtung (siehe auch README.md "TLS (Produktivbetrieb)"):
+#   1. Diese Datei nach caddy/Caddyfile kopieren
+#   2. In compose.yaml bei "caddy" den ports-Eintrag von
+#      "${APP_PORT:-8080}:80" auf "${APP_HTTPS_PORT:-8443}:8443" ändern
+#   3. In .env SESSION_COOKIE_SECURE=true setzen
+#   4. Stack neu starten: docker compose up -d --build
+#   5. Aufrufen über https://<server-ip>:8443 (Port aus APP_HTTPS_PORT)
+
+:8443 {
+	tls internal {
+		on_demand
+	}
+
+	reverse_proxy app:8000
+}

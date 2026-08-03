@@ -32,11 +32,16 @@ kann direkt zu Teil B springen.
   Nutzer:innen)
 - **ScandyPro muss über HTTPS erreichbar sein**, bevor SSO produktiv genutzt
   wird — Authentik akzeptiert bei einem "Confidential"-Client i. d. R. keine
-  reinen HTTP-Redirect-URIs. Umstellung von HTTP auf eine echte Domain mit
-  automatischem HTTPS: siehe README.md, Abschnitt "TLS/Domain
-  (Produktivbetrieb)" (nutzt `caddy/Caddyfile.domain-example`) — dort auch
-  Schritt 4, `SESSION_COOKIE_SECURE=true` zu setzen, was für SSO ebenfalls
-  Voraussetzung ist.
+  reinen HTTP-Redirect-URIs. Gilt auch bei einem rein intern erreichbaren
+  Server (kein öffentliches Internet, aber trotzdem HTTPS nötig). Umstellung
+  von HTTP auf HTTPS: siehe README.md, Abschnitt "TLS (Produktivbetrieb)" —
+  entweder mit echter Domain (`caddy/Caddyfile.domain-example`, Let's
+  Encrypt) oder selbstsigniert fürs interne Netz ohne Domain
+  (`caddy/Caddyfile.internal-tls-example`) — dort auch der Schritt,
+  `SESSION_COOKIE_SECURE=true` zu setzen, was für SSO ebenfalls
+  Voraussetzung ist. Bei selbstsigniertem Zertifikat zeigt der Browser beim
+  ersten Aufruf von ScandyPro eine Warnung, die einmalig pro Gerät bestätigt
+  werden muss - der SSO-Ablauf selbst funktioniert davon unabhängig.
 
 ---
 
