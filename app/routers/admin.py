@@ -315,8 +315,11 @@ async def benutzer_uebersicht(request: Request, current_user: CurrentUser, sessi
         RoleEnum.psychosoziale_mitarbeit,
         RoleEnum.einrichtungs_admin,
     ]
-    benutzer_by_rolle: dict[RoleEnum, list[User]] = {rolle: [] for rolle in rollen_reihenfolge}
+    benutzer_by_rolle: dict[RoleEnum | None, list[User]] = {rolle: [] for rolle in rollen_reihenfolge}
     for b in benutzer:
+        # b.role ist nur bei per SSO neu angelegten, noch nicht
+        # freigeschalteten Accounts None - landet dadurch als eigene Gruppe
+        # am Ende (siehe app/core/oidc.py, app/templates/admin/benutzer.html).
         benutzer_by_rolle.setdefault(b.role, []).append(b)
 
     return templates.TemplateResponse(
@@ -477,6 +480,11 @@ async def benutzer_aktiv_umschalten(benutzer_id: int, current_user: CurrentUser,
     if benutzer.id == current_user.id:
         return RedirectResponse(
             url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Du+kannst+deinen+eigenen+Account+nicht+deaktivieren.",
+            status_code=303,
+        )
+    if not benutzer.aktiv and benutzer.role is None:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Bitte+zuerst+eine+Rolle+zuweisen+und+speichern.",
             status_code=303,
         )
 

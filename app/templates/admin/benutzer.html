@@ -72,19 +72,25 @@
       <div class="zuklapp-liste">
       {% for rolle, gruppe in benutzer_by_rolle.items() %}
       {% if gruppe %}
-      <details class="zuklapp-eintrag" {% if loop.first %}open{% endif %}>
+      {% set rolle_slug = rolle.value if rolle else "wartet" %}
+      {% set rolle_label = (rolle.value | rollenname) if rolle else "Wartet auf Freischaltung" %}
+      <details class="zuklapp-eintrag" {% if loop.first or not rolle %}open{% endif %}>
         <summary>
           <span class="zuklapp-eintrag-chevron">▸</span>
-          <span class="zuklapp-eintrag-titel">{{ rolle.value | rollenname }}</span>
-          <span class="chip chip-neutral">{{ gruppe | length }}</span>
+          <span class="zuklapp-eintrag-titel">{{ rolle_label }}</span>
+          <span class="chip {% if rolle %}chip-neutral{% else %}chip-brand{% endif %}">{{ gruppe | length }}</span>
         </summary>
         <div class="zuklapp-eintrag-body">
+          {% if not rolle %}
+          <p class="karte-meta" style="margin-bottom: var(--space-3);">Per SSO angemeldet, aber noch ohne Rolle - erst nach Zuweisung
+            und Freischaltung im Bearbeiten-Formular kann sich die Person einloggen.</p>
+          {% endif %}
           <div class="field" style="max-width: 320px; margin-bottom: var(--space-3);">
-            <label for="benutzer-suche-{{ rolle.value }}">Suchen</label>
-            <input type="search" id="benutzer-suche-{{ rolle.value }}" data-table-filter="benutzer-tabelle-{{ rolle.value }}" placeholder="Name, E-Mail oder Abteilung …">
+            <label for="benutzer-suche-{{ rolle_slug }}">Suchen</label>
+            <input type="search" id="benutzer-suche-{{ rolle_slug }}" data-table-filter="benutzer-tabelle-{{ rolle_slug }}" placeholder="Name, E-Mail oder Abteilung …">
           </div>
           <div class="table-scroll">
-          <table id="benutzer-tabelle-{{ rolle.value }}">
+          <table id="benutzer-tabelle-{{ rolle_slug }}">
             <thead><tr><th data-sort>Name</th><th data-sort>E-Mail</th><th data-sort>Telefon</th><th data-sort>Abteilung</th><th data-sort>Status</th><th data-sort>Zuletzt angemeldet</th><th></th></tr></thead>
             <tbody>
             {% for b in gruppe %}
@@ -95,7 +101,7 @@
               <td>{{ abteilung_by_id[b.abteilung_id].name if b.abteilung_id in abteilung_by_id else "–" }}</td>
               <td>{% if b.aktiv %}<span class="chip chip-success">aktiv</span>{% else %}<span class="chip chip-neutral">deaktiviert</span>{% endif %}</td>
               <td>{{ b.letzter_login.strftime("%d.%m.%Y %H:%M") if b.letzter_login else "noch nie" }}</td>
-              <td><a href="/admin/benutzer/{{ b.id }}/bearbeiten" class="btn btn-ghost btn-sm">Bearbeiten</a></td>
+              <td><a href="/admin/benutzer/{{ b.id }}/bearbeiten" class="btn {% if rolle %}btn-ghost{% else %}btn-primary{% endif %} btn-sm">{{ "Bearbeiten" if rolle else "Rolle zuweisen" }}</a></td>
             </tr>
             {% endfor %}
             </tbody>

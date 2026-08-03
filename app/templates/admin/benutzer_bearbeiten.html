@@ -8,6 +8,21 @@
 {% if erfolg == "passwort" %}<div class="form-success">Passwort zurückgesetzt.</div>{% endif %}
 {% if erfolg == "aktiv" %}<div class="form-success">Status geändert.</div>{% endif %}
 
+{% if benutzer.role is none %}
+<div class="card" style="max-width: 480px; border-color: var(--accent);">
+  <p style="margin:0;">Dieser Account hat sich per {{ benutzer.auth_source.value | upper }} angemeldet und wartet auf
+    Freischaltung: Rolle unten zuweisen und speichern, dann den Account aktivieren.</p>
+</div>
+{% endif %}
+
+<div class="card" style="max-width: 480px;">
+  <h3>Anmeldeart</h3>
+  <p class="karte-meta">
+    {% if benutzer.auth_source.value == "sso" %}Meldet sich über Single Sign-On an{% if benutzer.password_hash %},
+    zusätzlich ist ein lokales Passwort hinterlegt{% endif %}.{% else %}Meldet sich lokal mit E-Mail und Passwort an.{% endif %}
+  </p>
+</div>
+
 <div class="card" style="max-width: 480px;">
   <h3>Konto-Status</h3>
   <p class="karte-meta">
@@ -45,10 +60,13 @@
     <div class="field">
       <label for="rolle">Rolle</label>
       <select id="rolle" name="rolle" required {% if ist_eigener_account %}disabled{% endif %}>
-        <option value="teilnehmer" {% if benutzer.role.value == "teilnehmer" %}selected{% endif %}>Teilnehmer:in</option>
-        <option value="berufstrainer" {% if benutzer.role.value == "berufstrainer" %}selected{% endif %}>Berufstrainer:in</option>
-        <option value="psychosoziale_mitarbeit" {% if benutzer.role.value == "psychosoziale_mitarbeit" %}selected{% endif %}>Psychosoziale Mitarbeiter:in</option>
-        <option value="einrichtungs_admin" {% if benutzer.role.value == "einrichtungs_admin" %}selected{% endif %}>Einrichtungs-Admin</option>
+        {% if benutzer.role is none %}
+        <option value="" selected disabled>– noch keine Rolle zugewiesen –</option>
+        {% endif %}
+        <option value="teilnehmer" {% if benutzer.role and benutzer.role.value == "teilnehmer" %}selected{% endif %}>Teilnehmer:in</option>
+        <option value="berufstrainer" {% if benutzer.role and benutzer.role.value == "berufstrainer" %}selected{% endif %}>Berufstrainer:in</option>
+        <option value="psychosoziale_mitarbeit" {% if benutzer.role and benutzer.role.value == "psychosoziale_mitarbeit" %}selected{% endif %}>Psychosoziale Mitarbeiter:in</option>
+        <option value="einrichtungs_admin" {% if benutzer.role and benutzer.role.value == "einrichtungs_admin" %}selected{% endif %}>Einrichtungs-Admin</option>
       </select>
       {% if ist_eigener_account %}
       <input type="hidden" name="rolle" value="{{ benutzer.role.value }}">

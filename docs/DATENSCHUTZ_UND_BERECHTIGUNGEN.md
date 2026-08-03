@@ -114,7 +114,15 @@ Idealfall mit Benachrichtigung an den Teilnehmer.
 ### 4.4 Authentifizierung
 
 - Lokale Accounts mit bcrypt-Hashing.
-- Optionales OIDC/SSO pro Einrichtung (analog `oidc.py` in Scandy-Lite).
+- Optionales OIDC/SSO (siehe `app/core/oidc.py`, `app/routers/oidc.py`) -
+  analog zu `oidc.py` in Scandy-Lite, damit beide Apps langfristig gegen
+  denselben Identity-Provider laufen können (zentral gesteuerte
+  Nutzer:innen). Der Provider klärt nur die Identität; Rolle und
+  Freischaltung bleiben immer eine bewusste, lokale Admin-Entscheidung -
+  ein per SSO neu erkannter Account startet inaktiv und ohne Rolle
+  (CLAUDE.md §8: "Rollen ... niemals implizit"). Lokales Passwort-Login
+  bleibt in jedem Fall parallel nutzbar, auch für SSO-Accounts optional
+  als Alternative einrichtbar.
 - Sinnvolle Session-Timeouts, sichere Cookies (HttpOnly, Secure, SameSite),
   Rate-Limiting auf Login/Passwort-Reset.
 - 2FA als spätere Ausbaustufe einplanen, insbesondere für

@@ -19,7 +19,14 @@ router = APIRouter(tags=["auth"])
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
     return templates.TemplateResponse(
-        request, "auth/login.html", {"error": None, "seed_demo_data": settings.seed_demo_data}
+        request,
+        "auth/login.html",
+        {
+            "error": None,
+            "seed_demo_data": settings.seed_demo_data,
+            "oidc_enabled": settings.oidc_enabled,
+            "oidc_provider_name": settings.oidc_provider_name,
+        },
     )
 
 
@@ -30,23 +37,28 @@ async def login_submit(
     email: str = Form(...),
     password: str = Form(...),
 ):
+    login_kontext = {
+        "seed_demo_data": settings.seed_demo_data,
+        "oidc_enabled": settings.oidc_enabled,
+        "oidc_provider_name": settings.oidc_provider_name,
+    }
     client_ip = request.client.host if request.client else "unbekannt"
     if ist_gesperrt(email, client_ip):
         return templates.TemplateResponse(
             request,
             "auth/login.html",
-            {"error": "Zu viele Versuche. Bitte versuch es in ein paar Minuten noch einmal.", "seed_demo_data": settings.seed_demo_data},
+            {"error": "Zu viele Versuche. Bitte versuch es in ein paar Minuten noch einmal.", **login_kontext},
             status_code=429,
         )
 
     result = await session.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(password, user.password_hash):
+    if user is None or user.password_hash is None or not verify_password(password, user.password_hash):
         registriere_fehlversuch(email, client_ip)
         return templates.TemplateResponse(
             request,
             "auth/login.html",
-            {"error": "E-Mail oder Passwort ist falsch.", "seed_demo_data": settings.seed_demo_data},
+            {"error": "E-Mail oder Passwort ist falsch.", **login_kontext},
             status_code=401,
         )
     if not user.aktiv:
@@ -56,7 +68,7 @@ async def login_submit(
             "auth/login.html",
             {
                 "error": "Dieser Account ist aktuell deaktiviert. Wende dich an deine Einrichtung.",
-                "seed_demo_data": settings.seed_demo_data,
+                **login_kontext,
             },
             status_code=403,
         )
@@ -77,7 +89,11 @@ async def logout(request: Request):
 
 @router.get("/konto", response_class=HTMLResponse)
 async def konto_form(request: Request, current_user: CurrentUser):
-    return templates.TemplateResponse(request, "auth/konto.html", {"current_user": current_user})
+    return templates.TemplateResponse(
+        request,
+        "auth/konto.html",
+        {"current_user": current_user, "oidc_provider_name": settings.oidc_provider_name},
+    )
 
 
 @router.post("/konto/stammdaten", response_class=HTMLResponse, dependencies=[Depends(verify_csrf)])
@@ -133,7 +149,11 @@ async def passwort_aendern(
     neues_passwort_wiederholen: str = Form(...),
 ):
     fehler = None
-    if not verify_password(aktuelles_passwort, current_user.password_hash):
+    # SSO-Accounts ohne bisheriges lokales Passwort (siehe app/core/oidc.py)
+    # dürfen direkt eines vergeben, ohne ein "aktuelles Passwort" nachweisen
+    # zu können, das es noch gar nicht gibt.
+    hat_lokales_passwort = current_user.password_hash is not None
+    if hat_lokales_passwort and not verify_password(aktuelles_passwort, current_user.password_hash):
         fehler = "Aktuelles Passwort ist falsch."
     elif len(neues_passwort) < 8:
         fehler = "Neues Passwort muss mindestens 8 Zeichen haben."

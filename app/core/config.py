@@ -25,5 +25,20 @@ class Settings(BaseSettings):
     admin_email: str | None = None
     admin_password: str | None = None
 
+    # Optional: Single Sign-On über einen OIDC-Provider (z.B. Authentik) -
+    # siehe app/core/oidc.py. Nur aktiv, wenn alle drei Werte gesetzt sind;
+    # ohne sie verhält sich die App exakt wie ohne SSO (lokales Login bleibt
+    # immer verfügbar). Bewusst dieselben Variablennamen wie im
+    # Schwestermodul Scandy-Lite, damit beide Apps gegen denselben Provider
+    # konfiguriert werden können.
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: str | None = None
+    oidc_provider_name: str = "SSO"
+
+    @property
+    def oidc_enabled(self) -> bool:
+        return bool(self.oidc_issuer and self.oidc_client_id and self.oidc_client_secret)
+
 
 settings = Settings()

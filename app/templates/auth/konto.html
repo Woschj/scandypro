@@ -29,15 +29,23 @@
 {% endif %}
 
 <div class="card" style="max-width: 420px;">
-  <h3>Passwort ändern</h3>
+  <h3>{{ "Lokales Passwort einrichten" if current_user.password_hash is none else "Passwort ändern" }}</h3>
   {% if passwort_error %}<div class="form-error">{{ passwort_error }}</div>{% endif %}
   {% if erfolg %}<div class="form-success">Passwort geändert.</div>{% endif %}
+  {% if current_user.password_hash is none %}
+  <p class="karte-meta" style="margin-bottom: var(--space-3);">Du meldest dich aktuell über {{ oidc_provider_name or "SSO" }} an.
+    Optional kannst du zusätzlich ein lokales Passwort als Alternative einrichten.</p>
+  {% endif %}
   <form method="post" action="/konto/passwort">
     {% include "partials/csrf_field.html" %}
+    {% if current_user.password_hash is not none %}
     <div class="field">
       <label for="aktuelles_passwort">Aktuelles Passwort</label>
       <input type="password" id="aktuelles_passwort" name="aktuelles_passwort" required>
     </div>
+    {% else %}
+    <input type="hidden" name="aktuelles_passwort" value="">
+    {% endif %}
     <div class="field">
       <label for="neues_passwort">Neues Passwort (mind. 8 Zeichen)</label>
       <input type="password" id="neues_passwort" name="neues_passwort" minlength="8" required>
@@ -46,7 +54,7 @@
       <label for="neues_passwort_wiederholen">Neues Passwort wiederholen</label>
       <input type="password" id="neues_passwort_wiederholen" name="neues_passwort_wiederholen" minlength="8" required>
     </div>
-    <button type="submit" class="btn btn-primary">Passwort ändern</button>
+    <button type="submit" class="btn btn-primary">{{ "Passwort einrichten" if current_user.password_hash is none else "Passwort ändern" }}</button>
   </form>
 </div>
 

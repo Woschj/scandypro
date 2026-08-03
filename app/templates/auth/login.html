@@ -15,6 +15,12 @@
     </div>
     <button type="submit" class="btn btn-primary btn-block">Anmelden</button>
   </form>
+  {% if oidc_enabled %}
+  <div style="display:flex; align-items:center; gap: var(--space-3); margin: var(--space-4) 0; color: var(--ink-soft); font-size: 0.8125rem;">
+    <hr style="flex:1; border:none; border-top:1px solid var(--line);"> oder <hr style="flex:1; border:none; border-top:1px solid var(--line);">
+  </div>
+  <a class="btn btn-ghost btn-block" href="/auth/oidc/login">Mit {{ oidc_provider_name }} anmelden</a>
+  {% endif %}
   {% if seed_demo_data %}
   <p style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 1rem;">
     Demo-Logins (Prototyp, Passwort jeweils <code>demo1234</code>):<br>

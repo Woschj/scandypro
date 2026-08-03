@@ -21,7 +21,7 @@ from app.models.kanban import Board, Karte, KartenBewegung, Spalte
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
 from app.models.user import RoleEnum, User
 from app.models.wohlbefinden import TagebuchEintrag, Unterstuetzungsanfrage, WohlbefindenFreigabe
-from app.routers import admin, auth, bewerbungen, freigaben, kanban, kanban_karten, wochenberichte, wohlbefinden
+from app.routers import admin, auth, bewerbungen, freigaben, kanban, kanban_karten, oidc, wochenberichte, wohlbefinden
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
 
@@ -53,6 +53,7 @@ app.mount(
 )
 
 app.include_router(auth.router)
+app.include_router(oidc.router)
 app.include_router(kanban.router)
 app.include_router(kanban_karten.router)
 app.include_router(wohlbefinden.router)

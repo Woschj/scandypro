@@ -8,6 +8,39 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.28] - 2026-08-03
+
+### Added
+- **Optionales Single Sign-On über OIDC** (z.B. Authentik) - Vorbereitung
+  für zentral gesteuerte Nutzer:innen über mehrere Apps hinweg (siehe
+  Vergleich mit dem Schwestermodul Scandy-Lite, das dieselbe Anbindung
+  bereits produktiv nutzt). Ohne Konfiguration (`OIDC_ISSUER`/
+  `OIDC_CLIENT_ID`/`OIDC_CLIENT_SECRET` in der `.env`) verhält sich die App
+  exakt wie zuvor - lokales E-Mail/Passwort-Login bleibt in jedem Fall
+  verfügbar.
+  - `app/core/oidc.py` (Authlib-Client, Zuordnung Login → Account),
+    `app/routers/oidc.py` (`/auth/oidc/login`, `/auth/oidc/callback`).
+  - `User` um `auth_source` (`local`/`sso`) und `external_id` (OIDC `sub`)
+    erweitert; `password_hash` und `role` sind jetzt nullable (Migration
+    `e3f4a5b6c7d8`).
+  - **Bewusst keine automatische Rollenübernahme vom Identity-Provider**
+    (CLAUDE.md §8 "Rollen ... niemals implizit"): ein per SSO neu
+    erkannter Account wird immer inaktiv und ohne Rolle angelegt und
+    erscheint in der Benutzerverwaltung als eigene Gruppe "Wartet auf
+    Freischaltung" - eine Einrichtungs-Admin muss Rolle und Abteilung
+    bewusst zuweisen und den Account aktivieren, bevor ein Login möglich
+    ist. Erkennt eine SSO-Anmeldung eine bereits vorhandene E-Mail, wird
+    der bestehende lokale Account verknüpft statt dupliziert.
+  - Konto-Seite erlaubt SSO-Accounts, zusätzlich ein lokales Passwort als
+    Alternative einzurichten (ohne "aktuelles Passwort", da noch keins
+    existiert).
+
+## [0.1.27] - 2026-08-03
+
+### Added
+- **Favicon ergänzt** - SVG-Icon im Markenlook (Brand-Teal-Quadrat mit dem
+  "//" aus dem Logo-Schriftzug), bisher fehlte jeder Favicon-Link.
+
 ## [0.1.26] - 2026-08-03
 
 ### Changed
