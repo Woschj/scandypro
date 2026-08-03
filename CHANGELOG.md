@@ -8,6 +8,21 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.12] - 2026-08-03
+
+### Added
+- **Positives Feedback für jedes einzelne Element in "Mein Tag"**, nicht
+  nur für den ganzen Tag: ein kurzer, sanfter Toast (rotierender Textpool,
+  kein Punktestand) nach Atemübung, Körper-Scan, Erdung, Wort des Tages,
+  Stärken-Karte, Zeichnung, Mandala, Ruhe-Ort/Gedanken-Waage/Mini-Ziel-Text
+  (beim Verlassen des Feldes), Sorgen loslassen, Dankbarkeits-Foto und den
+  Ankreuz-Chips (Pause gemacht, jemandem geholfen, Erfolgserlebnis) - siehe
+  `app/static/js/tagebuch-interaktiv.js`.
+- Neue gemeinsame Toast-Komponente (`app/static/js/toast.js`), aus dem
+  bisher Kanban-spezifischen Toast herausgelöst (`kanban.js` nutzt sie jetzt
+  mit) - eine Basis, um dasselbe ruhige Feedback-Vokabular künftig auch in
+  anderen Modulen zu verwenden.
+
 ## [0.1.11] - 2026-08-03
 
 Nutzer-Feedback zu 0.1.10 umgesetzt.

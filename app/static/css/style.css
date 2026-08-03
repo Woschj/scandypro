@@ -953,11 +953,12 @@ button:not(.btn) {
   100% { opacity: 0; transform: translateY(-10px) scale(1); }
 }
 
-.kanban-toast {
+.toast {
   /* Am unteren statt oberen Rand positioniert, damit die Nav-Höhe (auf
      Mobile durch das Menü-Panel theoretisch variabel, siehe
      tasks/uiux-audit/UI-015.md) keine Rolle spielt und der Toast nie
-     dahinter verschwinden kann. */
+     dahinter verschwinden kann. Gemeinsame Komponente für Kanban UND
+     Mein Tag (siehe app/static/js/toast.js). */
   position: fixed;
   bottom: var(--space-4);
   right: var(--space-4);
@@ -974,7 +975,7 @@ button:not(.btn) {
   z-index: 1000;
   pointer-events: none;
 }
-.kanban-toast--sichtbar { opacity: 1; transform: translateY(0); }
+.toast--sichtbar { opacity: 1; transform: translateY(0); }
 
 .unteraufgabe-toggle-btn--puls { animation: toggle-puls 0.3s ease; }
 @keyframes toggle-puls {

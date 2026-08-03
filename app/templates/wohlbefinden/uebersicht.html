@@ -46,7 +46,7 @@
     <h3 style="margin:0; flex:1;">Morgens</h3>
     {% if tag.morgen_erledigt %}<span class="chip chip-success">erledigt</span>{% endif %}
   </div>
-  <form method="post" action="/wohlbefinden/morgen">
+  <form method="post" action="/wohlbefinden/morgen" data-tagebuch-formular>
     {% include "partials/csrf_field.html" %}
     <input type="hidden" name="datum" value="{{ tag.datum }}">
     <input type="hidden" name="morgen_impuls_frage" value="{{ tag.morgen_impuls_frage }}">
@@ -148,7 +148,7 @@
     <h3 style="margin:0; flex:1;">Abends</h3>
     {% if tag.abend_erledigt %}<span class="chip chip-success">erledigt</span>{% endif %}
   </div>
-  <form method="post" action="/wohlbefinden/abend" enctype="multipart/form-data">
+  <form method="post" action="/wohlbefinden/abend" enctype="multipart/form-data" data-tagebuch-formular>
     {% include "partials/csrf_field.html" %}
     <input type="hidden" name="datum" value="{{ tag.datum }}">
     <input type="hidden" name="abend_impuls_frage" value="{{ tag.abend_impuls_frage }}">
@@ -210,7 +210,7 @@
       {% endif %}
       <input type="file" name="dankbarkeitsfoto" accept="image/png,image/jpeg">
       {% if tag.hat_dankbarkeitsfoto %}
-      <label class="tagebuch-chip" style="margin-top: var(--space-2);"><input type="checkbox" name="dankbarkeitsfoto_entfernen" value="true"> Foto entfernen</label>
+      <label class="tagebuch-chip" style="margin-top: var(--space-2);"><input type="checkbox" name="dankbarkeitsfoto_entfernen" value="true" data-kein-lob="true"> Foto entfernen</label>
       {% endif %}
 
       {% elif tag.abend_uebung_typ == "mini_ziel" %}

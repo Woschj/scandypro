@@ -37,23 +37,7 @@
     void karte.offsetWidth;
     karte.classList.add("karte--gefeiert");
     stempel(karte.getBoundingClientRect());
-    zeigeKanbanToast(zufallsText());
-  }
-
-  function zeigeKanbanToast(text) {
-    const bestehender = document.querySelector(".kanban-toast");
-    if (bestehender) bestehender.remove();
-    const toast = document.createElement("div");
-    toast.className = "kanban-toast";
-    toast.setAttribute("role", "status");
-    toast.setAttribute("aria-live", "polite");
-    toast.textContent = text;
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add("kanban-toast--sichtbar"));
-    setTimeout(() => {
-      toast.classList.remove("kanban-toast--sichtbar");
-      setTimeout(() => toast.remove(), 300);
-    }, 1800);
+    zeigeToast(zufallsText());
   }
 
   function zufallsText() {
