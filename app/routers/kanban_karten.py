@@ -12,7 +12,13 @@ from fastapi import APIRouter, Body, Depends, Form, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlmodel import select
 
-from app.core.access import boardmitglieder_ids, ist_leiter_von_handlungsfeld, require_kanban_access
+from app.core.access import (
+    boardmitglieder_ids,
+    ist_leiter_von_handlungsfeld,
+    karte_ist_sichtbar_fuer,
+    require_kanban_access,
+    require_karte_sichtbar,
+)
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.models.kanban import (
     Board,
@@ -148,6 +154,7 @@ async def karte_aktualisieren(
 ):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
     await _require_karte_entsperrt(session, karte)
 
     karte.titel = titel
@@ -184,6 +191,7 @@ async def _darf_karte_loeschen(session: SessionDep, current_user, karte: Karte, 
 async def karte_loeschen(karte_id: int, current_user: CurrentUser, session: SessionDep):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
 
     if not await _darf_karte_loeschen(session, current_user, karte, board):
         raise HTTPException(
@@ -208,6 +216,7 @@ async def karte_verschieben(
 ):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
 
     ziel_spalte = await session.get(Spalte, ziel_spalte_id)
     if ziel_spalte is None or ziel_spalte.board_id != board.id:
@@ -252,6 +261,8 @@ async def spalte_reihenfolge_setzen(
         vorherige_spalte = await session.get(Spalte, karte.spalte_id)
         if vorherige_spalte is None or vorherige_spalte.board_id != board.id:
             continue
+        if not karte_ist_sichtbar_fuer(current_user, board, karte):
+            continue
         karte.spalte_id = spalte_id
         karte.reihenfolge = index
         if ziel_spalte.ist_system_erledigt:
@@ -272,6 +283,7 @@ async def zuweisung_hinzufuegen(
 ):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
     await _require_karte_entsperrt(session, karte)
 
     if teilnehmer_id not in await boardmitglieder_ids(session, board):
@@ -292,6 +304,7 @@ async def zuweisung_hinzufuegen(
 async def zuweisung_entfernen(karte_id: int, zuweisung_id: int, current_user: CurrentUser, session: SessionDep):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
     await _require_karte_entsperrt(session, karte)
 
     zuweisung = await session.get(KartenZuweisung, zuweisung_id)
@@ -313,6 +326,7 @@ async def unteraufgabe_hinzufuegen(
 ):
     karte, board = await _board_von_karte(session, karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
     await _require_karte_entsperrt(session, karte)
 
     zugewiesen_an_id = int(zugewiesen_an) if zugewiesen_an else None
@@ -342,6 +356,7 @@ async def unteraufgabe_umschalten(unteraufgabe_id: int, current_user: CurrentUse
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     karte, board = await _board_von_karte(session, unteraufgabe.karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
     await _require_karte_entsperrt(session, karte)
 
     unteraufgabe.erledigt = not unteraufgabe.erledigt
@@ -368,6 +383,7 @@ async def unteraufgabe_loeschen(unteraufgabe_id: int, current_user: CurrentUser,
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     karte, board = await _board_von_karte(session, unteraufgabe.karte_id)
     await require_kanban_access(session, current_user, board)
+    require_karte_sichtbar(current_user, board, karte)
     await _require_karte_entsperrt(session, karte)
 
     await session.delete(unteraufgabe)

@@ -15,10 +15,12 @@
     </div>
     <button type="submit" class="btn btn-primary btn-block">Anmelden</button>
   </form>
+  {% if seed_demo_data %}
   <p style="font-size: 0.8rem; color: var(--ink-soft); margin-top: 1rem;">
     Demo-Logins (Prototyp, Passwort jeweils <code>demo1234</code>):<br>
     teilnehmer@demo.local · teilnehmer2@demo.local · trainer@demo.local ·
     psycho@demo.local · admin@demo.local
   </p>
+  {% endif %}
 </div>
 {% endblock %}

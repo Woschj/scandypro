@@ -29,6 +29,13 @@ class Bewerbung(SQLModel, table=True):
     status: BewerbungStatus = BewerbungStatus.entwurf
     beworben_am: date | None = None
     naechster_termin: date | None = None
+    # Uhrzeit als "HH:MM"-Text statt vollem datetime-Feld, um die
+    # bestehende reine Datums-Arithmetik auf naechster_termin (siehe
+    # app/routers/bewerbungen.py:_ausstehende_rueckmeldungen) nicht
+    # anzufassen - für ein Vorstellungsgespräch reicht das für Anzeige-
+    # zwecke, ohne Zeitzonen-/Kombinationslogik einzuführen.
+    naechster_termin_uhrzeit: str | None = None
+    naechster_termin_ort: str | None = None
     notizen: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)
 

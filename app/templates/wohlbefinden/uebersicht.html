@@ -4,6 +4,25 @@
 <h1>Mein Tag</h1>
 <p class="visibility-hint">Dein 5-Minuten-Tagebuch. Nur für dich sichtbar, außer du gibst gezielt frei.</p>
 
+<details class="card">
+  <summary class="card-collapsible-summary"><h3>Ich möchte jetzt Unterstützung</h3></summary>
+  <div style="margin-top: var(--space-4);">
+    <p class="karte-meta">Das hier ist unabhängig von deinen Tagebuch-Einträgen - niemand wird automatisch
+      benachrichtigt, egal was du oben einträgst oder nicht einträgst.</p>
+    {% if psm_kontakt %}
+    <p style="margin-top: var(--space-3);">Deine zuständige psychosoziale Mitarbeiter:in ist
+      <strong>{{ psm_kontakt.name }}</strong> -
+      <a href="mailto:{{ psm_kontakt.email }}">{{ psm_kontakt.email }}</a>.</p>
+    {% endif %}
+    <div class="eyebrow" style="margin-top: var(--space-4);">Rund um die Uhr erreichbar</div>
+    <ul style="margin: var(--space-2) 0 0;">
+      {% for angebot in hilfsangebote %}
+      <li><strong>{{ angebot.name }}</strong>: {{ angebot.kontakt }} <span class="karte-meta">— {{ angebot.hinweis }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+</details>
+
 <div class="card">
   <div class="tage-nav">
     <a class="btn btn-ghost btn-sm" href="/wohlbefinden?tag={{ vorheriger_tag }}">&larr; Tag zurück</a>
@@ -27,8 +46,55 @@
     <input type="hidden" name="morgen_impuls_frage" value="{{ tag.morgen_impuls_frage }}">
 
     <div class="field">
+      {% if tag.morgen_uebung_typ == "koerperscan" %}
+      <label class="eyebrow">Kurz ankommen — Körper-Scan</label>
+      <div class="atemuebung" data-punkte-uebung data-punkte-feld="koerperscan_erledigt">
+        <svg viewBox="0 0 240 220" class="atemuebung-svg">
+          <path data-linie fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          {% for p in tag.koerperscan_punkte %}
+          <circle data-punkt="{{ loop.index0 }}" data-halten="{{ p.halten_sekunden }}" cx="{{ p.cx }}" cy="{{ p.cy }}" r="10"/>
+          <text x="{{ p.cx }}" y="{{ p.cy + 28 if p.cy < 110 else p.cy - 18 }}" text-anchor="middle" class="atemuebung-label">{{ p.label }}</text>
+          {% endfor %}
+        </svg>
+        <p class="karte-meta" data-punkte-hinweis>Wandere der Reihe nach von Punkt zu Punkt und spüre kurz in die jeweilige Körperregion hinein.</p>
+        <input type="hidden" name="koerperscan_erledigt" value="{{ 'true' if tag.koerperscan_erledigt else '' }}">
+      </div>
+
+      {% elif tag.morgen_uebung_typ == "erdung_54321" %}
+      <label class="eyebrow">Kurz ankommen — 5-4-3-2-1-Erdung</label>
+      <p class="karte-meta">Nimm dir kurz Zeit und hake ab, sobald du es wahrgenommen hast - was du dabei bemerkst, bleibt bei dir.</p>
+      <div class="tagebuch-chip-liste">
+        <label class="tagebuch-chip"><input type="checkbox" name="grounding_1" value="true" {% if tag.grounding_erledigt %}checked{% endif %}> 5 Dinge, die du gerade siehst</label>
+        <label class="tagebuch-chip"><input type="checkbox" name="grounding_2" value="true" {% if tag.grounding_erledigt %}checked{% endif %}> 4 Dinge, die du gerade hörst</label>
+        <label class="tagebuch-chip"><input type="checkbox" name="grounding_3" value="true" {% if tag.grounding_erledigt %}checked{% endif %}> 3 Dinge, die du gerade spürst</label>
+        <label class="tagebuch-chip"><input type="checkbox" name="grounding_4" value="true" {% if tag.grounding_erledigt %}checked{% endif %}> 2 Dinge, die du gerade riechst</label>
+        <label class="tagebuch-chip"><input type="checkbox" name="grounding_5" value="true" {% if tag.grounding_erledigt %}checked{% endif %}> 1 Ding, das du gerade schmeckst</label>
+      </div>
+
+      {% elif tag.morgen_uebung_typ == "wort_des_tages" %}
+      <label class="eyebrow">Kurz ankommen — Ein Wort für heute</label>
+      <p class="karte-meta">Welches Wort passt gerade zu dir? Es muss nicht erklärt werden.</p>
+      <div class="wort-chip-liste" data-wort-des-tages>
+        {% for wort in wort_optionen %}
+        <button type="button" class="wort-chip" data-wort-chip="{{ wort }}">{{ wort }}</button>
+        {% endfor %}
+        <input type="hidden" name="wort_des_tages" value="{{ tag.wort_des_tages }}">
+      </div>
+
+      {% elif tag.morgen_uebung_typ == "staerken_karte" %}
+      <label class="eyebrow">Kurz ankommen — Stärken-Karte</label>
+      <details class="staerken-karte" data-staerken-karte {% if tag.staerken_karte_erledigt %}open{% endif %}>
+        <summary class="card-collapsible-summary">Karte umdrehen</summary>
+        <div style="margin-top: var(--space-3);">
+          <p>{{ tag.staerken_karte_frage }}</p>
+          <textarea name="staerken_karte_antwort" rows="2" placeholder="Magst du kurz antworten? (optional)">{{ tag.staerken_karte_antwort }}</textarea>
+          <input type="hidden" name="staerken_karte_erledigt" value="{{ 'true' if tag.staerken_karte_erledigt else '' }}">
+        </div>
+      </details>
+
+      {% else %}
       <label class="eyebrow">Kurz ankommen — {{ tag.atemuebung_name }}</label>
-      <div class="atemuebung" data-atemuebung>
+      <div class="atemuebung" data-punkte-uebung data-punkte-feld="atemuebung_erledigt">
         <svg viewBox="0 0 240 220" class="atemuebung-svg">
           <path data-linie fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           {% for p in tag.atemuebung_punkte %}
@@ -36,10 +102,12 @@
           <text x="{{ p.cx }}" y="{{ p.cy + 28 if p.cy < 110 else p.cy - 18 }}" text-anchor="middle" class="atemuebung-label">{{ p.label }}</text>
           {% endfor %}
         </svg>
-        <p class="karte-meta" data-atemuebung-hinweis>Fahre mit dem Finger oder der Maus der Reihe nach von Punkt zu Punkt - eine kleine Pause, bevor es losgeht.</p>
+        <p class="karte-meta" data-punkte-hinweis>Fahre mit dem Finger oder der Maus der Reihe nach von Punkt zu Punkt - eine kleine Pause, bevor es losgeht.</p>
         <input type="hidden" name="atemuebung_name" value="{{ tag.atemuebung_name }}">
         <input type="hidden" name="atemuebung_erledigt" value="{{ 'true' if tag.atemuebung_erledigt else '' }}">
       </div>
+      {% endif %}
+      <input type="hidden" name="morgen_uebung_typ" value="{{ tag.morgen_uebung_typ }}">
     </div>
 
     <div class="field">
@@ -74,7 +142,7 @@
     <h3 style="margin:0; flex:1;">Abends</h3>
     {% if tag.abend_erledigt %}<span class="chip chip-success">erledigt</span>{% endif %}
   </div>
-  <form method="post" action="/wohlbefinden/abend">
+  <form method="post" action="/wohlbefinden/abend" enctype="multipart/form-data">
     {% include "partials/csrf_field.html" %}
     <input type="hidden" name="datum" value="{{ tag.datum }}">
     <input type="hidden" name="abend_impuls_frage" value="{{ tag.abend_impuls_frage }}">
@@ -92,6 +160,62 @@
     </div>
 
     <div class="field">
+      {% if tag.abend_uebung_typ == "mandala" %}
+      <label>Magst du ein ruhiges Muster ausmalen? (optional)</label>
+      <div data-mandala>
+        <svg viewBox="0 0 240 240" width="220" height="220">
+          <circle data-mandala-segment cx="120" cy="60" r="26" fill="none" stroke="var(--ink-soft)"/>
+          <circle data-mandala-segment cx="171" cy="90" r="26" fill="none" stroke="var(--ink-soft)"/>
+          <circle data-mandala-segment cx="171" cy="150" r="26" fill="none" stroke="var(--ink-soft)"/>
+          <circle data-mandala-segment cx="120" cy="180" r="26" fill="none" stroke="var(--ink-soft)"/>
+          <circle data-mandala-segment cx="69" cy="150" r="26" fill="none" stroke="var(--ink-soft)"/>
+          <circle data-mandala-segment cx="69" cy="90" r="26" fill="none" stroke="var(--ink-soft)"/>
+          <circle data-mandala-segment cx="120" cy="120" r="30" fill="none" stroke="var(--ink-soft)"/>
+        </svg>
+        <p class="karte-meta">Tippe auf ein Feld, um es einzufärben - so oft du magst, es gibt kein richtig oder falsch.</p>
+        <input type="hidden" name="mandala_erledigt" value="{{ 'true' if tag.mandala_erledigt else '' }}">
+      </div>
+
+      {% elif tag.abend_uebung_typ == "ruhe_ort" %}
+      <label>Dein Ruhe-Ort (optional)</label>
+      <p class="karte-meta">Stell dir kurz einen Ort vor, an dem du dich sicher und ruhig fühlst.</p>
+      <input type="text" name="ruhe_ort_sehen" value="{{ tag.ruhe_ort_sehen }}" placeholder="Was siehst du dort?">
+      <input type="text" name="ruhe_ort_hoeren" value="{{ tag.ruhe_ort_hoeren }}" placeholder="Was hörst du dort?" style="margin-top: var(--space-2);">
+      <input type="text" name="ruhe_ort_spueren" value="{{ tag.ruhe_ort_spueren }}" placeholder="Was spürst du dort?" style="margin-top: var(--space-2);">
+
+      {% elif tag.abend_uebung_typ == "gedanken_waage" %}
+      <label>Gedanken-Waage (optional)</label>
+      <textarea name="gedanke_belastend" rows="2" placeholder="Ein Gedanke, der dich heute beschäftigt hat">{{ tag.gedanke_belastend }}</textarea>
+      <textarea name="gedanke_ausgewogen" rows="2" placeholder="Eine andere, ausgewogenere Sicht darauf" style="margin-top: var(--space-2);">{{ tag.gedanke_ausgewogen }}</textarea>
+
+      {% elif tag.abend_uebung_typ == "sorgen_loslassen" %}
+      <label>Sorgen loslassen (optional)</label>
+      <p class="karte-meta">Schreib eine Sorge auf - danach lässt du sie bewusst los. Sie wird nirgends gespeichert.</p>
+      <div data-sorgen-loslassen>
+        <textarea rows="2" placeholder="Was beschäftigt dich?"></textarea>
+        <button type="button" class="btn btn-ghost btn-sm" data-sorgen-loslassen-button style="margin-top: var(--space-2);">Loslassen</button>
+        <input type="hidden" name="sorgen_los_erledigt" value="{{ 'true' if tag.sorgen_los_erledigt else '' }}">
+      </div>
+
+      {% elif tag.abend_uebung_typ == "dankbarkeitsfoto" %}
+      <label>Ein Foto von etwas, das dich heute gefreut hat (optional)</label>
+      {% if tag.hat_dankbarkeitsfoto %}
+      <img src="/wohlbefinden/dankbarkeitsfoto/{{ tag.eintrag_id }}" alt="Dein Foto von heute" style="max-width: 240px; border-radius: var(--radius); display:block; margin-bottom: var(--space-2);">
+      {% endif %}
+      <input type="file" name="dankbarkeitsfoto" accept="image/png,image/jpeg">
+      {% if tag.hat_dankbarkeitsfoto %}
+      <label class="tagebuch-chip" style="margin-top: var(--space-2);"><input type="checkbox" name="dankbarkeitsfoto_entfernen" value="true"> Foto entfernen</label>
+      {% endif %}
+
+      {% elif tag.abend_uebung_typ == "mini_ziel" %}
+      <label>Mini-Ziel des Tages (optional)</label>
+      <input type="text" name="mini_ziel_text" value="{{ tag.mini_ziel_text }}" placeholder="Ein kleines Ziel, das du dir heute gesetzt hattest">
+      <label class="tagebuch-chip" style="margin-top: var(--space-2);">
+        <input type="checkbox" name="mini_ziel_geschafft" value="true" {% if tag.mini_ziel_geschafft %}checked{% endif %}>
+        Hat geklappt
+      </label>
+
+      {% else %}
       <label>Magst du malen, was dich heute gefreut hat? (optional)</label>
       <div class="zeichenfeld-canvas-wrap" data-zeichenfeld>
         {% if tag.hat_zeichnung %}
@@ -102,6 +226,8 @@
         <input type="hidden" name="zeichnung_entfernen" value="">
         <button type="button" class="btn btn-ghost btn-sm" data-zeichenfeld-loeschen style="margin-top: var(--space-2);">Zeichnung löschen</button>
       </div>
+      {% endif %}
+      <input type="hidden" name="abend_uebung_typ" value="{{ tag.abend_uebung_typ }}">
     </div>
 
     <div class="field">
@@ -155,6 +281,14 @@
         {% endfor %}
       </div>
       {% endif %}
+      {% if eintrag.wort_des_tages %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Wort des Tages</div>
+      <p>{{ eintrag.wort_des_tages }}</p>
+      {% endif %}
+      {% if eintrag.staerken_karte_antwort %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.staerken_karte_frage }}</div>
+      <p>{{ eintrag.staerken_karte_antwort }}</p>
+      {% endif %}
       {% if eintrag.highlights | select | list %}
       <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
       <ul style="margin: var(--space-2) 0 var(--space-4);">
@@ -168,6 +302,27 @@
       {% if eintrag.hat_zeichnung %}
       <div class="eyebrow" style="margin-top: var(--space-3);">Deine Zeichnung</div>
       <img class="zeichenfeld-bestehend" style="margin-top: var(--space-2); max-width: 320px;" src="/wohlbefinden/zeichnung/{{ eintrag.eintrag_id }}" alt="Deine Zeichnung vom {{ eintrag.label }}">
+      {% endif %}
+      {% if eintrag.hat_dankbarkeitsfoto %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Foto</div>
+      <img style="margin-top: var(--space-2); max-width: 320px; border-radius: var(--radius);" src="/wohlbefinden/dankbarkeitsfoto/{{ eintrag.eintrag_id }}" alt="Dein Foto vom {{ eintrag.label }}">
+      {% endif %}
+      {% if eintrag.ruhe_ort_sehen or eintrag.ruhe_ort_hoeren or eintrag.ruhe_ort_spueren %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Ruhe-Ort</div>
+      <ul style="margin: var(--space-2) 0 var(--space-4);">
+        {% if eintrag.ruhe_ort_sehen %}<li>{{ eintrag.ruhe_ort_sehen }}</li>{% endif %}
+        {% if eintrag.ruhe_ort_hoeren %}<li>{{ eintrag.ruhe_ort_hoeren }}</li>{% endif %}
+        {% if eintrag.ruhe_ort_spueren %}<li>{{ eintrag.ruhe_ort_spueren }}</li>{% endif %}
+      </ul>
+      {% endif %}
+      {% if eintrag.gedanke_belastend or eintrag.gedanke_ausgewogen %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Gedanken-Waage</div>
+      {% if eintrag.gedanke_belastend %}<p>{{ eintrag.gedanke_belastend }}</p>{% endif %}
+      {% if eintrag.gedanke_ausgewogen %}<p>{{ eintrag.gedanke_ausgewogen }}</p>{% endif %}
+      {% endif %}
+      {% if eintrag.mini_ziel_text %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Mini-Ziel des Tages</div>
+      <p>{{ eintrag.mini_ziel_text }} {% if eintrag.mini_ziel_geschafft %}<span class="chip chip-success">hat geklappt</span>{% endif %}</p>
       {% endif %}
       {% if eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
       <div class="tagebuch-chip-liste" style="margin-top: var(--space-3);">

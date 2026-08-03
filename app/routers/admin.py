@@ -397,6 +397,25 @@ async def benutzer_bearbeiten(
     return RedirectResponse(url="/admin/benutzer", status_code=303)
 
 
+@router.post("/benutzer/{benutzer_id}/aktiv-umschalten")
+async def benutzer_aktiv_umschalten(benutzer_id: int, current_user: CurrentUser, session: SessionDep):
+    await _require_admin(current_user)
+
+    benutzer = await session.get(User, benutzer_id)
+    if benutzer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if benutzer.id == current_user.id:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Du+kannst+deinen+eigenen+Account+nicht+deaktivieren.",
+            status_code=303,
+        )
+
+    benutzer.aktiv = not benutzer.aktiv
+    session.add(benutzer)
+    await session.commit()
+    return RedirectResponse(url=f"/admin/benutzer/{benutzer_id}/bearbeiten?erfolg=aktiv", status_code=303)
+
+
 @router.post("/benutzer/{benutzer_id}/passwort-zuruecksetzen")
 async def benutzer_passwort_zuruecksetzen(
     benutzer_id: int, current_user: CurrentUser, session: SessionDep, neues_passwort: str = Form(...)

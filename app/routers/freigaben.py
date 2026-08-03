@@ -12,11 +12,17 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 
-from app.core.deletion import loesche_alle_bewerbungsdaten, loesche_alle_wohlbefinden_daten
+from app.core.deletion import (
+    loesche_alle_bewerbungsdaten,
+    loesche_alle_wohlbefinden_daten,
+    loesche_persoenliches_kanban_board,
+)
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.models.audit import AuditLogEintrag
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe
+from app.models.kanban import Board, BoardFreigabe
+from app.models.organisation import Teilnehmergruppe, TeilnehmergruppeMitglied
 from app.models.user import RoleEnum, User
 from app.models.wohlbefinden import WohlbefindenFreigabe
 
@@ -63,6 +69,18 @@ async def meine_freigaben(request: Request, current_user: CurrentUser, session: 
         bewerbung_result = await session.execute(select(Bewerbung).where(Bewerbung.id.in_(bewerbung_ids)))
         bewerbung_by_id = {b.id: b for b in bewerbung_result.scalars().all()}
 
+    board_freigaben_result = await session.execute(
+        select(Board.titel, Teilnehmergruppe.name)
+        .select_from(BoardFreigabe)
+        .join(Board, Board.id == BoardFreigabe.board_id)
+        .join(Teilnehmergruppe, Teilnehmergruppe.id == BoardFreigabe.gruppe_id)
+        .join(TeilnehmergruppeMitglied, TeilnehmergruppeMitglied.gruppe_id == BoardFreigabe.gruppe_id)
+        .where(TeilnehmergruppeMitglied.teilnehmer_id == current_user.id)
+        .distinct()
+        .order_by(Board.titel)
+    )
+    board_freigaben = [{"board_titel": t, "gruppe_name": g} for t, g in board_freigaben_result.all()]
+
     audit_result = await session.execute(
         select(AuditLogEintrag)
         .where(AuditLogEintrag.ziel_teilnehmer_id == current_user.id)
@@ -83,6 +101,7 @@ async def meine_freigaben(request: Request, current_user: CurrentUser, session: 
             "current_user": current_user,
             "wohlbefinden_freigaben": wohlbefinden_freigaben,
             "bewerbungs_freigaben": bewerbungs_freigaben,
+            "board_freigaben": board_freigaben,
             "empfaenger_by_id": empfaenger_by_id,
             "bewerbung_by_id": bewerbung_by_id,
             "audit_eintraege": audit_eintraege,
@@ -120,4 +139,17 @@ async def bewerbungen_konto_loeschen(current_user: CurrentUser, session: Session
     _pruefe_bestaetigung(bestaetigung)
 
     await loesche_alle_bewerbungsdaten(session, current_user.id)
+    return RedirectResponse(url="/freigaben", status_code=303)
+
+
+@router.post("/konto/kanban-loeschen")
+async def kanban_konto_loeschen(current_user: CurrentUser, session: SessionDep, bestaetigung: str = Form(...)):
+    """Löscht die persönliche Kanban-Aufgabenliste unwiderruflich (Hard-
+    Delete). Geteilte Team-Boards und der Zugang (Login) bleiben bestehen -
+    siehe app/core/deletion.py."""
+    if current_user.role != RoleEnum.teilnehmer:
+        raise HTTPException(status.HTTP_403_FORBIDDEN)
+    _pruefe_bestaetigung(bestaetigung)
+
+    await loesche_persoenliches_kanban_board(session, current_user.id)
     return RedirectResponse(url="/freigaben", status_code=303)

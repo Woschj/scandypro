@@ -16,6 +16,7 @@ from app.core.access import (
     require_role,
     sichtbare_karten_filter,
 )
+from app.core.deletion import loesche_board_kaskadierend, loesche_spalte_kaskadierend
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenZuweisung, Spalte, Unteraufgabe
@@ -320,19 +321,7 @@ async def spalte_loeschen(spalte_id: int, current_user: CurrentUser, session: Se
     if len(anzahl_spalten) <= 1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ein Board braucht mindestens eine Spalte.")
 
-    karten = list((await session.execute(select(Karte).where(Karte.spalte_id == spalte_id))).scalars().all())
-    karten_ids = [k.id for k in karten]
-    if karten_ids:
-        for modell in (KartenZuweisung, Unteraufgabe):
-            rows = list((await session.execute(select(modell).where(modell.karte_id.in_(karten_ids)))).scalars().all())
-            for row in rows:
-                await session.delete(row)
-        await session.flush()
-        for karte in karten:
-            await session.delete(karte)
-        await session.flush()
-
-    await session.delete(spalte)
+    await loesche_spalte_kaskadierend(session, spalte_id)
     await session.commit()
     return RedirectResponse(url=f"/kanban/boards/{board.id}", status_code=303)
 
@@ -346,34 +335,7 @@ async def board_loeschen(board_id: int, current_user: CurrentUser, session: Sess
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Persönliche Boards können nicht gelöscht werden.")
     await require_board_verwaltung(session, current_user, board)
 
-    spalten = list((await session.execute(select(Spalte).where(Spalte.board_id == board_id))).scalars().all())
-    spalten_ids = [s.id for s in spalten]
-    if spalten_ids:
-        karten = list((await session.execute(select(Karte).where(Karte.spalte_id.in_(spalten_ids)))).scalars().all())
-        karten_ids = [k.id for k in karten]
-        if karten_ids:
-            for modell in (KartenZuweisung, Unteraufgabe):
-                rows = list(
-                    (await session.execute(select(modell).where(modell.karte_id.in_(karten_ids)))).scalars().all()
-                )
-                for row in rows:
-                    await session.delete(row)
-            await session.flush()
-            for karte in karten:
-                await session.delete(karte)
-            await session.flush()
-        for spalte in spalten:
-            await session.delete(spalte)
-        await session.flush()
-
-    freigaben = list(
-        (await session.execute(select(BoardFreigabe).where(BoardFreigabe.board_id == board_id))).scalars().all()
-    )
-    for freigabe in freigaben:
-        await session.delete(freigabe)
-    await session.flush()
-
-    await session.delete(board)
+    await loesche_board_kaskadierend(session, board_id)
     await session.commit()
     return RedirectResponse(url="/kanban", status_code=303)
 

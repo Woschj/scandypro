@@ -1,11 +1,17 @@
-"""Kaskadierende Hard-Delete-Routinen für Wohlbefinden- und Bewerbungsdaten
-(siehe CLAUDE.md §10, DATENSCHUTZ_UND_BERECHTIGUNGEN.md §5).
+"""Kaskadierende Hard-Delete-Routinen für Wohlbefinden-, Bewerbungs- und
+persönliche Kanban-Daten (siehe CLAUDE.md §10,
+DATENSCHUTZ_UND_BERECHTIGUNGEN.md §5).
 
-Löscht das Konto (User-Zeile) selbst NICHT - Kanban-Karten referenzieren
-`ersteller_id` ohne Kaskade-Handling, eine vollständige Konto-Löschung
-inkl. Login ist bewusst auf die später geplante zentrale Benutzerver-
-waltung verschoben (siehe README, "Bekannte Lücken"). Hier werden nur die
-Inhaltsdaten der jeweiligen Domäne entfernt.
+Löscht das Konto (User-Zeile) selbst NICHT: Kanban-Karten auf *Team*-Boards
+referenzieren `ersteller_id`/`KartenZuweisung.teilnehmer_id`/
+`KartenBewegung.bewegt_von_id` ohne Kaskade-Handling (nicht nullbar, keine
+ON-DELETE-Regel) - ein Hard-Delete der User-Zeile würde dort entweder gegen
+die Fremdschlüssel-Constraint laufen oder für andere Teilnehmende freigegebene
+Boards mitreißen. Eine vollständige Konto-Löschung inkl. Login ist bewusst
+auf eine spätere Schema-Änderung (z.B. nullbare Spalten + "gelöschte:r
+Nutzer:in"-Anzeige) verschoben - siehe tasks/ganzheitliche-verbesserungen/
+VB-004.md. Hier werden nur die Inhaltsdaten entfernt, die ausschließlich der
+löschenden Person gehören.
 """
 
 from sqlmodel import select
@@ -13,6 +19,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.uploads import datei_loeschen
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, Bewerbungsunterlage
+from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenBewegung, KartenZuweisung, Spalte, Unteraufgabe
 from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe
 
 
@@ -23,6 +30,8 @@ async def loesche_alle_wohlbefinden_daten(session: AsyncSession, teilnehmer_id: 
     for eintrag in eintraege_result.scalars().all():
         if eintrag.zeichnung_pfad:
             datei_loeschen(eintrag.zeichnung_pfad)
+        if eintrag.dankbarkeitsfoto_pfad:
+            datei_loeschen(eintrag.dankbarkeitsfoto_pfad)
         await session.delete(eintrag)
 
     freigaben_result = await session.execute(
@@ -54,4 +63,82 @@ async def loesche_alle_bewerbungsdaten(session: AsyncSession, teilnehmer_id: int
     for bewerbung in bewerbungen_result.scalars().all():
         await session.delete(bewerbung)
 
+    await session.commit()
+
+
+async def _loesche_karten_einer_spalte(session: AsyncSession, spalte_id: int) -> None:
+    karten = list((await session.execute(select(Karte).where(Karte.spalte_id == spalte_id))).scalars().all())
+    karten_ids = [k.id for k in karten]
+    if not karten_ids:
+        return
+    for modell in (KartenZuweisung, Unteraufgabe, KartenBewegung):
+        rows = list((await session.execute(select(modell).where(modell.karte_id.in_(karten_ids)))).scalars().all())
+        for row in rows:
+            await session.delete(row)
+    await session.flush()
+    for karte in karten:
+        await session.delete(karte)
+    await session.flush()
+
+
+async def loesche_spalte_kaskadierend(session: AsyncSession, spalte_id: int) -> None:
+    """Löscht eine Spalte inkl. aller ihrer Karten/Zuweisungen/
+    Unteraufgaben/Bewegungen (siehe app/routers/kanban.py:spalte_loeschen).
+    Löscht NICHT die Spalte selbst aus der Session - das bleibt Sache der
+    aufrufenden Stelle, damit z. B. board_loeschen mehrere Spalten in einem
+    Rutsch sammeln kann, bevor committed wird."""
+    await _loesche_karten_einer_spalte(session, spalte_id)
+    spalte = await session.get(Spalte, spalte_id)
+    if spalte is not None:
+        await session.delete(spalte)
+    await session.flush()
+
+
+async def loesche_board_kaskadierend(session: AsyncSession, board_id: int) -> None:
+    """Löscht ein Team-Board vollständig: alle Spalten (inkl. Karten via
+    loesche_spalte_kaskadierend) sowie die Board-Freigaben (siehe
+    app/routers/kanban.py:board_loeschen)."""
+    spalten_ids = list(
+        (await session.execute(select(Spalte.id).where(Spalte.board_id == board_id))).scalars().all()
+    )
+    for spalte_id in spalten_ids:
+        await _loesche_karten_einer_spalte(session, spalte_id)
+        spalte = await session.get(Spalte, spalte_id)
+        if spalte is not None:
+            await session.delete(spalte)
+    await session.flush()
+
+    freigaben = list(
+        (await session.execute(select(BoardFreigabe).where(BoardFreigabe.board_id == board_id))).scalars().all()
+    )
+    for freigabe in freigaben:
+        await session.delete(freigabe)
+    await session.flush()
+
+    board = await session.get(Board, board_id)
+    if board is not None:
+        await session.delete(board)
+    await session.flush()
+
+
+async def loesche_persoenliches_kanban_board(session: AsyncSession, teilnehmer_id: int) -> None:
+    """Löscht das persönliche Kanban-Board (BoardTyp.person) einer/eines
+    Teilnehmer:in vollständig, inkl. aller eigenen Spalten/Karten/
+    Zuweisungen/Unteraufgaben/Bewegungen - sicher als Ganzes löschbar, da ein
+    Personen-Board nie für andere Teilnehmende freigegeben ist (anders als
+    Team-Boards, siehe Modulkommentar oben)."""
+    board_result = await session.execute(
+        select(Board).where(Board.typ == BoardTyp.person, Board.person_teilnehmer_id == teilnehmer_id)
+    )
+    board = board_result.scalar_one_or_none()
+    if board is None:
+        return
+
+    spalten_ids = list(
+        (await session.execute(select(Spalte.id).where(Spalte.board_id == board.id))).scalars().all()
+    )
+    for spalte_id in spalten_ids:
+        await loesche_spalte_kaskadierend(session, spalte_id)
+
+    await session.delete(board)
     await session.commit()

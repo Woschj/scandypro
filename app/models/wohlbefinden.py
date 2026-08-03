@@ -54,6 +54,21 @@ class TagebuchEintrag(SQLModel, table=True):
     # ist, nicht ihr Ergebnis.
     atemuebung_name: str | None = None
     atemuebung_erledigt_am: datetime | None = None
+
+    # Wöchentlich rotierender Übungstyp (siehe app/core/tagesuebungen.py) -
+    # bestimmt, welcher der Morgen-Bausteine unten tatsächlich angezeigt
+    # wird; Name wird wie atemuebung_name mitgespeichert, damit er bei
+    # erneutem Aufruf stabil bleibt, auch wenn der Pool später erweitert
+    # wird. "atemuebung" nutzt weiterhin die Felder oben, alle anderen Typen
+    # ihr jeweils eigenes schmales Ergebnis-Feld unten.
+    morgen_uebung_typ: str | None = None
+    koerperscan_erledigt_am: datetime | None = None
+    grounding_erledigt_am: datetime | None = None
+    wort_des_tages: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    staerken_karte_frage: str | None = None
+    staerken_karte_antwort: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    staerken_karte_erledigt_am: datetime | None = None
+
     morgen_ausgefuellt_am: datetime | None = None
 
     highlight_1: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
@@ -68,6 +83,26 @@ class TagebuchEintrag(SQLModel, table=True):
     # app/core/deletion.py) - genauso hart löschbar wie der restliche
     # Tagebuch-Inhalt.
     zeichnung_pfad: str | None = None
+
+    # Wöchentlich rotierender Übungstyp für den Abend-Teil, analog
+    # morgen_uebung_typ oben. "zeichnung" nutzt weiterhin zeichnung_pfad,
+    # alle anderen Typen ihr jeweils eigenes Feld unten.
+    abend_uebung_typ: str | None = None
+    mandala_erledigt_am: datetime | None = None
+    ruhe_ort_sehen: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    ruhe_ort_hoeren: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    ruhe_ort_spueren: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    gedanke_belastend: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    gedanke_ausgewogen: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    # Bewusst NICHT gespeichert (nur der Abschluss-Zeitpunkt) - das
+    # Loslassen selbst ist der Zweck der Übung, siehe VB-006.md.
+    sorgen_los_erledigt_am: datetime | None = None
+    # Wie zeichnung_pfad verschlüsselt auf der Platte abgelegt (siehe
+    # app/core/uploads.py), hier nur der relative Pfad.
+    dankbarkeitsfoto_pfad: str | None = None
+    mini_ziel_text: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    mini_ziel_geschafft: bool = False
+
     check_pause_gemacht: bool = False
     check_jemandem_geholfen: bool = False
     check_kleines_erfolgserlebnis: bool = False

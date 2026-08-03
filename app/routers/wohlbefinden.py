@@ -2,8 +2,9 @@ import base64
 import binascii
 import io
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
@@ -11,7 +12,15 @@ from app.core.access import hat_wohlbefinden_freigabe, require_owner
 from app.core.atemuebungen import atemuebung_des_tages, atemuebung_punkte
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
+from app.core.hilfsangebote import HILFSANGEBOTE
 from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
+from app.core.tagesuebungen import (
+    WORT_DES_TAGES_OPTIONEN,
+    abenduebung_des_tages,
+    koerperscan_punkte,
+    morgenuebung_des_tages,
+    staerken_karte_des_tages,
+)
 from app.core.templating import templates
 from app.core.uploads import datei_lesen_entschluesselt, datei_loeschen, datei_speichern
 from app.models.audit import AuditAktion, AuditZieltyp
@@ -79,13 +88,31 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
             "morgen_impuls_antwort": "",
             "morgen_erledigt": False,
             "energie_level": None,
+            "morgen_uebung_typ": None,
             "atemuebung_name": None,
             "atemuebung_erledigt": False,
+            "koerperscan_erledigt": False,
+            "grounding_erledigt": False,
+            "wort_des_tages": "",
+            "staerken_karte_frage": None,
+            "staerken_karte_antwort": "",
+            "staerken_karte_erledigt": False,
             "highlights": ["", "", ""],
             "abend_impuls_frage": None,
             "abend_impuls_antwort": "",
             "abend_erledigt": False,
+            "abend_uebung_typ": None,
             "hat_zeichnung": False,
+            "mandala_erledigt": False,
+            "ruhe_ort_sehen": "",
+            "ruhe_ort_hoeren": "",
+            "ruhe_ort_spueren": "",
+            "gedanke_belastend": "",
+            "gedanke_ausgewogen": "",
+            "sorgen_los_erledigt": False,
+            "hat_dankbarkeitsfoto": False,
+            "mini_ziel_text": "",
+            "mini_ziel_geschafft": False,
             "check_pause_gemacht": False,
             "check_jemandem_geholfen": False,
             "check_kleines_erfolgserlebnis": False,
@@ -99,13 +126,31 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
         "morgen_impuls_antwort": eintrag.morgen_impuls_antwort or "",
         "morgen_erledigt": eintrag.morgen_ausgefuellt_am is not None,
         "energie_level": eintrag.energie_level,
+        "morgen_uebung_typ": eintrag.morgen_uebung_typ,
         "atemuebung_name": eintrag.atemuebung_name,
         "atemuebung_erledigt": eintrag.atemuebung_erledigt_am is not None,
+        "koerperscan_erledigt": eintrag.koerperscan_erledigt_am is not None,
+        "grounding_erledigt": eintrag.grounding_erledigt_am is not None,
+        "wort_des_tages": eintrag.wort_des_tages or "",
+        "staerken_karte_frage": eintrag.staerken_karte_frage,
+        "staerken_karte_antwort": eintrag.staerken_karte_antwort or "",
+        "staerken_karte_erledigt": eintrag.staerken_karte_erledigt_am is not None,
         "highlights": [eintrag.highlight_1 or "", eintrag.highlight_2 or "", eintrag.highlight_3 or ""],
         "abend_impuls_frage": eintrag.abend_impuls_frage,
         "abend_impuls_antwort": eintrag.abend_impuls_antwort or "",
         "abend_erledigt": eintrag.abend_ausgefuellt_am is not None,
+        "abend_uebung_typ": eintrag.abend_uebung_typ,
         "hat_zeichnung": eintrag.zeichnung_pfad is not None,
+        "mandala_erledigt": eintrag.mandala_erledigt_am is not None,
+        "ruhe_ort_sehen": eintrag.ruhe_ort_sehen or "",
+        "ruhe_ort_hoeren": eintrag.ruhe_ort_hoeren or "",
+        "ruhe_ort_spueren": eintrag.ruhe_ort_spueren or "",
+        "gedanke_belastend": eintrag.gedanke_belastend or "",
+        "gedanke_ausgewogen": eintrag.gedanke_ausgewogen or "",
+        "sorgen_los_erledigt": eintrag.sorgen_los_erledigt_am is not None,
+        "hat_dankbarkeitsfoto": eintrag.dankbarkeitsfoto_pfad is not None,
+        "mini_ziel_text": eintrag.mini_ziel_text or "",
+        "mini_ziel_geschafft": eintrag.mini_ziel_geschafft,
         "check_pause_gemacht": eintrag.check_pause_gemacht,
         "check_jemandem_geholfen": eintrag.check_jemandem_geholfen,
         "check_kleines_erfolgserlebnis": eintrag.check_kleines_erfolgserlebnis,
@@ -118,9 +163,19 @@ def _hat_inhalt(anzeige: dict) -> bool:
         or anzeige["morgen_impuls_antwort"]
         or anzeige["energie_level"] is not None
         or anzeige["atemuebung_erledigt"]
+        or anzeige["koerperscan_erledigt"]
+        or anzeige["grounding_erledigt"]
+        or anzeige["wort_des_tages"]
+        or anzeige["staerken_karte_erledigt"]
         or any(anzeige["highlights"])
         or anzeige["abend_impuls_antwort"]
         or anzeige["hat_zeichnung"]
+        or anzeige["mandala_erledigt"]
+        or anzeige["ruhe_ort_sehen"]
+        or anzeige["gedanke_belastend"]
+        or anzeige["sorgen_los_erledigt"]
+        or anzeige["hat_dankbarkeitsfoto"]
+        or anzeige["mini_ziel_text"]
         or anzeige["check_pause_gemacht"]
         or anzeige["check_jemandem_geholfen"]
         or anzeige["check_kleines_erfolgserlebnis"]
@@ -171,6 +226,15 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         anzeige["atemuebung_name"] = atemuebung_des_tages(current_user.id, ausgewaehlter_tag)
     anzeige["atemuebung_punkte"] = atemuebung_punkte(anzeige["atemuebung_name"])
 
+    if anzeige["morgen_uebung_typ"] is None:
+        anzeige["morgen_uebung_typ"] = morgenuebung_des_tages(current_user.id, ausgewaehlter_tag)
+    if anzeige["staerken_karte_frage"] is None:
+        anzeige["staerken_karte_frage"] = staerken_karte_des_tages(current_user.id, ausgewaehlter_tag)
+    anzeige["koerperscan_punkte"] = koerperscan_punkte()
+
+    if anzeige["abend_uebung_typ"] is None:
+        anzeige["abend_uebung_typ"] = abenduebung_des_tages(current_user.id, ausgewaehlter_tag)
+
     verlauf = await _verlauf(session, current_user.id, heute)
 
     freigaben_result = await session.execute(
@@ -198,6 +262,8 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "verlauf": verlauf,
             "freigaben": freigaben,
             "psm_kontakt": psm_kontakt,
+            "hilfsangebote": HILFSANGEBOTE,
+            "wort_optionen": WORT_DES_TAGES_OPTIONEN,
         },
     )
 
@@ -305,6 +371,17 @@ async def morgen_speichern(
     energie_level: str = Form(""),
     atemuebung_name: str = Form(""),
     atemuebung_erledigt: str = Form(""),
+    morgen_uebung_typ: str = Form(""),
+    koerperscan_erledigt: str = Form(""),
+    grounding_1: str = Form(""),
+    grounding_2: str = Form(""),
+    grounding_3: str = Form(""),
+    grounding_4: str = Form(""),
+    grounding_5: str = Form(""),
+    wort_des_tages: str = Form(""),
+    staerken_karte_frage: str = Form(""),
+    staerken_karte_antwort: str = Form(""),
+    staerken_karte_erledigt: str = Form(""),
 ):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
@@ -324,6 +401,20 @@ async def morgen_speichern(
         eintrag.energie_level = wert
     if atemuebung_erledigt and eintrag.atemuebung_erledigt_am is None:
         eintrag.atemuebung_erledigt_am = datetime.utcnow()
+
+    eintrag.morgen_uebung_typ = morgen_uebung_typ or morgenuebung_des_tages(current_user.id, tag_datum)
+    if koerperscan_erledigt and eintrag.koerperscan_erledigt_am is None:
+        eintrag.koerperscan_erledigt_am = datetime.utcnow()
+    if any([grounding_1, grounding_2, grounding_3, grounding_4, grounding_5]) and eintrag.grounding_erledigt_am is None:
+        eintrag.grounding_erledigt_am = datetime.utcnow()
+    if wort_des_tages:
+        eintrag.wort_des_tages = wort_des_tages
+    eintrag.staerken_karte_frage = staerken_karte_frage or staerken_karte_des_tages(current_user.id, tag_datum)
+    if staerken_karte_antwort:
+        eintrag.staerken_karte_antwort = staerken_karte_antwort
+    if staerken_karte_erledigt and eintrag.staerken_karte_erledigt_am is None:
+        eintrag.staerken_karte_erledigt_am = datetime.utcnow()
+
     eintrag.morgen_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
     await session.commit()
@@ -345,6 +436,18 @@ async def abend_speichern(
     check_pause_gemacht: str = Form(""),
     check_jemandem_geholfen: str = Form(""),
     check_kleines_erfolgserlebnis: str = Form(""),
+    abend_uebung_typ: str = Form(""),
+    mandala_erledigt: str = Form(""),
+    ruhe_ort_sehen: str = Form(""),
+    ruhe_ort_hoeren: str = Form(""),
+    ruhe_ort_spueren: str = Form(""),
+    gedanke_belastend: str = Form(""),
+    gedanke_ausgewogen: str = Form(""),
+    sorgen_los_erledigt: str = Form(""),
+    dankbarkeitsfoto: UploadFile | None = File(None),
+    dankbarkeitsfoto_entfernen: str = Form(""),
+    mini_ziel_text: str = Form(""),
+    mini_ziel_geschafft: str = Form(""),
 ):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
@@ -368,6 +471,35 @@ async def abend_speichern(
             datei_loeschen(eintrag.zeichnung_pfad)
         eintrag.zeichnung_pfad = await _zeichnung_speichern(current_user.id, zeichnung_daten)
 
+    eintrag.abend_uebung_typ = abend_uebung_typ or abenduebung_des_tages(current_user.id, tag_datum)
+    if mandala_erledigt and eintrag.mandala_erledigt_am is None:
+        eintrag.mandala_erledigt_am = datetime.utcnow()
+    if ruhe_ort_sehen:
+        eintrag.ruhe_ort_sehen = ruhe_ort_sehen
+    if ruhe_ort_hoeren:
+        eintrag.ruhe_ort_hoeren = ruhe_ort_hoeren
+    if ruhe_ort_spueren:
+        eintrag.ruhe_ort_spueren = ruhe_ort_spueren
+    if gedanke_belastend:
+        eintrag.gedanke_belastend = gedanke_belastend
+    if gedanke_ausgewogen:
+        eintrag.gedanke_ausgewogen = gedanke_ausgewogen
+    if sorgen_los_erledigt and eintrag.sorgen_los_erledigt_am is None:
+        eintrag.sorgen_los_erledigt_am = datetime.utcnow()
+
+    if dankbarkeitsfoto_entfernen and eintrag.dankbarkeitsfoto_pfad:
+        datei_loeschen(eintrag.dankbarkeitsfoto_pfad)
+        eintrag.dankbarkeitsfoto_pfad = None
+    elif dankbarkeitsfoto is not None and dankbarkeitsfoto.filename:
+        if eintrag.dankbarkeitsfoto_pfad:
+            datei_loeschen(eintrag.dankbarkeitsfoto_pfad)
+        _, speicherpfad, _ = await datei_speichern(dankbarkeitsfoto, f"tagebuch/{current_user.id}")
+        eintrag.dankbarkeitsfoto_pfad = speicherpfad
+
+    if mini_ziel_text:
+        eintrag.mini_ziel_text = mini_ziel_text
+    eintrag.mini_ziel_geschafft = bool(mini_ziel_geschafft)
+
     eintrag.abend_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
     await session.commit()
@@ -385,6 +517,19 @@ async def zeichnung_anzeigen(eintrag_id: int, current_user: CurrentUser, session
     return Response(content=inhalt, media_type="image/png")
 
 
+@router.get("/dankbarkeitsfoto/{eintrag_id}")
+async def dankbarkeitsfoto_anzeigen(eintrag_id: int, current_user: CurrentUser, session: SessionDep):
+    eintrag = await session.get(TagebuchEintrag, eintrag_id)
+    if eintrag is None or not eintrag.dankbarkeitsfoto_pfad:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf dieses Foto.")
+
+    inhalt = await datei_lesen_entschluesselt(eintrag.dankbarkeitsfoto_pfad)
+    endung = Path(eintrag.dankbarkeitsfoto_pfad).suffix.lower()
+    media_type = "image/png" if endung == ".png" else "image/jpeg"
+    return Response(content=inhalt, media_type=media_type)
+
+
 @router.post("/tag/loeschen")
 async def tag_loeschen(current_user: CurrentUser, session: SessionDep, datum: str = Form(...)):
     tag_datum = date.fromisoformat(datum)
@@ -393,6 +538,8 @@ async def tag_loeschen(current_user: CurrentUser, session: SessionDep, datum: st
         require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diesen Eintrag.")
         if eintrag.zeichnung_pfad:
             datei_loeschen(eintrag.zeichnung_pfad)
+        if eintrag.dankbarkeitsfoto_pfad:
+            datei_loeschen(eintrag.dankbarkeitsfoto_pfad)
         await session.delete(eintrag)
         await session.commit()
     return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)

@@ -18,6 +18,12 @@ async def get_current_user(request: Request, session: SessionDep) -> User:
     if user is None:
         request.session.clear()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sitzung ungültig.")
+    if not user.aktiv:
+        # Sofortige Aussperrung bei laufender Session, falls der Account
+        # zwischenzeitlich deaktiviert wurde (siehe app/routers/admin.py) -
+        # nicht erst beim nächsten Login.
+        request.session.clear()
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Dieser Account ist deaktiviert.")
     return user
 
 

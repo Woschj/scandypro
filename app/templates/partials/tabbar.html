@@ -36,4 +36,34 @@
     Berichte
   </a>
 </nav>
+{% elif current_user.role.value == "psychosoziale_mitarbeit" %}
+<nav class="tab-bar" aria-label="Hauptnavigation">
+  <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+    Dashboard
+  </a>
+  <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+    Konto
+  </a>
+</nav>
+{% elif current_user.role.value == "einrichtungs_admin" %}
+<nav class="tab-bar" aria-label="Hauptnavigation">
+  <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+    Dashboard
+  </a>
+  <a href="/admin/abteilungen" class="{% if request.url.path.startswith('/admin/abteilungen') %}active{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg>
+    Abteilungen
+  </a>
+  <a href="/admin/benutzer" class="{% if request.url.path.startswith('/admin/benutzer') %}active{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Benutzer
+  </a>
+  <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+    Konto
+  </a>
+</nav>
 {% endif %}

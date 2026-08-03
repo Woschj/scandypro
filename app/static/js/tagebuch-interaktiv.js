@@ -19,13 +19,17 @@
     return punkt.matrixTransform(svg.getScreenCTM().inverse());
   }
 
-  function initAtemuebungen() {
-    document.querySelectorAll("[data-atemuebung]").forEach((wrapper) => {
+  function initPunkteUebungen() {
+    // Gemeinsames Widget fuer Atemuebung UND Koerper-Scan (siehe
+    // app/core/punkte_layout.py) - welches versteckte Feld beim
+    // Abschliessen gesetzt wird, steht in data-punkte-feld am Wrapper.
+    document.querySelectorAll("[data-punkte-uebung]").forEach((wrapper) => {
       const svg = wrapper.querySelector("svg");
       const linie = wrapper.querySelector("[data-linie]");
       const kreise = [...wrapper.querySelectorAll("[data-punkt]")];
-      const hinweis = wrapper.querySelector("[data-atemuebung-hinweis]");
-      const hiddenInput = wrapper.querySelector('input[name="atemuebung_erledigt"]');
+      const hinweis = wrapper.querySelector("[data-punkte-hinweis]");
+      const feldName = wrapper.dataset.punkteFeld;
+      const hiddenInput = feldName ? wrapper.querySelector(`input[name="${feldName}"]`) : null;
       if (!svg || !hiddenInput) return;
 
       const RADIUS_TREFFER = 22;
@@ -170,6 +174,69 @@
     });
   }
 
+  function initWortDesTages() {
+    document.querySelectorAll("[data-wort-des-tages]").forEach((wrapper) => {
+      const hiddenInput = wrapper.querySelector('input[name="wort_des_tages"]');
+      const chips = [...wrapper.querySelectorAll("[data-wort-chip]")];
+      if (!hiddenInput) return;
+      function markiere() {
+        chips.forEach((c) => c.classList.toggle("wort-chip--aktiv", c.dataset.wortChip === hiddenInput.value));
+      }
+      markiere();
+      chips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+          hiddenInput.value = hiddenInput.value === chip.dataset.wortChip ? "" : chip.dataset.wortChip;
+          markiere();
+        });
+      });
+    });
+  }
+
+  function initStaerkenKarte() {
+    document.querySelectorAll("[data-staerken-karte]").forEach((details) => {
+      const hiddenInput = details.querySelector('input[name="staerken_karte_erledigt"]');
+      if (!hiddenInput) return;
+      details.addEventListener("toggle", () => {
+        if (details.open) hiddenInput.value = "true";
+      });
+    });
+  }
+
+  function initSorgenLoslassen() {
+    document.querySelectorAll("[data-sorgen-loslassen]").forEach((wrapper) => {
+      const textarea = wrapper.querySelector("textarea");
+      const hiddenInput = wrapper.querySelector('input[name="sorgen_los_erledigt"]');
+      const button = wrapper.querySelector("[data-sorgen-loslassen-button]");
+      if (!textarea || !hiddenInput || !button) return;
+      button.addEventListener("click", () => {
+        if (!textarea.value.trim()) return;
+        wrapper.classList.add("sorgen-loslassen--animiert");
+        hiddenInput.value = "true";
+        window.setTimeout(() => {
+          textarea.value = "";
+          wrapper.classList.remove("sorgen-loslassen--animiert");
+        }, 500);
+      });
+    });
+  }
+
+  function initMandala() {
+    const FARBEN = ["", "var(--mandala-1)", "var(--mandala-2)", "var(--mandala-3)", "var(--mandala-4)"];
+    document.querySelectorAll("[data-mandala]").forEach((wrapper) => {
+      const hiddenInput = wrapper.querySelector('input[name="mandala_erledigt"]');
+      const segmente = [...wrapper.querySelectorAll("[data-mandala-segment]")];
+      if (!hiddenInput) return;
+      segmente.forEach((segment) => {
+        let index = 0;
+        segment.addEventListener("click", () => {
+          index = (index + 1) % FARBEN.length;
+          segment.setAttribute("fill", FARBEN[index] || "none");
+          hiddenInput.value = "true";
+        });
+      });
+    });
+  }
+
   function initEnergieBatterien() {
     document.querySelectorAll("[data-energie-batterie]").forEach((wrapper) => {
       const hiddenInput = wrapper.querySelector('input[name="energie_level"]');
@@ -195,8 +262,12 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    initAtemuebungen();
+    initPunkteUebungen();
     initZeichenfelder();
     initEnergieBatterien();
+    initWortDesTages();
+    initStaerkenKarte();
+    initSorgenLoslassen();
+    initMandala();
   });
 })();

@@ -37,6 +37,16 @@
           <label for="taetigkeiten_{{ tag }}">Tätigkeiten</label>
           <textarea id="taetigkeiten_{{ tag }}" name="taetigkeiten_{{ tag }}" rows="2"></textarea>
         </div>
+        {% if kanban_vorschlaege and kanban_vorschlaege.get(tag) %}
+        <div class="karte-meta" style="margin-top: var(--space-2);">
+          Diese Woche im Kanban erledigt (antippen zum Übernehmen):
+          <div class="wort-chip-liste" data-vorschlag-chips="taetigkeiten_{{ tag }}" style="margin-top: var(--space-2);">
+            {% for titel in kanban_vorschlaege[tag] %}
+            <button type="button" class="wort-chip" data-vorschlag-text="{{ titel }}">{{ titel }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
       </div>
     </details>
     {% endfor %}

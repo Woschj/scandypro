@@ -25,4 +25,15 @@
     <button type="submit" class="btn btn-primary">Passwort ändern</button>
   </form>
 </div>
+
+{% if current_user.role.value == "teilnehmer" %}
+<div class="card" style="max-width: 420px;">
+  <h3>Meine Daten</h3>
+  <p class="karte-meta"><a href="/freigaben">Meine Freigaben ansehen</a> - wer gerade Zugriff auf welche
+    deiner Daten hat, und dort auch: eigene Daten löschen.</p>
+  <p style="margin-top: var(--space-3);">
+    <a class="btn btn-ghost btn-sm" href="/konto/export">Meine Daten herunterladen</a>
+  </p>
+</div>
+{% endif %}
 {% endblock %}

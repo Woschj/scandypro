@@ -6,6 +6,25 @@
 
 {% if fehler %}<div class="form-error">{{ fehler }}</div>{% endif %}
 {% if erfolg == "passwort" %}<div class="form-success">Passwort zurückgesetzt.</div>{% endif %}
+{% if erfolg == "aktiv" %}<div class="form-success">Status geändert.</div>{% endif %}
+
+<div class="card" style="max-width: 480px;">
+  <h3>Konto-Status</h3>
+  <p class="karte-meta">
+    {% if benutzer.aktiv %}Account ist aktiv - kann sich einloggen.{% else %}Account ist deaktiviert - kein Login
+    möglich, alle Daten bleiben erhalten.{% endif %}
+    {% if benutzer.letzter_login %}Zuletzt angemeldet: {{ benutzer.letzter_login.strftime("%d.%m.%Y %H:%M") }}.
+    {% else %}Noch nie angemeldet.{% endif %}
+  </p>
+  {% if ist_eigener_account %}
+  <p class="karte-meta">Du kannst deinen eigenen Account nicht deaktivieren.</p>
+  {% else %}
+  <form method="post" action="/admin/benutzer/{{ benutzer.id }}/aktiv-umschalten">
+    {% include "partials/csrf_field.html" %}
+    <button type="submit" class="btn btn-ghost">{{ "Account deaktivieren" if benutzer.aktiv else "Account reaktivieren" }}</button>
+  </form>
+  {% endif %}
+</div>
 
 <div class="card" style="max-width: 480px;">
   <h3>Accountdaten</h3>

@@ -16,6 +16,27 @@ from app.core.crypto import entschluessle_bytes, verschluessle_bytes
 ERLAUBTE_ENDUNGEN = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
 MAX_DATEIGROESSE_BYTES = 10 * 1024 * 1024
 
+# Magic Bytes der erlaubten Dateitypen - Client-Dateiendung ist frei
+# fälschbar, diese Signaturen liegen in den ersten Bytes der Datei selbst
+# und werden vor dem Speichern zusätzlich geprüft (siehe _signatur_passt).
+# .doc und .docx teilen sich betreffend .docx (ZIP) die PK-Signatur; .doc
+# (altes OLE-Format) hat eine eigene, feste Signatur.
+_SIGNATUREN: dict[str, tuple[bytes, ...]] = {
+    ".pdf": (b"%PDF-",),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".png": (b"\x89PNG\r\n\x1a\n",),
+    ".docx": (b"PK\x03\x04",),
+    ".doc": (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",),
+}
+
+
+def _signatur_passt(endung: str, anfang: bytes) -> bool:
+    signaturen = _SIGNATUREN.get(endung)
+    if signaturen is None:
+        return True
+    return any(anfang.startswith(sig) for sig in signaturen)
+
 
 async def datei_speichern(upload: UploadFile, unterordner: str) -> tuple[str, str, int]:
     """Speichert einen Upload verschlüsselt auf der Platte.
@@ -43,6 +64,12 @@ async def datei_speichern(upload: UploadFile, unterordner: str) -> tuple[str, st
         inhalt.extend(chunk)
         if len(inhalt) > MAX_DATEIGROESSE_BYTES:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Datei zu groß (max. 10 MB).")
+
+    if not _signatur_passt(endung, bytes(inhalt[:8])):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Der Dateiinhalt passt nicht zur Endung {endung} - bitte die richtige Datei auswählen.",
+        )
 
     ziel_ordner = Path(settings.upload_dir) / unterordner
     ziel_ordner.mkdir(parents=True, exist_ok=True)

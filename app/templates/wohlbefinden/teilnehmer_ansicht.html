@@ -25,6 +25,14 @@
       <div class="eyebrow">{{ eintrag.morgen_impuls_frage }}</div>
       <p>{{ eintrag.morgen_impuls_antwort }}</p>
       {% endif %}
+      {% if eintrag.wort_des_tages %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Wort des Tages</div>
+      <p>{{ eintrag.wort_des_tages }}</p>
+      {% endif %}
+      {% if eintrag.staerken_karte_antwort %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.staerken_karte_frage }}</div>
+      <p>{{ eintrag.staerken_karte_antwort }}</p>
+      {% endif %}
       {% if eintrag.highlights | select | list %}
       <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
       <ul style="margin: var(--space-2) 0 var(--space-4);">
@@ -35,9 +43,27 @@
       <div class="eyebrow">{{ eintrag.abend_impuls_frage }}</div>
       <p>{{ eintrag.abend_impuls_antwort }}</p>
       {% endif %}
-      {% if eintrag.hat_zeichnung or eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
+      {% if eintrag.ruhe_ort_sehen or eintrag.ruhe_ort_hoeren or eintrag.ruhe_ort_spueren %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Ruhe-Ort</div>
+      <ul style="margin: var(--space-2) 0 var(--space-4);">
+        {% if eintrag.ruhe_ort_sehen %}<li>{{ eintrag.ruhe_ort_sehen }}</li>{% endif %}
+        {% if eintrag.ruhe_ort_hoeren %}<li>{{ eintrag.ruhe_ort_hoeren }}</li>{% endif %}
+        {% if eintrag.ruhe_ort_spueren %}<li>{{ eintrag.ruhe_ort_spueren }}</li>{% endif %}
+      </ul>
+      {% endif %}
+      {% if eintrag.gedanke_belastend or eintrag.gedanke_ausgewogen %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Gedanken-Waage</div>
+      {% if eintrag.gedanke_belastend %}<p>{{ eintrag.gedanke_belastend }}</p>{% endif %}
+      {% if eintrag.gedanke_ausgewogen %}<p>{{ eintrag.gedanke_ausgewogen }}</p>{% endif %}
+      {% endif %}
+      {% if eintrag.mini_ziel_text %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Mini-Ziel des Tages</div>
+      <p>{{ eintrag.mini_ziel_text }} {% if eintrag.mini_ziel_geschafft %}<span class="chip chip-success">hat geklappt</span>{% endif %}</p>
+      {% endif %}
+      {% if eintrag.hat_zeichnung or eintrag.hat_dankbarkeitsfoto or eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
       <div class="tagebuch-chip-liste" style="margin-top: var(--space-3);">
         {% if eintrag.hat_zeichnung %}<span class="chip chip-neutral">Hat eine Zeichnung angefertigt</span>{% endif %}
+        {% if eintrag.hat_dankbarkeitsfoto %}<span class="chip chip-neutral">Hat ein Foto festgehalten</span>{% endif %}
         {% if eintrag.check_pause_gemacht %}<span class="chip chip-neutral">Pause gemacht</span>{% endif %}
         {% if eintrag.check_jemandem_geholfen %}<span class="chip chip-neutral">Jemandem geholfen</span>{% endif %}
         {% if eintrag.check_kleines_erfolgserlebnis %}<span class="chip chip-neutral">Kleines Erfolgserlebnis</span>{% endif %}

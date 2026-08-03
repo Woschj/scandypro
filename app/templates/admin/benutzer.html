@@ -49,7 +49,7 @@
   <input type="search" id="benutzer-suche" data-table-filter="benutzer-tabelle" placeholder="Name, E-Mail oder Rolle …">
 </div>
 <table id="benutzer-tabelle">
-  <thead><tr><th data-sort>Name</th><th data-sort>E-Mail</th><th data-sort>Rolle</th><th data-sort>Abteilung</th><th></th></tr></thead>
+  <thead><tr><th data-sort>Name</th><th data-sort>E-Mail</th><th data-sort>Rolle</th><th data-sort>Abteilung</th><th data-sort>Status</th><th data-sort>Zuletzt angemeldet</th><th></th></tr></thead>
   <tbody>
   {% for b in benutzer %}
   <tr>
@@ -57,6 +57,8 @@
     <td>{{ b.email }}</td>
     <td>{{ b.role.value | rollenname }}</td>
     <td>{{ abteilung_by_id[b.abteilung_id].name if b.abteilung_id in abteilung_by_id else "–" }}</td>
+    <td>{% if b.aktiv %}<span class="chip chip-success">aktiv</span>{% else %}<span class="chip chip-neutral">deaktiviert</span>{% endif %}</td>
+    <td>{{ b.letzter_login.strftime("%d.%m.%Y %H:%M") if b.letzter_login else "noch nie" }}</td>
     <td><a href="/admin/benutzer/{{ b.id }}/bearbeiten" class="btn btn-ghost btn-sm">Bearbeiten</a></td>
   </tr>
   {% endfor %}

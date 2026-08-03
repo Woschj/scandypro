@@ -62,6 +62,27 @@
 </div>
 
 <div class="card">
+  <h3>Projekte</h3>
+  <p class="karte-meta">Team-Boards, die für deine Teilnehmergruppe(n) freigegeben sind - anders als bei
+    "Mein Tag" und Bewerbungen ist das eine organisatorische Freigabe, kein Widerruf durch dich möglich.</p>
+  {% if board_freigaben %}
+  <table style="margin-top: var(--space-3);">
+    <thead><tr><th>Board</th><th>Für Gruppe</th></tr></thead>
+    <tbody>
+    {% for f in board_freigaben %}
+    <tr>
+      <td>{{ f.board_titel }}</td>
+      <td>{{ f.gruppe_name }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Aktuell kein freigegebenes Team-Board.</p>
+  {% endif %}
+</div>
+
+<div class="card">
   <h3>Wer hat auf deine Daten zugegriffen</h3>
   {% if audit_eintraege %}
   <div class="field" style="max-width: 280px;">
@@ -100,11 +121,20 @@
       <button type="submit" class="link-btn danger">Löschen</button>
     </form>
 
-    <form method="post" action="/freigaben/konto/bewerbungen-loeschen" class="form-row">
+    <form method="post" action="/freigaben/konto/bewerbungen-loeschen" class="form-row" style="margin-bottom: var(--space-4);">
       {% include "partials/csrf_field.html" %}
       <div class="field">
         <label for="bestaetigung-bw">Alle Bewerbungsdaten löschen</label>
         <input type="text" id="bestaetigung-bw" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
+      </div>
+      <button type="submit" class="link-btn danger">Löschen</button>
+    </form>
+
+    <form method="post" action="/freigaben/konto/kanban-loeschen" class="form-row">
+      {% include "partials/csrf_field.html" %}
+      <div class="field">
+        <label for="bestaetigung-kb">Persönliche Kanban-Aufgabenliste löschen (geteilte Team-Boards bleiben)</label>
+        <input type="text" id="bestaetigung-kb" name="bestaetigung" placeholder="LÖSCHEN eingeben" required>
       </div>
       <button type="submit" class="link-btn danger">Löschen</button>
     </form>

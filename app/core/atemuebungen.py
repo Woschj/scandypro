@@ -13,8 +13,9 @@ Jede Übung ist eine Folge von Punkten (Label, Halte-Sekunden - 0 bedeutet
 kurzen, sinnvollen Timer (5-6 Sekunden) statt sofort weiterzuschalten."""
 
 import hashlib
-import math
 from datetime import date
+
+from app.core.punkte_layout import punkte_layout
 
 ATEMUEBUNGEN_POOL: list[dict] = [
     {"name": "Box-Atmung", "schritte": [("Einatmen", 0), ("Halten", 5), ("Ausatmen", 0), ("Halten", 5)]},
@@ -76,19 +77,4 @@ def atemuebung_punkte(name: str) -> list[dict]:
     Fällt auf die erste Übung im Pool zurück, falls der gespeicherte Name
     nicht mehr existiert (z.B. nach einer Pool-Änderung)."""
     uebung = _NAME_ZU_UEBUNG.get(name, ATEMUEBUNGEN_POOL[0])
-    schritte = uebung["schritte"]
-    anzahl = len(schritte)
-    mittel_x, mittel_y, radius = 120, 110, 80
-
-    punkte = []
-    for i, (label, halten_sekunden) in enumerate(schritte):
-        winkel = -math.pi / 2 + (2 * math.pi * i / anzahl)
-        punkte.append(
-            {
-                "cx": round(mittel_x + radius * math.cos(winkel), 1),
-                "cy": round(mittel_y + radius * math.sin(winkel), 1),
-                "label": label,
-                "halten_sekunden": halten_sekunden,
-            }
-        )
-    return punkte
+    return punkte_layout(uebung["schritte"])

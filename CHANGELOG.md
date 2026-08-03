@@ -8,6 +8,89 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.10] - 2026-08-03
+
+Rest von [tasks/ganzheitliche-verbesserungen/](tasks/ganzheitliche-verbesserungen/README.md)
+(VB-007 bis VB-017) umgesetzt - damit ist die gesamte Liste abgearbeitet.
+
+### Fixed
+- Upload-Validierung prüft jetzt zusätzlich zur Dateiendung die
+  tatsächliche Datei-Signatur (Magic Bytes) für PDF/JPEG/PNG/DOC/DOCX
+  (`app/core/uploads.py`).
+- Demo-Logins auf der Login-Seite erscheinen nur noch, wenn
+  `SEED_DEMO_DATA=true` gesetzt ist.
+- Deaktivierte Accounts (siehe unten) werden auch bei bereits laufender
+  Session sofort ausgesperrt, nicht erst beim nächsten Login.
+
+### Added
+- **Admin: Account-Deaktivierung** als Zwischenstufe zwischen aktiv und
+  Löschung (`User.aktiv`), plus Anzeige des letzten Logins
+  (`User.letzter_login`) in der Benutzerverwaltung.
+- **"Meine Freigaben"**: neue Übersicht der für die eigene(n)
+  Teilnehmergruppe(n) freigegebenen Team-Boards; dritte Lösch-Option für
+  die persönliche Kanban-Aufgabenliste ergänzt die bestehenden
+  Wohlbefinden-/Bewerbungs-Löschungen.
+- **Bewerbungen**: Termine können jetzt mit Uhrzeit und Ort erfasst werden,
+  erscheinen zusammen mit fälligen Kanban-Karten im Dashboard ("Was steht
+  an"); Status-Wechsel zu "abgesagt"/"zugesagt" zeigen eine kurze, sanft
+  formulierte Rückmeldung statt stiller Statusänderung.
+- **Wochenberichte**: in dieser Woche abgeschlossene Kanban-Karten werden
+  als antippbare Vorschläge im "Neuer Wochenbericht"-Formular angeboten
+  (übernimmt nichts automatisch).
+- **PSM und Einrichtungs-Admin** haben jetzt ebenfalls eine
+  Bottom-Tab-Bar für schmale Bildschirme (vorher nur Teilnehmer/
+  Berufstrainer).
+
+### Changed
+- Kaskadierendes Löschen von Kanban-Boards/-Spalten läuft jetzt über
+  `app/core/deletion.py` (vorher inline in `app/routers/kanban.py` dupliziert).
+- Wochenbericht-Formularfelder-Zuordnung in einer gemeinsamen Funktion
+  statt zweimal ausgeschrieben (`bericht_erstellen`/`bericht_bearbeiten`).
+
+### Verified (kein Code-Änderungsbedarf)
+- Kanban-Kartenbewegung ist bereits per Tastatur/Touch bedienbar (natives
+  `<select>` als Alternative zum Drag&Drop, seit einem früheren Commit) -
+  die ursprüngliche Rechercheannahme dazu war veraltet.
+
+## [0.1.9] - 2026-08-03
+
+Umsetzung der ersten sechs Punkte aus
+[tasks/ganzheitliche-verbesserungen/](tasks/ganzheitliche-verbesserungen/README.md)
+(Accountverwaltung- und Mein-Tag-Review über alle Rollen hinweg).
+
+### Fixed
+- **IDOR bei privaten Kanban-Karten**: mutierende Karten-/Unteraufgaben-
+  Endpunkte prüften Sichtbarkeit privater Karten (Personen-Board) nicht,
+  nur die reine Board-Zugriffsprüfung - ein zuständiger Trainer konnte über
+  die Karten-ID private Karten lesen/ändern/löschen. Neue zentrale Prüfung
+  `require_karte_sichtbar` (`app/core/access.py`).
+- Kein Rate-Limiting beim Login - einfacher In-Memory-Schutz gegen
+  Brute-Force-Versuche ergänzt (`app/core/rate_limit.py`).
+
+### Added
+- **"Ich möchte jetzt Unterstützung"**: unabhängig vom Tagebuch immer
+  sichtbarer Hinweis in "Mein Tag" mit PSM-Kontakt und externen
+  Hilfsangeboten (TelefonSeelsorge, Nummer gegen Kummer) - nie automatisch
+  ausgelöst.
+- `/konto`: Link zu "Meine Freigaben", Datenexport der eigenen Daten
+  (Art. 15 DSGVO, `GET /konto/export`) und Selbstlöschung der eigenen
+  Wohlbefinden-/Bewerbungsdaten sowie der persönlichen Kanban-Aufgabenliste.
+  Vollständige Konto-/Login-Löschung bewusst zurückgestellt (siehe
+  `app/core/deletion.py`, VB-004.md) - blockiert durch nicht-nullbare
+  Fremdschlüssel auf Team-Boards.
+- Dashboard-Kachel **"Was steht an"** für Teilnehmer und Berufstrainer:
+  fällige/überfällige Kanban-Karten der nächsten 7 Tage über alle
+  sichtbaren Boards hinweg.
+- **Mein-Tag-Übungspool auf 12 Typen erweitert** (siehe
+  `app/core/tagesuebungen.py`): zusätzlich zu Atemübung und Zeichnung nun
+  Körper-Scan, 5-4-3-2-1-Erdung, Ein Wort für heute, Stärken-Karte,
+  Ausmal-Mandala, Ruhe-Ort-Visualisierung, Gedanken-Waage, Sorgen
+  loslassen, Dankbarkeits-Foto-Moment und Mini-Ziel des Tages - wöchentlich
+  rotierend (Fisher-Yates je Kalenderwoche), sodass innerhalb einer
+  Arbeitswoche (Mo-Fr) kein Übungstyp doppelt gezeigt wird. Alle neuen
+  Typen folgen demselben Prinzip wie die bestehenden: kein Scoring, keine
+  wertende Sprache.
+
 ## [0.1.8] - 2026-08-03
 
 ### Added

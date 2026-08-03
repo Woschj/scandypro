@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -116,11 +117,17 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
 
     bewerbung_by_id = {b.id: b for b in bewerbungen}
 
+    status_feedback = None
+    feedback_typ = request.query_params.get("feedback")
+    if feedback_typ in ("abgesagt", "zugesagt"):
+        status_feedback = {"typ": feedback_typ, "firma": request.query_params.get("firma", "")}
+
     return templates.TemplateResponse(
         request,
         "bewerbungen/uebersicht.html",
         {
             "current_user": current_user,
+            "status_feedback": status_feedback,
             "bewerbungen": bewerbungen,
             "bewerbung_by_id": bewerbung_by_id,
             "status_optionen": list(BewerbungStatus),
@@ -143,6 +150,8 @@ async def bewerbung_erstellen(
     position: str = Form(...),
     beworben_am: str = Form(""),
     naechster_termin: str = Form(""),
+    naechster_termin_uhrzeit: str = Form(""),
+    naechster_termin_ort: str = Form(""),
     notizen: str = Form(""),
     deckblatt: UploadFile | None = None,
     anschreiben: UploadFile | None = None,
@@ -156,6 +165,8 @@ async def bewerbung_erstellen(
         position=position,
         beworben_am=date.fromisoformat(beworben_am) if beworben_am else None,
         naechster_termin=date.fromisoformat(naechster_termin) if naechster_termin else None,
+        naechster_termin_uhrzeit=naechster_termin_uhrzeit or None,
+        naechster_termin_ort=naechster_termin_ort or None,
         notizen=notizen or None,
     )
     session.add(bewerbung)
@@ -193,6 +204,11 @@ async def status_aendern(
     bewerbung.status = status_wert
     session.add(bewerbung)
     await session.commit()
+
+    if status_wert in (BewerbungStatus.abgesagt, BewerbungStatus.zugesagt):
+        return RedirectResponse(
+            url=f"/bewerbungen?feedback={status_wert.value}&firma={quote(bewerbung.firma)}", status_code=303
+        )
     return RedirectResponse(url="/bewerbungen", status_code=303)
 
 

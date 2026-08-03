@@ -4,6 +4,19 @@
 <h1>Bewerbungen</h1>
 <p class="visibility-hint">Nur für dich sichtbar, außer du gibst gezielt frei.</p>
 
+{% if status_feedback %}
+<div class="card">
+  {% if status_feedback.typ == "zugesagt" %}
+  <p><span class="chip chip-success">Zusage</span> Schön, dass es bei {{ status_feedback.firma }} geklappt hat -
+    das ist ein guter Moment, kurz innezuhalten.</p>
+  {% else %}
+  <p>Eine Absage von {{ status_feedback.firma }} ist eingetragen. Das sagt nichts über dich als Person aus -
+    du kannst jederzeit weitermachen, wenn du bereit dafür bist.
+    {% if trainer_kontakt %}Magst du kurz mit {{ trainer_kontakt.name }} sprechen?{% endif %}</p>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if ausstehende_rueckmeldungen %}
 <div class="card">
   <h3>Worauf du noch wartest</h3>
@@ -52,7 +65,7 @@
     </form>
   </div>
   <p class="karte-meta">
-    Beworben am {{ b.beworben_am or "–" }} · Nächster Termin: {{ b.naechster_termin or "–" }}
+    Beworben am {{ b.beworben_am or "–" }} · Nächster Termin: {{ b.naechster_termin or "–" }}{% if b.naechster_termin and b.naechster_termin_uhrzeit %}, {{ b.naechster_termin_uhrzeit }} Uhr{% endif %}{% if b.naechster_termin and b.naechster_termin_ort %} · {{ b.naechster_termin_ort }}{% endif %}
   </p>
   {% if b.notizen %}<p>{{ b.notizen }}</p>{% endif %}
 
@@ -173,6 +186,16 @@
             <div class="field">
               <label for="naechster_termin">Nächster Termin (optional)</label>
               <input type="date" id="naechster_termin" name="naechster_termin">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="naechster_termin_uhrzeit">Uhrzeit (optional)</label>
+              <input type="time" id="naechster_termin_uhrzeit" name="naechster_termin_uhrzeit">
+            </div>
+            <div class="field">
+              <label for="naechster_termin_ort">Ort (optional)</label>
+              <input type="text" id="naechster_termin_ort" name="naechster_termin_ort" placeholder="z. B. Adresse oder Video-Link">
             </div>
           </div>
           <div class="field">

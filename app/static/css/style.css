@@ -418,7 +418,35 @@ button:not(.btn) {
 .atemuebung-svg [data-punkt] { fill: var(--bg-raised); stroke: var(--line-strong); stroke-width: 2; cursor: pointer; }
 .atemuebung-svg .atemuebung-punkt--erreicht { fill: var(--accent); stroke: var(--accent); }
 .atemuebung-label { fill: var(--ink-soft); font-family: var(--font-display); font-size: 11px; }
-[data-atemuebung-hinweis] { text-align: center; }
+[data-punkte-hinweis] { text-align: center; }
+
+/* Weitere Mein-Tag-Uebungstypen (siehe app/core/tagesuebungen.py) - selbes
+   Prinzip wie oben: keine Bewertung, keine Ampelfarben. */
+.wort-chip-liste { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.wort-chip {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.wort-chip.wort-chip--aktiv { background: var(--bg); color: var(--ink); border-color: var(--accent); }
+
+.staerken-karte { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: var(--space-3); }
+
+[data-sorgen-loslassen] { transition: opacity 0.5s ease, transform 0.5s ease; }
+[data-sorgen-loslassen].sorgen-loslassen--animiert { opacity: 0; transform: translateY(-12px); }
+
+[data-mandala] svg { display: block; margin: 0 auto; }
+[data-mandala-segment] { cursor: pointer; }
+:root {
+  --mandala-1: #e8a33d;
+  --mandala-2: #8aab98;
+  --mandala-3: #c9928a;
+  --mandala-4: #7c9cb8;
+}
 
 .zeichenfeld-canvas-wrap { position: relative; border: 1px dashed var(--line-strong); border-radius: var(--radius); overflow: hidden; background: var(--bg-raised); }
 .zeichenfeld-canvas-wrap canvas { display: block; width: 100%; height: 180px; touch-action: none; cursor: crosshair; }

@@ -12,6 +12,7 @@ from app.core.access import hat_wohlbefinden_freigabe
 from app.core.config import settings
 from app.core.database import async_session_factory, init_db
 from app.core.deps import SessionDep, get_current_user_optional
+from app.core.faellige_karten import faellige_karten
 from app.core.fortschritt import woechentliche_schritte, woechentliche_tagebuch_tage
 from app.core.seed import seed_admin, seed_demo_data
 from app.core.static_cache import CachedStaticFiles
@@ -115,6 +116,10 @@ async def dashboard(request: Request, session: SessionDep):
     schritte_diese_woche: int | None = None
     tagebuch_tage_woche: int | None = None
     bewerbungen_uebersicht: dict | None = None
+    was_steht_an: list[dict] = []
+
+    if current_user.role in (RoleEnum.teilnehmer, RoleEnum.berufstrainer):
+        was_steht_an = await faellige_karten(session, current_user)
 
     if current_user.role == RoleEnum.teilnehmer:
         result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id))
@@ -194,5 +199,6 @@ async def dashboard(request: Request, session: SessionDep):
             "schritte_diese_woche": schritte_diese_woche,
             "tagebuch_tage_woche": tagebuch_tage_woche,
             "bewerbungen_uebersicht": bewerbungen_uebersicht,
+            "was_steht_an": was_steht_an,
         },
     )

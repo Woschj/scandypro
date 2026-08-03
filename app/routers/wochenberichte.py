@@ -1,13 +1,20 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
-from app.core.access import betreute_teilnehmer_ids, require_owner, require_role
+from app.core.access import (
+    betreute_teilnehmer_ids,
+    karte_ist_sichtbar_fuer,
+    require_owner,
+    require_role,
+    sichtbare_board_ids_fuer_teilnehmer,
+)
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.core.wochenbericht_export import wochenbericht_als_docx
+from app.models.kanban import Board, Karte, Spalte
 from app.models.user import RoleEnum, User
 from app.models.wochenbericht import WOCHENTAG_LABELS, WOCHENTAGE, Wochenbericht, WochenberichtStatus, leere_tage
 
@@ -18,6 +25,29 @@ router = APIRouter(prefix="/wochenberichte", tags=["wochenberichte"], dependenci
 
 def _wochenstart(kw_jahr: int, kw_nummer: int) -> date:
     return date.fromisocalendar(kw_jahr, kw_nummer, 1)
+
+
+def _tage_aus_formularfeldern(
+    montag: tuple[str, str, str],
+    dienstag: tuple[str, str, str],
+    mittwoch: tuple[str, str, str],
+    donnerstag: tuple[str, str, str],
+    freitag: tuple[str, str, str],
+) -> dict:
+    """Baut das `Wochenbericht.tage`-JSON aus den (Beginn, Ende, Tätigkeiten)-
+    Tripeln der fünf Werktage - von bericht_erstellen UND bericht_bearbeiten
+    genutzt, damit diese Zuordnung nur an einer Stelle gepflegt wird."""
+    tagesfelder = {
+        "montag": montag,
+        "dienstag": dienstag,
+        "mittwoch": mittwoch,
+        "donnerstag": donnerstag,
+        "freitag": freitag,
+    }
+    tage = leere_tage()
+    for tag, (start, ende, taetigkeiten) in tagesfelder.items():
+        tage[tag] = {"start": start or None, "ende": ende or None, "taetigkeiten": taetigkeiten or None}
+    return tage
 
 
 def _tage_mit_datum(bericht: Wochenbericht) -> list[dict]:
@@ -37,6 +67,36 @@ def _tage_mit_datum(bericht: Wochenbericht) -> list[dict]:
     return ergebnis
 
 
+async def _erledigte_kanban_karten_diese_woche(session: SessionDep, current_user: CurrentUser) -> dict[str, list[str]]:
+    """Titel der Kanban-Karten, die in der laufenden Kalenderwoche
+    abgeschlossen wurden, je Wochentag - als unverbindliche Vorschläge im
+    "Neuer Wochenbericht"-Formular (siehe teilnehmer_uebersicht.html), damit
+    nicht dieselbe Information doppelt eingetippt werden muss."""
+    je_tag: dict[str, list[str]] = {tag: [] for tag in WOCHENTAGE}
+    board_ids = await sichtbare_board_ids_fuer_teilnehmer(session, current_user.id)
+    if not board_ids:
+        return je_tag
+
+    heute = date.today()
+    wochenstart = heute - timedelta(days=heute.weekday())
+    wochenende = wochenstart + timedelta(days=4)
+
+    result = await session.execute(
+        select(Karte, Board)
+        .join(Spalte, Spalte.id == Karte.spalte_id)
+        .join(Board, Board.id == Spalte.board_id)
+        .where(Spalte.board_id.in_(board_ids), Karte.abgeschlossen_am.is_not(None))
+    )
+    for karte, board in result.all():
+        if not karte_ist_sichtbar_fuer(current_user, board, karte):
+            continue
+        abgeschlossen_datum = karte.abgeschlossen_am.date()
+        if not (wochenstart <= abgeschlossen_datum <= wochenende):
+            continue
+        je_tag[WOCHENTAGE[abgeschlossen_datum.weekday()]].append(karte.titel)
+    return je_tag
+
+
 @router.get("", response_class=HTMLResponse)
 async def uebersicht(request: Request, current_user: CurrentUser, session: SessionDep):
     if current_user.role == RoleEnum.teilnehmer:
@@ -49,6 +109,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         berichte_anzeige = [{"bericht": b, "tage": _tage_mit_datum(b)} for b in berichte]
         heute = date.today()
         aktuelle_kw = f"{heute.isocalendar().year}-W{heute.isocalendar().week:02d}"
+        kanban_vorschlaege = await _erledigte_kanban_karten_diese_woche(session, current_user)
         return templates.TemplateResponse(
             request,
             "wochenberichte/teilnehmer_uebersicht.html",
@@ -58,6 +119,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
                 "wochentage": WOCHENTAGE,
                 "tag_labels": WOCHENTAG_LABELS,
                 "aktuelle_kw": aktuelle_kw,
+                "kanban_vorschlaege": kanban_vorschlaege,
             },
         )
 
@@ -121,16 +183,13 @@ async def bericht_erstellen(
     if not 1 <= kw_nummer <= 53:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kalenderwoche muss zwischen 1 und 53 liegen.")
 
-    tagesfelder = {
-        "montag": (start_montag, ende_montag, taetigkeiten_montag),
-        "dienstag": (start_dienstag, ende_dienstag, taetigkeiten_dienstag),
-        "mittwoch": (start_mittwoch, ende_mittwoch, taetigkeiten_mittwoch),
-        "donnerstag": (start_donnerstag, ende_donnerstag, taetigkeiten_donnerstag),
-        "freitag": (start_freitag, ende_freitag, taetigkeiten_freitag),
-    }
-    tage = leere_tage()
-    for tag, (start, ende, taetigkeiten) in tagesfelder.items():
-        tage[tag] = {"start": start or None, "ende": ende or None, "taetigkeiten": taetigkeiten or None}
+    tage = _tage_aus_formularfeldern(
+        (start_montag, ende_montag, taetigkeiten_montag),
+        (start_dienstag, ende_dienstag, taetigkeiten_dienstag),
+        (start_mittwoch, ende_mittwoch, taetigkeiten_mittwoch),
+        (start_donnerstag, ende_donnerstag, taetigkeiten_donnerstag),
+        (start_freitag, ende_freitag, taetigkeiten_freitag),
+    )
 
     session.add(
         Wochenbericht(
@@ -176,16 +235,13 @@ async def bericht_bearbeiten(
             status.HTTP_400_BAD_REQUEST, "Abgegebene Wochenberichte können nicht mehr bearbeitet werden."
         )
 
-    tagesfelder = {
-        "montag": (start_montag, ende_montag, taetigkeiten_montag),
-        "dienstag": (start_dienstag, ende_dienstag, taetigkeiten_dienstag),
-        "mittwoch": (start_mittwoch, ende_mittwoch, taetigkeiten_mittwoch),
-        "donnerstag": (start_donnerstag, ende_donnerstag, taetigkeiten_donnerstag),
-        "freitag": (start_freitag, ende_freitag, taetigkeiten_freitag),
-    }
-    tage = leere_tage()
-    for tag, (start, ende, taetigkeiten) in tagesfelder.items():
-        tage[tag] = {"start": start or None, "ende": ende or None, "taetigkeiten": taetigkeiten or None}
+    tage = _tage_aus_formularfeldern(
+        (start_montag, ende_montag, taetigkeiten_montag),
+        (start_dienstag, ende_dienstag, taetigkeiten_dienstag),
+        (start_mittwoch, ende_mittwoch, taetigkeiten_mittwoch),
+        (start_donnerstag, ende_donnerstag, taetigkeiten_donnerstag),
+        (start_freitag, ende_freitag, taetigkeiten_freitag),
+    )
 
     bericht.tage = tage
     bericht.besonderheiten = besonderheiten or None

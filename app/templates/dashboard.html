@@ -11,6 +11,23 @@
 <p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong></p>
 {% endif %}
 
+{% if was_steht_an %}
+<div class="card" style="margin-bottom: var(--space-6);">
+  <h3 style="margin-top:0;">Was steht an</h3>
+  <ul class="checkbox-list" style="gap: var(--space-2);">
+    {% for eintrag in was_steht_an %}
+    <li>
+      <a href="{{ eintrag.link }}">{{ eintrag.titel }}</a>
+      <span class="karte-meta">
+        — {{ eintrag.kontext }},
+        {% if eintrag.ueberfaellig %}fällig war {{ eintrag.datum.strftime('%d.%m.') }}{% else %}fällig am {{ eintrag.datum.strftime('%d.%m.') }}{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 {% if current_user.role.value == "teilnehmer" %}
 
 {% if schritte_diese_woche is not none or tagebuch_tage_woche is not none or bewerbungen_uebersicht is not none %}

@@ -25,4 +25,9 @@ class User(SQLModel, table=True):
     password_hash: str
     role: RoleEnum
     abteilung_id: int | None = Field(default=None, foreign_key="abteilung.id")
+    # Deaktivierte Accounts können sich nicht mehr einloggen, bleiben aber
+    # mit allen Daten erhalten und sind reaktivierbar - Zwischenstufe
+    # zwischen "aktiv" und Löschung (siehe app/routers/admin.py).
+    aktiv: bool = True
+    letzter_login: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

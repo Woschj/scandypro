@@ -1,18 +1,26 @@
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+import json
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlmodel import select
 
+from app.core.config import settings
+from app.core.datenexport import eigene_daten_export
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
+from app.core.rate_limit import ist_gesperrt, registriere_fehlversuch, zuruecksetzen
 from app.core.security import hash_password, verify_password
 from app.core.templating import templates
-from app.models.user import User
+from app.models.user import RoleEnum, User
 
 router = APIRouter(tags=["auth"])
 
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
-    return templates.TemplateResponse(request, "auth/login.html", {"error": None})
+    return templates.TemplateResponse(
+        request, "auth/login.html", {"error": None, "seed_demo_data": settings.seed_demo_data}
+    )
 
 
 @router.post("/login", response_class=HTMLResponse)
@@ -22,15 +30,40 @@ async def login_submit(
     email: str = Form(...),
     password: str = Form(...),
 ):
-    result = await session.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if user is None or not verify_password(password, user.password_hash):
+    client_ip = request.client.host if request.client else "unbekannt"
+    if ist_gesperrt(email, client_ip):
         return templates.TemplateResponse(
             request,
             "auth/login.html",
-            {"error": "E-Mail oder Passwort ist falsch."},
+            {"error": "Zu viele Versuche. Bitte versuch es in ein paar Minuten noch einmal.", "seed_demo_data": settings.seed_demo_data},
+            status_code=429,
+        )
+
+    result = await session.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None or not verify_password(password, user.password_hash):
+        registriere_fehlversuch(email, client_ip)
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {"error": "E-Mail oder Passwort ist falsch.", "seed_demo_data": settings.seed_demo_data},
             status_code=401,
         )
+    if not user.aktiv:
+        registriere_fehlversuch(email, client_ip)
+        return templates.TemplateResponse(
+            request,
+            "auth/login.html",
+            {
+                "error": "Dieser Account ist aktuell deaktiviert. Wende dich an deine Einrichtung.",
+                "seed_demo_data": settings.seed_demo_data,
+            },
+            status_code=403,
+        )
+    zuruecksetzen(email, client_ip)
+    user.letzter_login = datetime.utcnow()
+    session.add(user)
+    await session.commit()
     request.session.clear()
     request.session["user_id"] = user.id
     return RedirectResponse(url="/", status_code=303)
@@ -74,4 +107,17 @@ async def passwort_aendern(
     await session.commit()
     return templates.TemplateResponse(
         request, "auth/konto.html", {"current_user": current_user, "error": None, "erfolg": True}
+    )
+
+
+@router.get("/konto/export")
+async def konto_export(current_user: CurrentUser, session: SessionDep):
+    if current_user.role != RoleEnum.teilnehmer:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Export ist aktuell nur für Teilnehmer:innen verfügbar.")
+    daten = await eigene_daten_export(session, current_user.id)
+    inhalt = json.dumps(daten, ensure_ascii=False, indent=2)
+    return Response(
+        content=inhalt,
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=meine-daten.json"},
     )

@@ -140,6 +140,12 @@ async def boardmitglieder_ids(session: AsyncSession, board: Board) -> list[int]:
     return list(result.scalars().all())
 
 
+def karte_ist_sichtbar_fuer(current_user: User, board: Board, karte: Karte) -> bool:
+    if board.typ != BoardTyp.person or current_user.id == board.person_teilnehmer_id:
+        return True
+    return karte.sichtbarkeit == KartenSichtbarkeit.team or karte.ersteller_id == current_user.id
+
+
 def sichtbare_karten_filter(current_user: User, board: Board, karten: list[Karte]) -> list[Karte]:
     """Filtert Karten eines Personen-Boards nach Sichtbarkeit.
 
@@ -149,9 +155,20 @@ def sichtbare_karten_filter(current_user: User, board: Board, karten: list[Karte
     Karten der/des Teilnehmer:in bleiben ihr/ihm vorbehalten (Privacy by
     Default, siehe CLAUDE.md §24 "Keine Überwachung").
     """
-    if board.typ != BoardTyp.person or current_user.id == board.person_teilnehmer_id:
-        return karten
-    return [k for k in karten if k.sichtbarkeit == KartenSichtbarkeit.team or k.ersteller_id == current_user.id]
+    return [k for k in karten if karte_ist_sichtbar_fuer(current_user, board, k)]
+
+
+def require_karte_sichtbar(current_user: User, board: Board, karte: Karte) -> None:
+    """Wirft 403, wenn diese Karte für current_user laut
+    sichtbare_karten_filter nicht sichtbar wäre (private Karte eines
+    Personen-Boards). Muss zusätzlich zu require_kanban_access in jedem
+    mutierenden Karten-/Unteraufgaben-Endpunkt aufgerufen werden, da die
+    reine Boardzugriffsprüfung private Karten nicht ausschließt - sonst kann
+    ein zuständiger Trainer über die (erratbare) karte_id private Karten
+    lesen/ändern, obwohl das Modell das ausschließt (siehe app/models/
+    kanban.py:Karte)."""
+    if not karte_ist_sichtbar_fuer(current_user, board, karte):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Diese Karte ist privat und nicht für dich sichtbar.")
 
 
 async def require_kanban_access(session: AsyncSession, current_user: User, board: Board) -> None:
@@ -246,6 +263,42 @@ async def hat_bewerbungs_freigabe(session: AsyncSession, empfaenger_id: int, bew
         )
     )
     return result.first() is not None
+
+
+async def sichtbare_board_ids_fuer_teilnehmer(session: AsyncSession, teilnehmer_id: int) -> list[int]:
+    """Alle Board-IDs, auf die eine/ein Teilnehmer:in Zugriff hat: das eigene
+    Personen-Board (falls vorhanden) plus alle Team-Boards, deren
+    Teilnehmergruppe für sie freigegeben ist. Grundlage für modulübergreifende
+    Übersichten wie die Dashboard-Fälligkeiten-Kachel (siehe
+    app/core/faellige_karten.py)."""
+    board_ids: list[int] = []
+    eigenes_board_result = await session.execute(
+        select(Board.id).where(Board.typ == BoardTyp.person, Board.person_teilnehmer_id == teilnehmer_id)
+    )
+    eigenes_board_id = eigenes_board_result.scalars().first()
+    if eigenes_board_id is not None:
+        board_ids.append(eigenes_board_id)
+
+    team_result = await session.execute(
+        select(BoardFreigabe.board_id)
+        .join(TeilnehmergruppeMitglied, TeilnehmergruppeMitglied.gruppe_id == BoardFreigabe.gruppe_id)
+        .where(TeilnehmergruppeMitglied.teilnehmer_id == teilnehmer_id)
+        .distinct()
+    )
+    board_ids.extend(team_result.scalars().all())
+    return board_ids
+
+
+async def geleitete_team_board_ids(session: AsyncSession, berufstrainer_id: int) -> list[int]:
+    """Alle Team-Board-IDs, die ein Berufstrainer über seine Handlungsfeld-
+    Leitung verwaltet (siehe geleitete_handlungsfeld_ids)."""
+    handlungsfeld_ids = await geleitete_handlungsfeld_ids(session, berufstrainer_id)
+    if not handlungsfeld_ids:
+        return []
+    result = await session.execute(
+        select(Board.id).where(Board.typ == BoardTyp.team, Board.handlungsfeld_id.in_(handlungsfeld_ids))
+    )
+    return list(result.scalars().all())
 
 
 def require_owner(current_user: User, resource_owner_id: int, message: str) -> None:
