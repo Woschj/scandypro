@@ -1,3 +1,10 @@
+# Reiner Reverse-Proxy ohne TLS, Port-basiert - für lokale Bewertung bzw.
+# Zugriff per IP ohne eigene Domain. NICHT für Produktivbetrieb mit echten
+# Teilnehmerdaten geeignet (Art. 9 DSGVO, siehe CLAUDE.md Abschnitt 2) -
+# Login-Formular und Session-Cookie liefen sonst unverschlüsselt über das
+# Netz. Für eine echte Domain mit automatischem Let's-Encrypt-Zertifikat
+# siehe Caddyfile.domain-example in diesem Verzeichnis sowie README.md
+# "TLS/Domain (Produktivbetrieb)".
 :80 {
 	reverse_proxy app:8000
 }

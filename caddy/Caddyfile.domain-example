@@ -1,0 +1,21 @@
+# Caddyfile für den Produktivbetrieb mit echter Domain - Caddy holt
+# automatisch ein Let's-Encrypt-Zertifikat und leitet HTTP auf HTTPS um,
+# sobald der Host von außen unter dieser Domain erreichbar ist (Port 80 UND
+# 443 müssen dafür freigegeben/weitergeleitet sein - Port 80 wird für die
+# Zertifikatsausstellung gebraucht, nicht nur zum Umleiten).
+#
+# Einrichtung (siehe auch README.md "TLS/Domain" und SSO_AUTHENTIK.md):
+#   1. Domain per DNS-A-Record auf die öffentliche IP dieses Hosts zeigen
+#      lassen
+#   2. Diese Datei nach caddy/Caddyfile kopieren und "scandypro.eure-
+#      domain.de" unten durch die echte Domain ersetzen
+#   3. In compose.yaml bei "caddy" den ports-Eintrag von
+#      "${APP_PORT:-8080}:80" auf "80:80" UND "443:443" ändern
+#   4. In .env SESSION_COOKIE_SECURE=true setzen (sonst wird das
+#      Login-Cookie über HTTPS zwar gesendet, aber nicht mit Secure-Flag
+#      geschützt)
+#   5. Stack neu starten: docker compose up -d --build
+
+scandypro.eure-domain.de {
+	reverse_proxy app:8000
+}

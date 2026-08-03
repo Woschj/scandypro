@@ -39,7 +39,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ScandyPro", lifespan=lifespan)
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, same_site="lax")
+app.add_middleware(
+    SessionMiddleware, secret_key=settings.secret_key, same_site="lax", https_only=settings.session_cookie_secure
+)
 # Versionierte Assets (?v={{ asset_version }}, siehe app/core/templating.py)
 # dürfen ein Jahr unverändert im Browser bleiben, da sich bei einem Release
 # die URL selbst ändert; unversionierte Treffer (z.B. Icons) bekommen nur

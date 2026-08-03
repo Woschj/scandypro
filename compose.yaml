@@ -30,6 +30,11 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
+      # Standard: TLS-los, per IP/lokal erreichbar (Caddyfile ohne Domain).
+      # Bei Umstellung auf eine echte Domain mit automatischem HTTPS (siehe
+      # caddy/Caddyfile.domain-example) diese Zeile ersetzen durch:
+      #   - "80:80"
+      #   - "443:443"
       - "${APP_PORT:-8080}:80"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile

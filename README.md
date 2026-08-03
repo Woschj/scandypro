@@ -90,6 +90,37 @@ Berufstrainer) in der Abteilung Medien & Digital, die Teilnehmergruppe
 Tanja Teilnehmer – so sind Kanban-Zusammenarbeit und Wochenberichte
 direkt sichtbar, ohne erst Grunddaten anlegen zu müssen.
 
+## TLS/Domain (Produktivbetrieb)
+
+Im Standard-Setup läuft ScandyPro **unverschlüsselt über HTTP** (Caddy ohne
+Domain, siehe `caddy/Caddyfile`) – nur für lokale Bewertung geeignet. Da
+ScandyPro besondere Kategorien personenbezogener Daten nach Art. 9 DSGVO
+verarbeitet (Wohlbefinden, Bewerbungsdetails, siehe CLAUDE.md Abschnitt 2),
+ist TLS für jeden Betrieb mit echten Teilnehmerdaten **zwingend** – ohne
+TLS werden Login-Formular und Session-Cookie unverschlüsselt über das Netz
+übertragen. TLS wird außerdem für SSO/Authentik vorausgesetzt (siehe unten).
+
+Umstellung auf eine echte Domain mit automatischem Let's-Encrypt-Zertifikat
+(Caddy übernimmt Ausstellung und Erneuerung selbständig):
+
+1. Domain per DNS-A-Record auf die öffentliche IP dieses Hosts zeigen
+   lassen
+2. `caddy/Caddyfile.domain-example` nach `caddy/Caddyfile` kopieren, darin
+   die Platzhalter-Domain durch die echte ersetzen
+3. In `compose.yaml` beim `caddy`-Service den `ports`-Eintrag von
+   `${APP_PORT:-8080}:80` auf `80:80` **und** `443:443` ändern (Port 80
+   wird für die Zertifikatsausstellung gebraucht, nicht nur zum Umleiten)
+4. In `.env` `SESSION_COOKIE_SECURE=true` setzen (siehe `.env.example`) -
+   sorgt dafür, dass das Login-Cookie das Secure-Flag bekommt
+5. `docker compose up -d --build`
+
+Bei reinem LAN-Betrieb ohne öffentliche Domain (kein DNS-Eintrag möglich)
+ist ein selbstsigniertes Zertifikat die Alternative - siehe
+`caddy/Caddyfile` im Schwestermodul
+[Scandy-Lite](https://github.com/Woschj/scandy-lite) (`tls internal`) als
+Vorlage; Browser zeigen dabei einmalig pro Gerät eine
+Zertifikatswarnung.
+
 ## Single Sign-On (SSO)
 
 Optional: Login über einen OIDC-Provider wie Authentik, gedacht für einen
@@ -157,8 +188,11 @@ noch zwingend:
 - **Vollständige Konto-Löschung** (Login/Account selbst) – aktuell nur
   Inhaltsdaten löschbar, siehe oben
 - **Key-Rotation** für die Feldverschlüsselung
-- **TLS** – Caddy läuft hier ohne Domain/Auto-HTTPS auf Port 8080 (nur für
-  lokale Bewertung, nicht so deployen)
+- **TLS im Standard-Setup** – Caddy läuft ohne eigene Domain auf Port 8080
+  ohne Verschlüsselung (nur für lokale Bewertung, nicht so deployen). Eine
+  echte Domain mit automatischem HTTPS ist bereits vorbereitet, aber ein
+  bewusster manueller Schritt – siehe Abschnitt "TLS/Domain
+  (Produktivbetrieb)" unten.
 - Tests (Berechtigungs-/Löschtests laut CLAUDE.md-Review-Checkliste)
 
 Diese Punkte sind kein Versehen, sondern bewusst auf spätere Phasen

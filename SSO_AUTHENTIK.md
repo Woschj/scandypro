@@ -32,21 +32,11 @@ kann direkt zu Teil B springen.
   Nutzer:innen)
 - **ScandyPro muss über HTTPS erreichbar sein**, bevor SSO produktiv genutzt
   wird — Authentik akzeptiert bei einem "Confidential"-Client i. d. R. keine
-  reinen HTTP-Redirect-URIs. Der mitgelieferte `caddy/Caddyfile` läuft aktuell
-  bewusst ohne Domain auf Port 8080 (siehe README.md, Abschnitt "Bekannte
-  Lücken") — für SSO braucht ihr eine echte Domain, die auf den Host zeigt.
-  Umstellung ist mit Caddy minimal:
-
-  ```caddyfile
-  # caddy/Caddyfile - Domain statt Port, Caddy holt automatisch ein
-  # Let's-Encrypt-Zertifikat, sobald der Container von außen erreichbar ist
-  scandypro.eure-domain.de {
-      reverse_proxy app:8000
-  }
-  ```
-
-  Danach `APP_PORT`-Mapping in `compose.yaml` auf `80:80` und `443:443`
-  anpassen (statt `${APP_PORT:-8080}:80`) und den Stack neu starten.
+  reinen HTTP-Redirect-URIs. Umstellung von HTTP auf eine echte Domain mit
+  automatischem HTTPS: siehe README.md, Abschnitt "TLS/Domain
+  (Produktivbetrieb)" (nutzt `caddy/Caddyfile.domain-example`) — dort auch
+  Schritt 4, `SESSION_COOKIE_SECURE=true` zu setzen, was für SSO ebenfalls
+  Voraussetzung ist.
 
 ---
 

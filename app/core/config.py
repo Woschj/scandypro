@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     debug: bool = False
     upload_dir: str = "/app/uploads"
 
+    # Session-Cookie nur über HTTPS senden (Secure-Flag) - erst auf true
+    # setzen, wenn ein Reverse-Proxy davor TLS terminiert (siehe
+    # caddy/Caddyfile.domain-example), sonst verwirft der Browser das
+    # Login-Cookie über HTTP stillschweigend und niemand kann sich
+    # einloggen. Bewusst derselbe Name wie im Schwestermodul Scandy-Lite.
+    session_cookie_secure: bool = False
+
     # Optional: legt beim Start einen ersten Einrichtungs-Admin an, falls noch
     # keiner mit dieser E-Mail existiert (siehe app/core/seed.py:seed_admin) -
     # für Produktiv-Deployments ohne SEED_DEMO_DATA. Nach dem ersten
