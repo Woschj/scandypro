@@ -8,6 +8,40 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.33] - 2026-08-03
+
+Live-Test von `scandy-stack.sh` gegen einen echten Proxmox-Host (alle drei
+Komponenten, inkl. Authentik-Community-Build und OIDC-Blueprint-
+Automatisierung) - dabei gefundene und behobene Fehler:
+
+### Fixed
+- **`gnupg` fehlte im frischen Debian-13-Template**, wurde aber vom
+  gemeinsamen `setup_postgresql`-Helper für den APT-Signaturschlüssel
+  gebraucht (`Failed to install GPG key for pgdg`) -
+  `proxmox/install/scandypro-install.sh` installiert es jetzt vorab.
+- **Falsche URLs in `scandy-stack.sh`**: Scandy-Lite nutzt den Branch
+  `master`, nicht `main`; der Authentik-Community-Skript-Link
+  (`community-scripts.github.io/ProxmoxVE/ct/authentik.sh`) existiert
+  nicht - korrekt ist `raw.githubusercontent.com/community-scripts/
+  ProxmoxVE/main/ct/authentik.sh` (auch in `SSO_AUTHENTIK.md` korrigiert).
+
+### Verified
+- ScandyPro und Scandy-Lite installieren sich über `scandy-stack.sh` von
+  Grund auf fehlerfrei (frischer Proxmox-Host, keine vorherigen
+  Container) und sind danach sofort per HTTPS erreichbar.
+- Authentik-Installation über das Community-Skript läuft vollständig durch
+  (native Rust/Go/xmlsec-Kompilierung, ~30 Min.).
+- Die experimentelle OIDC-Automatisierung (`ak apply_blueprint`) legt
+  Provider + Application in Authentik korrekt an und trägt die Werte
+  richtig in die App-`.env` ein - **aber** der eigentliche SSO-Handshake
+  scheitert zusätzlich an einem unabhängigen TLS-Vertrauensproblem
+  zwischen zwei selbstsignierten Diensten (Authentiks generisches
+  Default-Zertifikat hat keinen zur Server-IP passenden SAN-Eintrag) -
+  siehe `SSO_AUTHENTIK.md` "Voraussetzungen" für Ursache und Workaround.
+  Das Blueprint-YAML-Schema selbst musste dabei an die tatsächliche
+  Authentik-API angepasst werden (`redirect_uris` als Liste von Objekten
+  statt String, `invalidation_flow` zusätzlich erforderlich).
+
 ## [0.1.32] - 2026-08-03
 
 ### Added

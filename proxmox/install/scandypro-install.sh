@@ -47,7 +47,7 @@ msg_info "Installing Dependencies"
 # psql ...) - im offiziellen community-scripts-Ablauf schon Teil des
 # Basis-Pakets aus build_container(), das wir hier bewusst nicht nutzen
 # (siehe ct/scandypro.sh). Die minimale Debian-Vorlage bringt es nicht mit.
-$STD apt-get install -y sudo git openssl python3 python3-venv python3-pip
+$STD apt-get install -y sudo git openssl python3 python3-venv python3-pip gnupg
 msg_ok "Installed Dependencies"
 
 PG_VERSION="16" setup_postgresql

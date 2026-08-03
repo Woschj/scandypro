@@ -42,6 +42,38 @@ kann direkt zu Teil B springen.
   Voraussetzung ist. Bei selbstsigniertem Zertifikat zeigt der Browser beim
   ersten Aufruf von ScandyPro eine Warnung, die einmalig pro Gerät bestätigt
   werden muss - der SSO-Ablauf selbst funktioniert davon unabhängig.
+- **Bei selbstsigniertem Zertifikat auf BEIDEN Seiten (ScandyPro/Scandy-Lite
+  UND Authentik ohne echte Domain) muss ScandyPro dem Authentik-Zertifikat
+  explizit vertrauen** - live getestet (2026-08-03, `proxmox/ct/scandy-stack.sh`
+  gegen einen frisch installierten Authentik-Container): Authentiks
+  Community-Skript generiert beim ersten Start ein generisches
+  Selbstsigniert-Zertifikat (`CN=authentik default certificate`, **ohne**
+  passenden SAN-Eintrag für die tatsächliche Server-IP/-Domain). Der
+  serverseitige OIDC-Discovery-Aufruf von ScandyPro (`/auth/oidc/login` →
+  `authlib` ruft `.well-known/openid-configuration` ab) schlägt dadurch
+  IMMER fehl (`SSL: no alternative certificate subject name matches target
+  ipv4 address ...`), selbst wenn die CA selbst als vertrauenswürdig
+  eingetragen wurde. Zwei Wege, das zu beheben:
+  1. **Empfohlen:** Authentik hinter einer echten Domain mit gültigem
+     Zertifikat betreiben (Let's Encrypt) statt mit dem generischen
+     Selbstsigniert-Zertifikat - dann entfällt dieser Schritt komplett.
+  2. **Für rein interne Testumgebungen:** Authentiks Zertifikat manuell
+     durch eines mit korrektem SAN ersetzen (analog zu
+     `/etc/ssl/scandypro/scandypro.crt`, siehe README.md "TLS
+     (Produktivbetrieb)") und/oder das Zertifikat in den
+     ScandyPro-Container importieren:
+     ```bash
+     # Auf dem Proxmox-Host, <authentik-vmid> anpassen:
+     pct exec <authentik-vmid> -- bash -c \
+       "openssl s_client -connect 127.0.0.1:9443 -servername <authentik-ip> </dev/null 2>/dev/null | openssl x509" \
+       > /root/authentik-ca.crt
+     pct push <scandypro-vmid> /root/authentik-ca.crt /usr/local/share/ca-certificates/authentik-selfsigned.crt
+     pct exec <scandypro-vmid> -- update-ca-certificates
+     ```
+     Behebt nur das CA-Vertrauen, NICHT den fehlenden SAN-Eintrag - für
+     einen echten Fix muss das Authentik-Zertifikat selbst durch eines mit
+     passendem SAN ersetzt werden (liegt außerhalb dieses Dokuments, siehe
+     Authentik-eigene Doku zu `AUTHENTIK_WEB__CERTIFICATE`/eigenem Zertifikat).
 
 ---
 

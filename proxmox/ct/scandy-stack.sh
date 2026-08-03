@@ -139,13 +139,23 @@ if [[ "$DO_AUTHENTIK" -eq 1 ]]; then
     if [[ -z "$AUTHENTIK_IP" ]]; then
       echo "Konnte IP von Authentik-Container ${AUTHENTIK_VMID} nicht ermitteln - Automatisierung übersprungen."
     else
-      # `ak` bzw. manage.py-Pfad wird gesucht statt hart codiert, da er vom
-      # genauen Stand/Layout des Community-Skripts abhaengt.
-      AK_BIN="$(pct exec "$AUTHENTIK_VMID" -- bash -c 'command -v ak 2>/dev/null || find / -maxdepth 6 -iname manage.py 2>/dev/null | grep -m1 authentik' || true)"
-      if [[ -z "$AK_BIN" ]]; then
-        echo "Konnte 'ak'/manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
+      # manage.py-Pfad wird gesucht statt hart codiert, da er vom genauen
+      # Stand/Layout des Community-Skripts abhaengt (aktuell: /opt/authentik).
+      # Aufruf explizit ueber den venv-Python (nicht "python manage.py"
+      # direkt), da manage.py's Shebang "#!/usr/bin/env python" nur mit der
+      # PATH-Umgebung des systemd-Dienstes korrekt auf den venv-Interpreter
+      # zeigt, nicht in einem plain "pct exec".
+      MANAGE_PY="$(pct exec "$AUTHENTIK_VMID" -- bash -c 'find / -maxdepth 6 -iname manage.py 2>/dev/null | grep -m1 authentik' || true)"
+      if [[ -z "$MANAGE_PY" ]]; then
+        echo "Konnte manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
         echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
       else
+        AK_DIR="$(dirname "$MANAGE_PY")"
+        AK_PYTHON="$(pct exec "$AUTHENTIK_VMID" -- bash -c "command -v '${AK_DIR}/.venv/bin/python' 2>/dev/null || command -v '${AK_DIR}/venv/bin/python' 2>/dev/null" || true)"
+        if [[ -z "$AK_PYTHON" ]]; then
+          echo "Konnte venv-Python neben manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
+          echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
+        else
         for app in "${!APP_VMID[@]}"; do
           app_vmid="${APP_VMID[$app]}"
           app_ip="$(pct exec "$app_vmid" -- hostname -I 2>/dev/null | awk '{print $1}' || true)"
@@ -162,8 +172,14 @@ if [[ "$DO_AUTHENTIK" -eq 1 ]]; then
           slug="${app}"
 
           echo "Lege OAuth2-Provider + Application fuer ${app_name} in Authentik an..."
-          blueprint_file="/tmp/${app}-oidc-blueprint.yaml"
-          pct exec "$AUTHENTIK_VMID" -- tee "$blueprint_file" >/dev/null <<EOF
+          # apply_blueprint erwartet einen Pfad RELATIV zu blueprints_dir
+          # (Standard: /opt/authentik/blueprints), kein beliebiger absoluter
+          # Pfad ("Invalid blueprint path") - "local/" ist die uebliche
+          # Authentik-Konvention fuer eigene Blueprints.
+          blueprint_rel="local/${app}-oidc.yaml"
+          blueprint_abs="${AK_DIR}/blueprints/${blueprint_rel}"
+          pct exec "$AUTHENTIK_VMID" -- mkdir -p "${AK_DIR}/blueprints/local"
+          pct exec "$AUTHENTIK_VMID" -- tee "$blueprint_abs" >/dev/null <<EOF
 version: 1
 metadata:
   name: ${app}-oidc-autoprovision
@@ -177,8 +193,12 @@ entries:
       client_type: confidential
       client_id: ${client_id}
       client_secret: ${client_secret}
-      redirect_uris: "${redirect_uri}"
+      redirect_uris:
+        - matching_mode: strict
+          url: "${redirect_uri}"
+          redirect_uri_type: authorization
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
   - model: authentik_core.application
     identifiers:
@@ -188,12 +208,16 @@ entries:
       slug: ${slug}
       provider: !KeyOf ${app}-provider
 EOF
-          if pct exec "$AUTHENTIK_VMID" -- bash -c "'$AK_BIN' apply_blueprint '$blueprint_file'" 2>&1; then
+          pct exec "$AUTHENTIK_VMID" -- chown authentik:authentik "$blueprint_abs" 2>/dev/null || true
+          if pct exec "$AUTHENTIK_VMID" -- bash -c "cd '${AK_DIR}' && '${AK_PYTHON}' manage.py apply_blueprint '$blueprint_rel'" 2>&1; then
             echo "Provider/Application fuer ${app_name} angelegt. Trage OIDC_*-Werte in ${app}.env ein..."
+            # Port 9443 ist der Standard-HTTPS-Port des community-scripts-
+            # Authentik-Installers (AUTHENTIK_LISTEN__HTTPS) - bei
+            # abweichender Authentik-Installation ggf. anpassen.
             pct exec "$app_vmid" -- bash -c "
               sed -i '/^OIDC_ISSUER=/d;/^OIDC_CLIENT_ID=/d;/^OIDC_CLIENT_SECRET=/d' '${app_dir}/.env'
               cat >> '${app_dir}/.env' <<ENVEOF
-OIDC_ISSUER=https://${AUTHENTIK_IP}/application/o/${slug}/
+OIDC_ISSUER=https://${AUTHENTIK_IP}:9443/application/o/${slug}/
 OIDC_CLIENT_ID=${client_id}
 OIDC_CLIENT_SECRET=${client_secret}
 ENVEOF
@@ -204,6 +228,7 @@ ENVEOF
             echo "Blueprint-Anwendung fuer ${app_name} fehlgeschlagen - bitte SSO_AUTHENTIK.md Teil B manuell durchgehen."
           fi
         done
+        fi
       fi
     fi
   fi
