@@ -10,7 +10,7 @@ from datetime import date
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.bewerbung import Bewerbung, Bewerbungsunterlage
+from app.models.bewerbung import Bewerbung, BewerbungsNotiz, Bewerbungsunterlage
 from app.models.wohlbefinden import TagebuchEintrag
 
 
@@ -50,6 +50,17 @@ async def eigene_daten_export(session: AsyncSession, teilnehmer_id: int) -> dict
     for u in unterlagen_result.scalars().all():
         unterlagen_pro_bewerbung.setdefault(u.bewerbung_id, []).append(u.original_dateiname)
 
+    notizen_result = await session.execute(
+        select(BewerbungsNotiz)
+        .where(BewerbungsNotiz.bewerbung_id.in_(select(Bewerbung.id).where(Bewerbung.teilnehmer_id == teilnehmer_id)))
+        .order_by(BewerbungsNotiz.erstellt_am)
+    )
+    notizen_pro_bewerbung: dict[int, list[dict]] = {}
+    for n in notizen_result.scalars().all():
+        notizen_pro_bewerbung.setdefault(n.bewerbung_id, []).append(
+            {"text": n.text, "erstellt_am": n.erstellt_am.isoformat()}
+        )
+
     bewerbungen = [
         {
             "firma": b.firma,
@@ -57,7 +68,7 @@ async def eigene_daten_export(session: AsyncSession, teilnehmer_id: int) -> dict
             "status": b.status.value,
             "beworben_am": _iso(b.beworben_am),
             "naechster_termin": _iso(b.naechster_termin),
-            "notizen": b.notizen,
+            "notizen": notizen_pro_bewerbung.get(b.id, []),
             "unterlagen": unterlagen_pro_bewerbung.get(b.id, []),
         }
         for b in bewerbungen_result.scalars().all()

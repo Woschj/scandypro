@@ -16,6 +16,7 @@ from app.models.bewerbung import (
     Bewerbung,
     BewerbungsFreigabe,
     BewerbungsFreigabeUmfang,
+    BewerbungsNotiz,
     Bewerbungsunterlage,
     BewerbungStatus,
     UnterlagenKategorie,
@@ -102,6 +103,16 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
 
     nicht_einbettbare_ids = {u.id for u in alle_unterlagen if not _ist_einbettbar(u.original_dateiname)}
 
+    notizen_by_bewerbung: dict[int, list[BewerbungsNotiz]] = {}
+    if bewerbungen:
+        notizen_result = await session.execute(
+            select(BewerbungsNotiz)
+            .where(BewerbungsNotiz.bewerbung_id.in_([b.id for b in bewerbungen]))
+            .order_by(BewerbungsNotiz.erstellt_am.desc())
+        )
+        for notiz in notizen_result.scalars().all():
+            notizen_by_bewerbung.setdefault(notiz.bewerbung_id, []).append(notiz)
+
     freigaben_result = await session.execute(
         select(BewerbungsFreigabe)
         .where(BewerbungsFreigabe.teilnehmer_id == current_user.id, BewerbungsFreigabe.widerrufen_am.is_(None))
@@ -134,7 +145,9 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "stammunterlagen": stammunterlagen,
             "anschreiben_by_bewerbung": anschreiben_by_bewerbung,
             "deckblatt_by_bewerbung": deckblatt_by_bewerbung,
+            "notizen_by_bewerbung": notizen_by_bewerbung,
             "nicht_einbettbare_ids": nicht_einbettbare_ids,
+            "heute": date.today(),
             "ausstehende_rueckmeldungen": _ausstehende_rueckmeldungen(bewerbungen),
             "freigaben": freigaben,
             "trainer_kontakt": trainer_kontakt,
@@ -167,10 +180,12 @@ async def bewerbung_erstellen(
         naechster_termin=date.fromisoformat(naechster_termin) if naechster_termin else None,
         naechster_termin_uhrzeit=naechster_termin_uhrzeit or None,
         naechster_termin_ort=naechster_termin_ort or None,
-        notizen=notizen or None,
     )
     session.add(bewerbung)
     await session.flush()
+
+    if notizen:
+        session.add(BewerbungsNotiz(bewerbung_id=bewerbung.id, text=notizen))
 
     for datei, kategorie in (
         (deckblatt, UnterlagenKategorie.deckblatt),
@@ -193,6 +208,14 @@ async def bewerbung_erstellen(
     return RedirectResponse(url="/bewerbungen", status_code=303)
 
 
+def _nach_statuswechsel_redirect(bewerbung: Bewerbung, status_wert: BewerbungStatus) -> RedirectResponse:
+    if status_wert in (BewerbungStatus.abgesagt, BewerbungStatus.zugesagt):
+        return RedirectResponse(
+            url=f"/bewerbungen?feedback={status_wert.value}&firma={quote(bewerbung.firma)}", status_code=303
+        )
+    return RedirectResponse(url="/bewerbungen", status_code=303)
+
+
 @router.post("/{bewerbung_id}/status")
 async def status_aendern(
     bewerbung_id: int,
@@ -203,6 +226,9 @@ async def status_aendern(
     naechster_termin_uhrzeit: str = Form(""),
     naechster_termin_ort: str = Form(""),
 ):
+    """Volle Bearbeitung: Status + Termin zusammen (siehe "Status & Termin
+    bearbeiten" im aufgeklappten Workitem) - im Unterschied zu
+    bewerbung_verschieben unten, das nur die Spalte wechselt."""
     bewerbung = await session.get(Bewerbung, bewerbung_id)
     if bewerbung is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
@@ -216,11 +242,53 @@ async def status_aendern(
     bewerbung.naechster_termin_ort = naechster_termin_ort or None
     session.add(bewerbung)
     await session.commit()
+    return _nach_statuswechsel_redirect(bewerbung, status_wert)
 
-    if status_wert in (BewerbungStatus.abgesagt, BewerbungStatus.zugesagt):
-        return RedirectResponse(
-            url=f"/bewerbungen?feedback={status_wert.value}&firma={quote(bewerbung.firma)}", status_code=303
-        )
+
+@router.post("/{bewerbung_id}/verschieben")
+async def bewerbung_verschieben(
+    bewerbung_id: int, current_user: CurrentUser, session: SessionDep, status_wert: BewerbungStatus = Form(...)
+):
+    """Schnelles Verschieben in eine andere Spalte (Board-Ansicht, per
+    Drag&Drop oder per Tastatur-Select) - ändert bewusst NUR den Status,
+    nicht Termin/Ort/Uhrzeit, damit ein schnelles Verschieben nie
+    versehentlich bestehende Termindaten löscht (anders als
+    status_aendern oben, das absichtlich beides zusammen abfragt)."""
+    bewerbung = await session.get(Bewerbung, bewerbung_id)
+    if bewerbung is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, bewerbung.teilnehmer_id, "Kein Zugriff auf diese Bewerbung.")
+    bewerbung.status = status_wert
+    session.add(bewerbung)
+    await session.commit()
+    return _nach_statuswechsel_redirect(bewerbung, status_wert)
+
+
+@router.post("/{bewerbung_id}/notizen")
+async def notiz_hinzufuegen(
+    bewerbung_id: int, current_user: CurrentUser, session: SessionDep, text: str = Form(...)
+):
+    bewerbung = await session.get(Bewerbung, bewerbung_id)
+    if bewerbung is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, bewerbung.teilnehmer_id, "Kein Zugriff auf diese Bewerbung.")
+    if text.strip():
+        session.add(BewerbungsNotiz(bewerbung_id=bewerbung_id, text=text.strip()))
+        await session.commit()
+    return RedirectResponse(url="/bewerbungen", status_code=303)
+
+
+@router.post("/notizen/{notiz_id}/loeschen")
+async def notiz_loeschen(notiz_id: int, current_user: CurrentUser, session: SessionDep):
+    notiz = await session.get(BewerbungsNotiz, notiz_id)
+    if notiz is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    bewerbung = await session.get(Bewerbung, notiz.bewerbung_id)
+    if bewerbung is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, bewerbung.teilnehmer_id, "Kein Zugriff auf diese Notiz.")
+    await session.delete(notiz)
+    await session.commit()
     return RedirectResponse(url="/bewerbungen", status_code=303)
 
 
@@ -237,6 +305,10 @@ async def bewerbung_loeschen(bewerbung_id: int, current_user: CurrentUser, sessi
     for unterlage in unterlagen_result.scalars().all():
         datei_loeschen(unterlage.speicherpfad)
         await session.delete(unterlage)
+
+    notizen_result = await session.execute(select(BewerbungsNotiz).where(BewerbungsNotiz.bewerbung_id == bewerbung_id))
+    for notiz in notizen_result.scalars().all():
+        await session.delete(notiz)
     await session.flush()
 
     await session.delete(bewerbung)
@@ -340,6 +412,16 @@ async def teilnehmer_ansicht(request: Request, teilnehmer_id: int, current_user:
     alle_bewerbungen = list(alle_bewerbungen_result.scalars().all())
     sichtbare_bewerbungen = alle_bewerbungen if hat_alle else [b for b in alle_bewerbungen if b.id in einzeln_ids]
 
+    notizen_by_bewerbung: dict[int, list[BewerbungsNotiz]] = {}
+    if sichtbare_bewerbungen:
+        notizen_result = await session.execute(
+            select(BewerbungsNotiz)
+            .where(BewerbungsNotiz.bewerbung_id.in_([b.id for b in sichtbare_bewerbungen]))
+            .order_by(BewerbungsNotiz.erstellt_am.desc())
+        )
+        for notiz in notizen_result.scalars().all():
+            notizen_by_bewerbung.setdefault(notiz.bewerbung_id, []).append(notiz)
+
     await protokolliere(
         session,
         akteur_id=current_user.id,
@@ -356,6 +438,7 @@ async def teilnehmer_ansicht(request: Request, teilnehmer_id: int, current_user:
             "current_user": current_user,
             "teilnehmer": teilnehmer,
             "bewerbungen": sichtbare_bewerbungen,
+            "notizen_by_bewerbung": notizen_by_bewerbung,
         },
     )
 

@@ -14,7 +14,14 @@
   <p class="karte-meta" style="margin-top: var(--space-3);">
     Beworben am {{ b.beworben_am or "–" }} · Nächster Termin: {{ b.naechster_termin or "–" }}{% if b.naechster_termin and b.naechster_termin_uhrzeit %}, {{ b.naechster_termin_uhrzeit }} Uhr{% endif %}{% if b.naechster_termin and b.naechster_termin_ort %} · {{ b.naechster_termin_ort }}{% endif %}
   </p>
-  {% if b.notizen %}<p>{{ b.notizen }}</p>{% endif %}
+  {% if notizen_by_bewerbung.get(b.id) %}
+  <div class="eyebrow" style="margin-top: var(--space-3);">Notizen</div>
+  <ul style="margin: var(--space-2) 0 0;">
+    {% for notiz in notizen_by_bewerbung[b.id] %}
+    <li>{{ notiz.text }} <span class="karte-meta">— {{ notiz.erstellt_am.strftime("%d.%m.%Y") }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </div>
 {% endfor %}
 {% else %}

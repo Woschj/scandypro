@@ -18,7 +18,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.uploads import datei_loeschen
-from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, Bewerbungsunterlage
+from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, BewerbungsNotiz, Bewerbungsunterlage
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenBewegung, KartenZuweisung, Spalte, Unteraufgabe
 from app.models.organisation import Teilnehmergruppe, TeilnehmergruppeMitglied
 from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe
@@ -61,7 +61,16 @@ async def loesche_alle_bewerbungsdaten(session: AsyncSession, teilnehmer_id: int
     await session.flush()
 
     bewerbungen_result = await session.execute(select(Bewerbung).where(Bewerbung.teilnehmer_id == teilnehmer_id))
-    for bewerbung in bewerbungen_result.scalars().all():
+    bewerbungen = list(bewerbungen_result.scalars().all())
+    if bewerbungen:
+        notizen_result = await session.execute(
+            select(BewerbungsNotiz).where(BewerbungsNotiz.bewerbung_id.in_([b.id for b in bewerbungen]))
+        )
+        for notiz in notizen_result.scalars().all():
+            await session.delete(notiz)
+        await session.flush()
+
+    for bewerbung in bewerbungen:
         await session.delete(bewerbung)
 
     await session.commit()

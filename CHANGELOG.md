@@ -8,6 +8,30 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.22] - 2026-08-03
+
+### Added
+- **Bewerbungen jetzt als Kanban-artiges Board**: "Laufende"/"Abgeschlossene
+  Bewerbungen" ersetzt durch einen einzigen "Bewerbungen"-Tab mit einer
+  Spalte je Status (Entwurf, Versendet, Rückmeldung offen, Eingeladen,
+  Abgesagt, Zugesagt) - jede Bewerbung ist ein per Drag&Drop verschiebbares
+  Workitem, mit derselben Tastatur-Alternative wie beim echten Kanban-Board
+  ("Verschieben"-Select). Wiederverwendet dieselben CSS-Klassen wie
+  `app/templates/kanban/_spalten.html` für ein konsistentes Erscheinungsbild;
+  neues, schlankes `app/static/js/bewerbungen-board.js` (kein
+  Kartenreihenfolge-Tracking nötig, anders als bei Kanban).
+- **Notizen sind jetzt ein wachsender Verlauf statt eines einzelnen
+  Freitextfelds**: neues Modell `BewerbungsNotiz` (mehrere Einträge pro
+  Bewerbung, mit Zeitstempel, einzeln löschbar) ersetzt
+  `Bewerbung.notizen` (Migration `d1e2f3a4b5c6`, bestehende Werte wurden
+  als erster Verlaufs-Eintrag übernommen). Jede Karte hat jetzt einen
+  eigenen "Notizen"-Bereich zum Anhängen (z. B. "Telefonat geführt",
+  "Zusage laut Anruf").
+- Statuswechsel per Drag&Drop/Select ändert bewusst *nur* den Status
+  (neue Route `POST /bewerbungen/{id}/verschieben`) - Termindaten bleiben
+  dabei unangetastet; das bestehende "Termin bearbeiten"-Formular deckt
+  weiterhin beides zusammen ab, wenn gewünscht.
+
 ## [0.1.21] - 2026-08-03
 
 ### Changed

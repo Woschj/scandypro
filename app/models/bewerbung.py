@@ -17,10 +17,12 @@ class BewerbungStatus(str, Enum):
 
 
 class Bewerbung(SQLModel, table=True):
-    """Sensibel (potenziell diskriminierungsrelevant). `notizen` liegt
-    feldverschlüsselt in der DB (siehe app/core/crypto.py) - Zugriff für
-    Dritte nur über aktive BewerbungsFreigabe (siehe weiter unten,
-    app/core/access.py)."""
+    """Sensibel (potenziell diskriminierungsrelevant), gedacht als per Status
+    verschiebbares "Workitem" analog zu einer Kanban-Karte (siehe
+    app/templates/bewerbungen/uebersicht.html: Board-Ansicht,
+    app/models/kanban.py:Karte fürs Vorbild) - `status` entspricht dabei der
+    Spalte. Freitext-Verlauf liegt nicht mehr in einem einzelnen Feld,
+    sondern in BewerbungsNotiz (siehe unten, mehrere pro Bewerbung)."""
 
     id: int | None = Field(default=None, primary_key=True)
     teilnehmer_id: int = Field(foreign_key="user.id", index=True)
@@ -36,7 +38,20 @@ class Bewerbung(SQLModel, table=True):
     # zwecke, ohne Zeitzonen-/Kombinationslogik einzuführen.
     naechster_termin_uhrzeit: str | None = None
     naechster_termin_ort: str | None = None
-    notizen: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BewerbungsNotiz(SQLModel, table=True):
+    """Eine einzelne, feldverschlüsselte Notiz zu einer Bewerbung (z.B.
+    "Telefonat geführt", "Zusage laut Anruf") - ersetzt das frühere
+    einzelne Bewerbung.notizen-Feld durch einen wachsenden Verlauf,
+    analog zu Unteraufgabe bei einer Kanban-Karte. Reine Anhäng-/Lösch-
+    Historie, kein Bearbeiten bestehender Einträge (Verlauf soll
+    nachvollziehbar bleiben)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    bewerbung_id: int = Field(foreign_key="bewerbung.id", index=True)
+    text: str = Field(sa_column=Column(VerschluesselterText))
     erstellt_am: datetime = Field(default_factory=datetime.utcnow)
 
 

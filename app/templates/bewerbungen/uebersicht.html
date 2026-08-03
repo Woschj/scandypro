@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Bewerbungen – ScandyPro{% endblock %}
+{% block content_class %}main-content--wide{% endblock %}
 {% block content %}
 <h1>Bewerbungen</h1>
 <p class="visibility-hint">Nur für dich sichtbar, außer du gibst gezielt frei.</p>
@@ -51,122 +52,15 @@
 </div>
 {% endif %}
 
-{% macro bewerbung_karte(b) %}
-<div class="card">
-  <div class="form-row" style="align-items:center; justify-content:space-between; gap: var(--space-3); margin-bottom: var(--space-2);">
-    <h3 style="margin:0;">{{ b.firma }} — {{ b.position }}</h3>
-    <span class="chip {{ 'chip-success' if b.status.value == 'zugesagt' else 'chip-neutral' }}">{{ b.status.value | bewerbungsstatus }}</span>
-  </div>
-  <p class="karte-meta">
-    Beworben am {{ b.beworben_am or "–" }}
-    {%- if b.naechster_termin %} · Nächster Termin {{ b.naechster_termin }}{% if b.naechster_termin_uhrzeit %}, {{ b.naechster_termin_uhrzeit }} Uhr{% endif %}{% if b.naechster_termin_ort %} · {{ b.naechster_termin_ort }}{% endif %}{% endif %}
-  </p>
-  {% if b.notizen %}<p>{{ b.notizen }}</p>{% endif %}
-
-  <div class="zuklapp-liste" style="margin-top: var(--space-3);">
-    <details class="zuklapp-eintrag" open>
-      <summary>
-        <span class="zuklapp-eintrag-chevron">▸</span>
-        <span class="zuklapp-eintrag-titel">Status &amp; Termin bearbeiten</span>
-      </summary>
-      <div class="zuklapp-eintrag-body">
-        <form method="post" action="/bewerbungen/{{ b.id }}/status" class="form-row" style="align-items: end;">
-          {% include "partials/csrf_field.html" %}
-          <div class="field">
-            <label for="status_wert-{{ b.id }}">Status</label>
-            <select id="status_wert-{{ b.id }}" name="status_wert">
-              {% for s in status_optionen %}
-              <option value="{{ s.value }}" {% if s == b.status %}selected{% endif %}>{{ s.value | bewerbungsstatus }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="field">
-            <label for="naechster_termin-{{ b.id }}">Nächster Termin</label>
-            <input type="date" id="naechster_termin-{{ b.id }}" name="naechster_termin" value="{{ b.naechster_termin or '' }}">
-          </div>
-          <div class="field">
-            <label for="naechster_termin_uhrzeit-{{ b.id }}">Uhrzeit</label>
-            <input type="time" id="naechster_termin_uhrzeit-{{ b.id }}" name="naechster_termin_uhrzeit" value="{{ b.naechster_termin_uhrzeit or '' }}">
-          </div>
-          <div class="field">
-            <label for="naechster_termin_ort-{{ b.id }}">Ort</label>
-            <input type="text" id="naechster_termin_ort-{{ b.id }}" name="naechster_termin_ort" value="{{ b.naechster_termin_ort or '' }}" placeholder="z. B. Adresse oder Video-Link">
-          </div>
-          <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
-        </form>
-      </div>
-    </details>
-
-    <details class="zuklapp-eintrag">
-      <summary>
-        <span class="zuklapp-eintrag-chevron">▸</span>
-        <span class="zuklapp-eintrag-titel">Unterlagen</span>
-        {% set anzahl_unterlagen = deckblatt_by_bewerbung.get(b.id, []) | length + anschreiben_by_bewerbung.get(b.id, []) | length %}
-        {% if anzahl_unterlagen %}<span class="chip chip-neutral">{{ anzahl_unterlagen }}</span>{% endif %}
-      </summary>
-      <div class="zuklapp-eintrag-body">
-        <div class="eyebrow" style="margin-bottom: var(--space-2);">Deckblatt (optional, vor dem Anschreiben)</div>
-        {% for u in deckblatt_by_bewerbung.get(b.id, []) %}
-        <div class="datei-zeile">
-          <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
-          {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
-          <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Deckblatt löschen?">
-            {% include "partials/csrf_field.html" %}
-            <button type="submit" class="link-btn danger">Löschen</button>
-          </form>
-        </div>
-        {% else %}
-        <p class="empty-state">Kein Deckblatt hochgeladen.</p>
-        {% endfor %}
-        <form method="post" action="/bewerbungen/{{ b.id }}/deckblatt" enctype="multipart/form-data" class="form-row">
-          {% include "partials/csrf_field.html" %}
-          <div class="field">
-            <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
-          </div>
-          <button type="submit" class="btn btn-ghost btn-sm">Deckblatt hochladen</button>
-        </form>
-
-        <div class="eyebrow" style="margin-top: var(--space-4); margin-bottom: var(--space-2);">Anschreiben</div>
-        {% for u in anschreiben_by_bewerbung.get(b.id, []) %}
-        <div class="datei-zeile">
-          <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
-          {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
-          <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Anschreiben löschen?">
-            {% include "partials/csrf_field.html" %}
-            <button type="submit" class="link-btn danger">Löschen</button>
-          </form>
-        </div>
-        {% else %}
-        <p class="empty-state">Noch kein Anschreiben hochgeladen.</p>
-        {% endfor %}
-        <form method="post" action="/bewerbungen/{{ b.id }}/anschreiben" enctype="multipart/form-data" class="form-row">
-          {% include "partials/csrf_field.html" %}
-          <div class="field">
-            <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
-          </div>
-          <button type="submit" class="btn btn-ghost btn-sm">Anschreiben hochladen</button>
-        </form>
-
-        <div style="margin-top: var(--space-4); display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap;">
-          <a class="btn btn-ghost btn-sm" href="/bewerbungen/{{ b.id }}/pdf">Gesamt-PDF erzeugen</a>
-          <span class="karte-meta">Deckblatt + Anschreiben + Lebenslauf/Zeugnisse (in deiner Sortierung) in einem PDF. Nur PDF-/Bilddateien werden eingebunden, Word-Dokumente bitte separat anhängen.</span>
-        </div>
-      </div>
-    </details>
-  </div>
-
-  <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" data-confirm="Bewerbung &quot;{{ b.firma }} — {{ b.position }}&quot; endgültig löschen?" style="margin-top: var(--space-3);">
-    {% include "partials/csrf_field.html" %}
-    <button type="submit" class="link-btn danger">Bewerbung löschen</button>
-  </form>
-</div>
-{% endmacro %}
-
-{% set laufende_bewerbungen = bewerbungen | rejectattr("status.value", "in", ["abgesagt", "zugesagt"]) | list %}
-{% set abgeschlossene_bewerbungen = bewerbungen | selectattr("status.value", "in", ["abgesagt", "zugesagt"]) | list %}
-
-<div class="seiten-tabs" x-data="{ tab: 'neu' }">
+<div class="seiten-tabs" x-data="{ tab: 'board' }">
   <nav class="seiten-tabs-nav" aria-label="Bewerbungs-Bereiche">
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'board' }" @click="tab = 'board'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>
+      </span>
+      Bewerbungen
+      {% if bewerbungen %}<span class="seiten-tabs-badge">{{ bewerbungen | length }}</span>{% endif %}
+    </button>
     <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'neu' }" @click="tab = 'neu'">
       <span class="seiten-tabs-icon" aria-hidden="true">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -179,20 +73,6 @@
       </span>
       Meine Unterlagen
     </button>
-    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'laufend' }" @click="tab = 'laufend'">
-      <span class="seiten-tabs-icon" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-      </span>
-      Laufende Bewerbungen
-      {% if laufende_bewerbungen %}<span class="seiten-tabs-badge">{{ laufende_bewerbungen | length }}</span>{% endif %}
-    </button>
-    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'abgeschlossen' }" @click="tab = 'abgeschlossen'">
-      <span class="seiten-tabs-icon" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-      </span>
-      Abgeschlossene Bewerbungen
-      {% if abgeschlossene_bewerbungen %}<span class="seiten-tabs-badge">{{ abgeschlossene_bewerbungen | length }}</span>{% endif %}
-    </button>
     <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'freigeben' }" @click="tab = 'freigeben'">
       <span class="seiten-tabs-icon" aria-hidden="true">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
@@ -202,6 +82,193 @@
   </nav>
 
   <div class="seiten-tabs-panels">
+    <div x-show="tab === 'board'" x-cloak>
+      {% if bewerbungen %}
+      <p class="karte-meta" style="margin-bottom: var(--space-4);">Ziehe eine Bewerbung in eine andere Spalte, um ihren
+        Status zu ändern - oder nutze das "Verschieben"-Feld in der Karte (auch per Tastatur bedienbar).</p>
+      <div class="board-columns">
+        {% for s in status_optionen %}
+        {% set bewerbungen_in_spalte = bewerbungen | selectattr("status", "equalto", s) | list %}
+        <div class="board-column {% if s.value in ('zugesagt', 'abgesagt') %}board-column--erledigt{% endif %}">
+          <div class="board-column-head">
+            <h3>{{ s.value | bewerbungsstatus }}</h3>
+            <span class="spalte-count">{{ bewerbungen_in_spalte | length }}</span>
+          </div>
+          <div class="karten-liste" data-status="{{ s.value }}">
+          {% for b in bewerbungen_in_spalte %}
+          {% set notizen = notizen_by_bewerbung.get(b.id, []) %}
+          {% set ist_ueberfaellig = b.naechster_termin and b.naechster_termin < heute %}
+          <details class="karte" draggable="true" data-bewerbung-id="{{ b.id }}">
+            <summary>
+              <div class="karte-titel">{{ b.firma }} — {{ b.position }}</div>
+              {% if b.naechster_termin or notizen %}
+              <div class="karte-badges">
+                {% if b.naechster_termin %}
+                <span class="karte-badge {% if ist_ueberfaellig %}karte-badge--faellig{% endif %}">
+                  📅 {{ b.naechster_termin.strftime("%d.%m.") }}{% if b.naechster_termin_uhrzeit %}, {{ b.naechster_termin_uhrzeit }}{% endif %}{% if ist_ueberfaellig %} · überfällig{% endif %}
+                </span>
+                {% endif %}
+                {% if notizen %}
+                <span class="karte-badge">📝 {{ notizen | length }} Notiz{{ "en" if notizen | length != 1 }}</span>
+                {% endif %}
+              </div>
+              {% endif %}
+            </summary>
+
+            <div class="karte-body">
+              {% if status_optionen | length > 1 %}
+              <form method="post" action="/bewerbungen/{{ b.id }}/verschieben" class="form-row">
+                {% include "partials/csrf_field.html" %}
+                <div class="field" style="flex:1;">
+                  <label for="verschieben-{{ b.id }}">In anderen Status verschieben (auch per Tastatur bedienbar, als Alternative zum Ziehen mit der Maus)</label>
+                  <select id="verschieben-{{ b.id }}" name="status_wert" required aria-label="Neuer Status für {{ b.firma }} — {{ b.position }}">
+                    <option value="" selected disabled>– Status wählen –</option>
+                    {% for ziel in status_optionen %}
+                    {% if ziel != s %}
+                    <option value="{{ ziel.value }}">{{ ziel.value | bewerbungsstatus }}</option>
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-ghost btn-sm">Verschieben</button>
+              </form>
+              {% endif %}
+
+              <div class="zuklapp-liste" style="margin-top: var(--space-3);">
+                <details class="zuklapp-eintrag">
+                  <summary>
+                    <span class="zuklapp-eintrag-chevron">▸</span>
+                    <span class="zuklapp-eintrag-titel">Termin bearbeiten</span>
+                  </summary>
+                  <div class="zuklapp-eintrag-body">
+                    <form method="post" action="/bewerbungen/{{ b.id }}/status" class="form-row" style="align-items:end;">
+                      {% include "partials/csrf_field.html" %}
+                      <input type="hidden" name="status_wert" value="{{ b.status.value }}">
+                      <div class="field">
+                        <label for="termin-{{ b.id }}">Nächster Termin</label>
+                        <input type="date" id="termin-{{ b.id }}" name="naechster_termin" value="{{ b.naechster_termin or '' }}">
+                      </div>
+                      <div class="field">
+                        <label for="termin-zeit-{{ b.id }}">Uhrzeit</label>
+                        <input type="time" id="termin-zeit-{{ b.id }}" name="naechster_termin_uhrzeit" value="{{ b.naechster_termin_uhrzeit or '' }}">
+                      </div>
+                      <div class="field">
+                        <label for="termin-ort-{{ b.id }}">Ort</label>
+                        <input type="text" id="termin-ort-{{ b.id }}" name="naechster_termin_ort" value="{{ b.naechster_termin_ort or '' }}" placeholder="z. B. Adresse oder Video-Link">
+                      </div>
+                      <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
+                    </form>
+                  </div>
+                </details>
+
+                <details class="zuklapp-eintrag">
+                  <summary>
+                    <span class="zuklapp-eintrag-chevron">▸</span>
+                    <span class="zuklapp-eintrag-titel">Notizen</span>
+                    {% if notizen %}<span class="chip chip-neutral">{{ notizen | length }}</span>{% endif %}
+                  </summary>
+                  <div class="zuklapp-eintrag-body">
+                    {% for notiz in notizen %}
+                    <div class="datei-zeile">
+                      <div style="flex:1;">
+                        <p style="margin:0;">{{ notiz.text }}</p>
+                        <span class="karte-meta">{{ notiz.erstellt_am.strftime("%d.%m.%Y %H:%M") }}</span>
+                      </div>
+                      <form method="post" action="/bewerbungen/notizen/{{ notiz.id }}/loeschen" data-confirm="Notiz löschen?">
+                        {% include "partials/csrf_field.html" %}
+                        <button type="submit" class="link-btn danger">Löschen</button>
+                      </form>
+                    </div>
+                    {% else %}
+                    <p class="empty-state">Noch keine Notizen.</p>
+                    {% endfor %}
+                    <form method="post" action="/bewerbungen/{{ b.id }}/notizen" class="form-row" style="margin-top: var(--space-3);">
+                      {% include "partials/csrf_field.html" %}
+                      <div class="field" style="flex:1;">
+                        <label for="notiz-{{ b.id }}">Neue Notiz</label>
+                        <textarea id="notiz-{{ b.id }}" name="text" placeholder="z. B. Telefonat geführt, Zusage laut Anruf …" required></textarea>
+                      </div>
+                      <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+                    </form>
+                  </div>
+                </details>
+
+                <details class="zuklapp-eintrag">
+                  <summary>
+                    <span class="zuklapp-eintrag-chevron">▸</span>
+                    <span class="zuklapp-eintrag-titel">Unterlagen</span>
+                    {% set anzahl_unterlagen = deckblatt_by_bewerbung.get(b.id, []) | length + anschreiben_by_bewerbung.get(b.id, []) | length %}
+                    {% if anzahl_unterlagen %}<span class="chip chip-neutral">{{ anzahl_unterlagen }}</span>{% endif %}
+                  </summary>
+                  <div class="zuklapp-eintrag-body">
+                    <div class="eyebrow" style="margin-bottom: var(--space-2);">Deckblatt (optional, vor dem Anschreiben)</div>
+                    {% for u in deckblatt_by_bewerbung.get(b.id, []) %}
+                    <div class="datei-zeile">
+                      <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+                      {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
+                      <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Deckblatt löschen?">
+                        {% include "partials/csrf_field.html" %}
+                        <button type="submit" class="link-btn danger">Löschen</button>
+                      </form>
+                    </div>
+                    {% else %}
+                    <p class="empty-state">Kein Deckblatt hochgeladen.</p>
+                    {% endfor %}
+                    <form method="post" action="/bewerbungen/{{ b.id }}/deckblatt" enctype="multipart/form-data" class="form-row">
+                      {% include "partials/csrf_field.html" %}
+                      <div class="field">
+                        <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
+                      </div>
+                      <button type="submit" class="btn btn-ghost btn-sm">Deckblatt hochladen</button>
+                    </form>
+
+                    <div class="eyebrow" style="margin-top: var(--space-4); margin-bottom: var(--space-2);">Anschreiben</div>
+                    {% for u in anschreiben_by_bewerbung.get(b.id, []) %}
+                    <div class="datei-zeile">
+                      <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+                      {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
+                      <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Anschreiben löschen?">
+                        {% include "partials/csrf_field.html" %}
+                        <button type="submit" class="link-btn danger">Löschen</button>
+                      </form>
+                    </div>
+                    {% else %}
+                    <p class="empty-state">Noch kein Anschreiben hochgeladen.</p>
+                    {% endfor %}
+                    <form method="post" action="/bewerbungen/{{ b.id }}/anschreiben" enctype="multipart/form-data" class="form-row">
+                      {% include "partials/csrf_field.html" %}
+                      <div class="field">
+                        <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
+                      </div>
+                      <button type="submit" class="btn btn-ghost btn-sm">Anschreiben hochladen</button>
+                    </form>
+
+                    <div style="margin-top: var(--space-4); display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap;">
+                      <a class="btn btn-ghost btn-sm" href="/bewerbungen/{{ b.id }}/pdf">Gesamt-PDF erzeugen</a>
+                      <span class="karte-meta">Deckblatt + Anschreiben + Lebenslauf/Zeugnisse (in deiner Sortierung) in einem PDF. Nur PDF-/Bilddateien werden eingebunden, Word-Dokumente bitte separat anhängen.</span>
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" data-confirm="Bewerbung &quot;{{ b.firma }} — {{ b.position }}&quot; endgültig löschen?" style="margin-top: var(--space-3);">
+                {% include "partials/csrf_field.html" %}
+                <button type="submit" class="link-btn danger">Bewerbung löschen</button>
+              </form>
+            </div>
+          </details>
+          {% else %}
+          <p class="empty-state">Keine Bewerbungen.</p>
+          {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty-state">Noch keine Bewerbungen – leg im Tab "Neue Bewerbung" die erste an.</p>
+      {% endif %}
+    </div>
+
     <div x-show="tab === 'neu'" x-cloak>
       <div class="card">
         <h3>Neue Bewerbung</h3>
@@ -238,7 +305,7 @@
             </div>
           </div>
           <div class="field">
-            <label for="notizen">Notizen (optional)</label>
+            <label for="notizen">Erste Notiz (optional)</label>
             <textarea id="notizen" name="notizen"></textarea>
           </div>
           <div class="field">
@@ -315,26 +382,6 @@
       </div>
     </div>
 
-    <div x-show="tab === 'laufend'" x-cloak>
-      {% if laufende_bewerbungen %}
-      {% for b in laufende_bewerbungen %}
-      {{ bewerbung_karte(b) }}
-      {% endfor %}
-      {% else %}
-      <p class="empty-state">Keine laufenden Bewerbungen – lege oben eine neue an.</p>
-      {% endif %}
-    </div>
-
-    <div x-show="tab === 'abgeschlossen'" x-cloak>
-      {% if abgeschlossene_bewerbungen %}
-      {% for b in abgeschlossene_bewerbungen %}
-      {{ bewerbung_karte(b) }}
-      {% endfor %}
-      {% else %}
-      <p class="empty-state">Noch keine abgeschlossenen Bewerbungen.</p>
-      {% endif %}
-    </div>
-
     <div x-show="tab === 'freigeben'" x-cloak>
       <div class="card">
         <h3>Für wen freigeben</h3>
@@ -397,4 +444,5 @@
     </div>
   </div>
 </div>
+<script src="/static/js/bewerbungen-board.js?v={{ asset_version }}"></script>
 {% endblock %}
