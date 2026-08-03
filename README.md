@@ -46,11 +46,14 @@ Auf dem Proxmox-Host (als root):
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandypro/main/proxmox/ct/scandypro.sh)"
 ```
 
-Legt einen eigenen, unprivilegierten LXC-Container an (Debian 12,
-PostgreSQL 16, Python-venv, systemd-Dienst `scandypro` auf Port 8000) und
-zeigt am Ende IP + Admin-Zugangsdaten. Erneuter Aufruf des Skripts bietet
-im Menü "Aktualisieren" für eine bestehende Installation an (git pull +
-Migrationen + Dienst-Neustart). Läuft komplett unabhängig von einer
+Legt einen eigenen, unprivilegierten LXC-Container an (Debian 13,
+PostgreSQL 16, Python-venv, zwei systemd-Dienste `scandypro` (HTTP, nur
+`127.0.0.1:8000`, nicht von außen erreichbar) und `scandypro-https`
+(selbstsigniertes Zertifikat, `0.0.0.0:8443`) - analog zu Scandy-Lite,
+siehe Abschnitt "TLS (Produktivbetrieb)") und zeigt am Ende IP +
+Admin-Zugangsdaten. Erneuter Aufruf des Skripts bietet im Menü
+"Aktualisieren" für eine bestehende Installation an (git pull + Migrationen
++ Dienst-Neustart). Läuft komplett unabhängig von einer
 Scandy-Lite-Installation im selben Proxmox-Host (eigener Container, eigene
 IP, keine Port-Kollision).
 
@@ -89,6 +92,36 @@ Berufstrainer) in der Abteilung Medien & Digital, die Teilnehmergruppe
 "Imagefilm Werkstatt", sowie ein bereits abgegebener Wochenbericht von
 Tanja Teilnehmer – so sind Kanban-Zusammenarbeit und Wochenberichte
 direkt sichtbar, ohne erst Grunddaten anlegen zu müssen.
+
+## Proxmox-Stack: beliebige Kombination installieren
+
+ScandyPro, [Scandy-Lite](https://github.com/Woschj/scandy-lite) und
+Authentik haben jeweils ihr **eigenes, unabhängiges** Proxmox-Installer-
+Skript (community-scripts-Konvention: `proxmox/ct/<app>.sh` +
+`proxmox/install/<app>-install.sh`, siehe Kommentare in
+[`proxmox/ct/scandypro.sh`](proxmox/ct/scandypro.sh)). Jedes legt seinen
+**eigenen** LXC-Container an und läuft komplett unabhängig von den
+anderen beiden - keine gemeinsame Zustandsverwaltung, keine
+Port-Kollision. Eine beliebige Kombination der drei zu installieren
+bedeutet daher einfach: nur die Skripte der gewünschten Komponenten
+ausführen, in beliebiger Reihenfolge, alle auf demselben Proxmox-Host (als
+root):
+
+```bash
+# ScandyPro
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandypro/main/proxmox/ct/scandypro.sh)"
+
+# Scandy-Lite (siehe dortiges README für den genauen Skriptpfad)
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandy-lite/main/proxmox/ct/scandy-lite.sh)"
+
+# Authentik (Community-Skript, siehe SSO_AUTHENTIK.md Teil A)
+bash -c "$(curl -fsSL https://community-scripts.github.io/ProxmoxVE/ct/authentik.sh)"
+```
+
+Nur ScandyPro + Authentik gewünscht? Einfach die Scandy-Lite-Zeile
+weglassen - entsprechend für jede andere Kombination. Erneuter Aufruf
+eines Skripts bietet jeweils "Aktualisieren" für eine bestehende
+Installation an, statt einen weiteren Container anzulegen.
 
 ## TLS (Produktivbetrieb)
 

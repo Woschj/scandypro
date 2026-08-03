@@ -8,11 +8,10 @@
 # (https://github.com/Woschj/scandypro).
 #
 # 1:1 nach dem Vorbild von Scandy-Lite (proxmox/install/scandy-lite-install.sh)
-# gebaut, mit zwei bewussten Abweichungen:
-#   - nur EIN systemd-Dienst/Port (8000): ScandyPro hat kein Kamera-Scan-
-#     Feature, das zwingend HTTPS bräuchte (Scandy-Lite braucht dafür einen
-#     zweiten uvicorn-Prozess mit selbstsigniertem Zertifikat) - auch das
-#     Docker-Compose-Setup von ScandyPro hat nur einen HTTP-Port.
+# gebaut, inklusive desselben HTTP+HTTPS-Doppelservice-Musters (Klartext nur
+# auf 127.0.0.1:8000 fuer lokale Zwecke, TLS mit selbstsigniertem Zertifikat
+# auf 0.0.0.0:8443 - "ausschliesslich HTTPS von aussen", siehe README.md
+# "TLS (Produktivbetrieb)"), mit einer bewussten Abweichung:
 #   - Admin-Bootstrap läuft NICHT über ein separates Skript, sondern
 #     automatisch beim ersten App-Start (siehe app/main.py:lifespan,
 #     app/core/seed.py:seed_admin) - einfach ADMIN_EMAIL/ADMIN_PASSWORD in
@@ -86,6 +85,7 @@ FIELD_ENCRYPTION_KEY=$FIELD_ENCRYPTION_KEY
 SEED_DEMO_DATA=false
 ADMIN_EMAIL=admin@scandypro.local
 ADMIN_PASSWORD=$ADMIN_PASSWORD
+SESSION_COOKIE_SECURE=true
 EOF
 set -a
 . /opt/scandypro/.env
@@ -103,23 +103,36 @@ msg_ok "Applied database migrations"
 cat <<EOF >/root/scandypro.creds
 ScandyPro Admin-Zugangsdaten
 =============================
-URL: http://<container-ip>:8000
+URL: https://<container-ip>:8443 (selbstsigniertes Zertifikat - Browser
+zeigt beim ersten Aufruf eine Warnung, einmalig pro Geraet bestaetigen)
 
 E-Mail:   admin@scandypro.local
 Passwort: $ADMIN_PASSWORD
 
-Passwort danach über "Mein Konto" (http://<container-ip>:8000/konto) ändern
-und ADMIN_PASSWORD aus /opt/scandypro/.env entfernen (liegt aktuell im
-Klartext, wird nach dem ersten Start nicht erneut gebraucht - das
+Passwort danach über "Mein Konto" (https://<container-ip>:8443/konto)
+ändern und ADMIN_PASSWORD aus /opt/scandypro/.env entfernen (liegt aktuell
+im Klartext, wird nach dem ersten Start nicht erneut gebraucht - das
 Admin-Konto existiert dann schon).
 Diese Datei danach löschen (rm /root/scandypro.creds).
 EOF
 chmod 600 /root/scandypro.creds
 
-msg_info "Creating Service"
+msg_info "Creating self-signed TLS certificate"
+CT_IP="$(hostname -I | awk '{print $1}')"
+mkdir -p /etc/ssl/scandypro
+chmod 700 /etc/ssl/scandypro
+openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+  -keyout /etc/ssl/scandypro/scandypro.key -out /etc/ssl/scandypro/scandypro.crt \
+  -subj "/CN=scandypro.fritz.box" \
+  -addext "subjectAltName=DNS:scandypro.fritz.box,DNS:localhost,IP:${CT_IP},IP:127.0.0.1" \
+  >/dev/null 2>&1
+chmod 600 /etc/ssl/scandypro/scandypro.key
+msg_ok "Created self-signed TLS certificate"
+
+msg_info "Creating Services"
 cat <<EOF >/etc/systemd/system/scandypro.service
 [Unit]
-Description=ScandyPro
+Description=ScandyPro (HTTP, nur lokal)
 After=network.target postgresql.service
 Requires=postgresql.service
 
@@ -127,15 +140,32 @@ Requires=postgresql.service
 Type=simple
 WorkingDirectory=/opt/scandypro
 EnvironmentFile=/opt/scandypro/.env
-ExecStart=/opt/scandypro/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=/opt/scandypro/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=on-failure
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
-systemctl enable -q --now scandypro
-msg_ok "Created Service"
+cat <<EOF >/etc/systemd/system/scandypro-https.service
+[Unit]
+Description=ScandyPro (HTTPS)
+After=network.target postgresql.service scandypro.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/scandypro
+EnvironmentFile=/opt/scandypro/.env
+ExecStart=/opt/scandypro/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8443 --ssl-keyfile /etc/ssl/scandypro/scandypro.key --ssl-certfile /etc/ssl/scandypro/scandypro.crt
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable -q --now scandypro scandypro-https
+msg_ok "Created Services"
 
 motd_ssh
 customize

@@ -8,6 +8,60 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.31] - 2026-08-03
+
+Fehlersuche/Fixes waehrend der Erstinbetriebnahme auf einem frischen
+Proxmox-Host (LXC-Installation, nicht Docker Compose).
+
+### Fixed
+- **`auth_source` fehlte der Postgres-ENUM-Typ** - Migration
+  `e3f4a5b6c7d8` legte die Spalte als reinen `sa.String()` an, waehrend
+  das `User`-Model einen nativen Enum erwartet (analog `role`/`roleenum`
+  aus der initialen Migration). Ohne den Typ scheiterte das
+  Admin-Seeding beim allerersten App-Start mit
+  `UndefinedObjectError: type "authsource" does not exist` -
+  uvicorn beendete sich dadurch dauerhaft mit Exit-Code 3, ohne
+  sichtbaren Traceback im systemd-Journal (gepuffertes stdout ging beim
+  harten Prozessende verloren). Neue Migration
+  `f1a2b3c4d5e6_authsource_enum_type.py` legt den Typ nach und
+  konvertiert die Spalte.
+
+### Changed
+- **Proxmox-LXC-Installer auf "ausschließlich HTTPS" umgestellt** -
+  `proxmox/ct/scandypro.sh`/`proxmox/install/scandypro-install.sh` legen
+  jetzt wie Scandy-Lite zwei systemd-Dienste an: `scandypro` (Klartext-
+  HTTP, nur `127.0.0.1:8000`, von außen nicht erreichbar) und
+  `scandypro-https` (selbstsigniertes Zertifikat, `0.0.0.0:8443`).
+  Debian-Template von 12 auf 13 ("Trixie") angehoben.
+- **README.md**: neuer Abschnitt "Proxmox-Stack: beliebige Kombination
+  installieren" - stellt klar, dass ScandyPro/Scandy-Lite/Authentik
+  bereits unabhängige Installer-Skripte haben und jede Kombination
+  einfach durch Ausführen der gewünschten Teilmenge entsteht (keine
+  gemeinsame Zustandsverwaltung nötig).
+
+## [0.1.30] - 2026-08-03
+
+Nutzer-Feedback zu 0.1.12.
+
+### Changed
+- **Per-Element-Toasts in "Mein Tag" wieder entfernt** - vom Nutzer als "zu
+  unauffällig" eingestuft; `app/static/js/tagebuch-interaktiv.js` zurück auf
+  den Stand vor 0.1.12 (die gemeinsame Toast-Komponente
+  `app/static/js/toast.js` bleibt bestehen, wird weiterhin von Kanban
+  genutzt).
+- **Dashboard-Kachel "Tage ins Tagebuch geschrieben"** zeigt jetzt einen
+  bestärkenden Satz statt nur der reinen Zahl - das war die eigentlich
+  gewünschte Stelle für positive Verstärkung.
+
+### Planned
+- [VB-018](tasks/ganzheitliche-verbesserungen/VB-018.md): kompletter Plan
+  für ein Rework der Mein-Tag-Minispiele aus 0.1.10/VB-006 - Diagnose: die
+  meisten der 10 neuen Übungstypen sind im Kern Textfelder/Checkboxen mit
+  Label, kein eigenständiges Interaktionserlebnis wie Atemübung/Zeichnung.
+  Löst eine kleine Zahl wiederverwendbarer Interaktions-Primitive vor
+  (Karte umdrehen, Zone mit Halten-Timer auf Körpersilhouette, Waage/
+  Slider, Karten wegwischen, Foto-Rahmen, Wort-Rad). Noch nicht umgesetzt.
+
 ## [0.1.29] - 2026-08-03
 
 ### Added
@@ -391,29 +445,6 @@ frühere Sandbox-Einschränkungen in dieser Datei).
   verschwunden, dort bewusst nicht zusätzlich gewrappt, um die
   Zeilen-Dropdowns (`.zeile-verwalten-body`, `position: absolute`) nicht
   zu riskieren).
-## [0.1.30] - 2026-08-03
-
-Nutzer-Feedback zu 0.1.12.
-
-### Changed
-- **Per-Element-Toasts in "Mein Tag" wieder entfernt** - vom Nutzer als "zu
-  unauffällig" eingestuft; `app/static/js/tagebuch-interaktiv.js` zurück auf
-  den Stand vor 0.1.12 (die gemeinsame Toast-Komponente
-  `app/static/js/toast.js` bleibt bestehen, wird weiterhin von Kanban
-  genutzt).
-- **Dashboard-Kachel "Tage ins Tagebuch geschrieben"** zeigt jetzt einen
-  bestärkenden Satz statt nur der reinen Zahl - das war die eigentlich
-  gewünschte Stelle für positive Verstärkung.
-
-### Planned
-- [VB-018](tasks/ganzheitliche-verbesserungen/VB-018.md): kompletter Plan
-  für ein Rework der Mein-Tag-Minispiele aus 0.1.10/VB-006 - Diagnose: die
-  meisten der 10 neuen Übungstypen sind im Kern Textfelder/Checkboxen mit
-  Label, kein eigenständiges Interaktionserlebnis wie Atemübung/Zeichnung.
-  Löst eine kleine Zahl wiederverwendbarer Interaktions-Primitive vor
-  (Karte umdrehen, Zone mit Halten-Timer auf Körpersilhouette, Waage/
-  Slider, Karten wegwischen, Foto-Rahmen, Wort-Rad). Noch nicht umgesetzt.
-
 ## [0.1.12] - 2026-08-03
 
 ### Added

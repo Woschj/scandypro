@@ -139,7 +139,7 @@ if [[ "$MODE" == "update" ]]; then
       exit 0
     fi
     echo "Update verfügbar: ${LOCAL_COMMIT:0:7} -> ${REMOTE_COMMIT:0:7}"
-    systemctl stop scandypro
+    systemctl stop scandypro scandypro-https 2>/dev/null || systemctl stop scandypro
     git reset -q --hard origin/main
     venv/bin/pip install -q -r requirements.txt
     set -a
@@ -147,6 +147,7 @@ if [[ "$MODE" == "update" ]]; then
     set +a
     venv/bin/alembic upgrade head
     systemctl start scandypro
+    systemctl start scandypro-https 2>/dev/null || true
     echo "Update abgeschlossen."
   '
   exit 0
@@ -239,10 +240,10 @@ fi
 ROOT_PASSWORD="$(openssl rand -hex 12)"
 
 echo ""
-echo "Suche aktuelles Debian-12-Template..."
-TEMPLATE="$(pveam available --section system 2>/dev/null | awk '/debian-12-standard/ {print $2}' | sort -V | tail -n1)"
+echo "Suche aktuelles Debian-13-Template..."
+TEMPLATE="$(pveam available --section system 2>/dev/null | awk '/debian-13-standard/ {print $2}' | sort -V | tail -n1)"
 if [[ -z "$TEMPLATE" ]]; then
-  echo "FEHLER: Kein Debian-12-Template gefunden (ggf. erst 'pveam update' ausführen)." >&2
+  echo "FEHLER: Kein Debian-13-Template gefunden (ggf. erst 'pveam update' ausführen)." >&2
   exit 1
 fi
 if ! pveam list "$TEMPLATE_STORAGE" 2>/dev/null | grep -q "$TEMPLATE"; then
@@ -292,7 +293,8 @@ pct exec "$CTID" -- bash -c "printf '\nContainer-Root-Passwort (Konsole/SSH): %s
 
 echo ""
 echo "=== Fertig! ==="
-echo "App erreichbar unter: http://${IP}:8000"
+echo "App erreichbar unter: https://${IP}:8443 (selbstsigniertes Zertifikat, Browser-Warnung beim ersten Aufruf einmalig bestätigen)"
+echo "Port 8000 ist bewusst nur auf 127.0.0.1 gebunden, von außen nicht erreichbar."
 echo ""
 echo "Admin-Zugangsdaten: pct exec ${CTID} -- cat /root/scandypro.creds"
 echo "Root-Passwort des Containers (Konsole/SSH): ${ROOT_PASSWORD}"
