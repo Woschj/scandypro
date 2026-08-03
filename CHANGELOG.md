@@ -34,6 +34,12 @@ analog zum Schwestermodul Scandy-Lite.
   - Konto-Seite erlaubt SSO-Accounts, zusätzlich ein lokales Passwort als
     Alternative einzurichten (ohne "aktuelles Passwort", da noch keins
     existiert).
+- **[SSO_AUTHENTIK.md](SSO_AUTHENTIK.md)**: vollständige Installations- und
+  Anbindungsanleitung - eigene Authentik-Instanz aufsetzen (Docker Compose,
+  analog zur offiziellen Authentik-Doku), Provider/Application anlegen,
+  ScandyPro konfigurieren, End-to-End-Testablauf, Fehlerbehebungstabelle.
+  `.env.example` um die vier `OIDC_*`-Variablen ergänzt, README.md verweist
+  darauf.
 
 ## [0.1.27] - 2026-08-03
 

@@ -1,0 +1,320 @@
+# ScandyPro — SSO-Login über Authentik einrichten
+
+Optionales Feature (siehe [CHANGELOG.md](CHANGELOG.md) 0.1.28): ein
+zusätzlicher "Mit \<Provider\>-Login"-Button neben dem normalen
+E-Mail/Passwort-Formular. Standardmäßig aus — erst aktiv, wenn die drei
+`OIDC_*`-Variablen gesetzt sind (siehe Schritt 5). Ziel ist ein **gemeinsamer
+Login für ScandyPro und das Schwestermodul
+[Scandy-Lite](https://github.com/Woschj/scandy-lite)**, das dieselbe
+Anbindung bereits produktiv nutzt — beide Apps werden dafür als **zwei
+getrennte Applications/Provider** im selben Authentik registriert (eigene
+Client-ID/Secret, eigene Redirect-URI je App), nicht als eine gemeinsame.
+
+Ablauf danach (siehe Schritt 6): Erster Login einer neuen Person legt
+automatisch ein Konto an, aber **gesperrt, ohne Rolle** — eine
+Einrichtungs-Admin muss es unter **Benutzerverwaltung → "Wartet auf
+Freischaltung"** erst freischalten (Rolle + Abteilung festlegen). Der
+Identity-Provider klärt nur "wer ist das", nie "was darf die Person" — siehe
+`app/core/oidc.py` und `docs/DATENSCHUTZ_UND_BERECHTIGUNGEN.md` §4.4.
+
+Dieses Dokument deckt beides ab: **A)** Authentik selbst installieren, falls
+noch keine Instanz existiert, und **B)** ScandyPro daran anbinden. Wer schon
+eine laufende Authentik-Instanz hat (z. B. aus der Scandy-Lite-Installation),
+kann direkt zu Teil B springen.
+
+## Voraussetzungen
+
+- Ein Server/Host für Authentik (kann derselbe Host wie ScandyPro sein, muss
+  aber nicht — Authentik ist als **eigener, unabhängiger Dienst** gedacht,
+  den sich mehrere Apps teilen)
+- ScandyPro muss Authentik über das Netzwerk erreichen können (der
+  App-Container ruft Authentik serverseitig auf, nicht nur der Browser der
+  Nutzer:innen)
+- **ScandyPro muss über HTTPS erreichbar sein**, bevor SSO produktiv genutzt
+  wird — Authentik akzeptiert bei einem "Confidential"-Client i. d. R. keine
+  reinen HTTP-Redirect-URIs. Der mitgelieferte `caddy/Caddyfile` läuft aktuell
+  bewusst ohne Domain auf Port 8080 (siehe README.md, Abschnitt "Bekannte
+  Lücken") — für SSO braucht ihr eine echte Domain, die auf den Host zeigt.
+  Umstellung ist mit Caddy minimal:
+
+  ```caddyfile
+  # caddy/Caddyfile - Domain statt Port, Caddy holt automatisch ein
+  # Let's-Encrypt-Zertifikat, sobald der Container von außen erreichbar ist
+  scandypro.eure-domain.de {
+      reverse_proxy app:8000
+  }
+  ```
+
+  Danach `APP_PORT`-Mapping in `compose.yaml` auf `80:80` und `443:443`
+  anpassen (statt `${APP_PORT:-8080}:80`) und den Stack neu starten.
+
+---
+
+## Teil A: Authentik installieren
+
+Überspringen, falls bereits eine Authentik-Instanz läuft.
+
+Authentik lebt **nicht** in ScandyPros `compose.yaml` — es ist ein eigener,
+von ScandyPro und Scandy-Lite unabhängiger Dienst. Eigenes Verzeichnis
+anlegen, z. B. neben den beiden App-Installationen:
+
+```bash
+mkdir -p ~/authentik && cd ~/authentik
+```
+
+### A.1 `.env` anlegen
+
+```bash
+cat > .env <<'EOF'
+PG_PASS=change-me-postgres-passwort
+AUTHENTIK_SECRET_KEY=change-me-langer-zufaelliger-string
+AUTHENTIK_ERROR_REPORTING__ENABLED=false
+EOF
+```
+
+Zufällige Werte erzeugen:
+
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"   # für PG_PASS
+python3 -c "import secrets; print(secrets.token_urlsafe(50))"  # für AUTHENTIK_SECRET_KEY
+```
+
+### A.2 `compose.yaml` anlegen
+
+```yaml
+services:
+  postgresql:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    volumes:
+      - database:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${PG_PASS}
+      POSTGRES_USER: authentik
+      POSTGRES_DB: authentik
+    env_file:
+      - .env
+
+  redis:
+    image: docker.io/library/redis:alpine
+    command: --save 60 1 --loglevel warning
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 3s
+    volumes:
+      - redis:/data
+
+  server:
+    image: ghcr.io/goauthentik/server:2024.10
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+    volumes:
+      - media:/media
+      - custom-templates:/templates
+    env_file:
+      - .env
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    depends_on:
+      - postgresql
+      - redis
+
+  worker:
+    image: ghcr.io/goauthentik/server:2024.10
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - media:/media
+      - certs:/certs
+      - custom-templates:/templates
+    env_file:
+      - .env
+    depends_on:
+      - postgresql
+      - redis
+
+volumes:
+  database:
+  redis:
+  media:
+  certs:
+  custom-templates:
+```
+
+Aktuelle Image-Version vor dem ersten Start prüfen unter
+<https://docs.goauthentik.io/docs/install-config/install/docker-compose> —
+`2024.10` oben ist ein Platzhalter für "eine funktionierende, zum
+Erstellungszeitpunkt aktuelle Version", keine feste Empfehlung.
+
+### A.3 Starten
+
+```bash
+docker compose up -d
+```
+
+Erststart dauert einen Moment (Datenbank-Migrationen). Fortschritt prüfen:
+
+```bash
+docker compose logs -f server
+```
+
+### A.4 Auf Domain/HTTPS bringen
+
+Wie bei ScandyPro braucht Authentik selbst auch HTTPS mit eigener Domain,
+sobald andere Apps produktiv dagegen laufen sollen (nicht nur `:9000` im
+lokalen Netz). Am einfachsten mit einem eigenen Caddy davor, analog zum
+ScandyPro-Setup — einen weiteren kleinen Service im selben `compose.yaml`
+oder einen bereits vorhandenen Reverse-Proxy auf dem Host nutzen:
+
+```caddyfile
+authentik.eure-domain.de {
+    reverse_proxy localhost:9000
+}
+```
+
+### A.5 Ersteinrichtung (Setup-Wizard)
+
+Im Browser `https://authentik.eure-domain.de/if/flow/initial-setup/` öffnen
+(oder `http://<host>:9000/if/flow/initial-setup/` bei reinem Test ohne
+Domain). Dort wird beim allerersten Aufruf ein `akadmin`-Konto mit Passwort
+eurer Wahl angelegt — danach ist die Instanz einsatzbereit für Teil B.
+
+---
+
+## Teil B: ScandyPro anbinden
+
+### 1. Provider in Authentik anlegen
+
+**Applications → Providers → Create**
+
+| Feld | Wert |
+|---|---|
+| Provider-Typ | **OAuth2/OpenID Provider** |
+| Name | z. B. `ScandyPro` |
+| Authorization flow | eine vorhandene Consent-Flow (z. B. `default-provider-authorization-explicit-consent`) |
+| Client type | **Confidential** (ScandyPro hält das Secret sicher serverseitig — **nicht** "Public" wählen) |
+| Redirect URIs/Origins (Strict) | `https://<eure-scandypro-domain>/auth/oidc/callback` **exakt so, inkl. Pfad** |
+| Scopes | die Standard-Mappings reichen: `openid`, `email`, `profile` |
+| Signing Key | einen vorhandenen Zertifikatsschlüssel auswählen (Pflichtfeld) |
+
+Speichern. Authentik zeigt danach **Client ID** und **Client Secret** an
+(Provider-Detailseite bzw. beim Bearbeiten sichtbar) — beide sofort notieren,
+das Secret wird später nicht mehr im Klartext angezeigt.
+
+### 2. Application anlegen und verknüpfen
+
+**Applications → Applications → Create**
+
+| Feld | Wert |
+|---|---|
+| Name | z. B. `ScandyPro` |
+| Slug | z. B. `scandypro` (landet in der Issuer-URL, siehe Schritt 3) |
+| Provider | den in Schritt 1 angelegten Provider auswählen |
+| Launch URL (optional) | `https://<eure-scandypro-domain>/` |
+
+Speichern. Falls euer Authentik-Setup Zugriff über Gruppen/Policies steuert:
+unter der Application die passenden Nutzer:innen/Gruppen freigeben, sonst
+bekommen sie beim Login "Access denied", bevor sie überhaupt bei ScandyPro
+ankommen.
+
+### 3. Issuer-URL finden
+
+Auf der Provider-Detailseite (Schritt 1) steht ein Link/Feld **"OpenID
+Configuration URL"**, meist in der Form:
+
+```
+https://authentik.eure-domain.de/application/o/<slug>/.well-known/openid-configuration
+```
+
+Für ScandyPro braucht ihr davon nur den Teil **vor** `.well-known/...`, also:
+
+```
+https://authentik.eure-domain.de/application/o/<slug>/
+```
+
+(`<slug>` ist der Application-Slug aus Schritt 2.)
+
+### 4. Zweite Application für Scandy-Lite (falls gewünscht)
+
+Schritte 1–3 ein zweites Mal, mit eigenem Namen/Slug (z. B. `Scandy-Lite`)
+und der Redirect-URI `https://<eure-scandy-lite-domain>/auth/oidc/callback`
+— siehe [Scandy-Lites eigene SSO_AUTHENTIK.md](https://github.com/Woschj/scandy-lite/blob/main/SSO_AUTHENTIK.md).
+Ergebnis: dieselbe Person meldet sich bei Authentik einmal an und bekommt
+danach in beiden Apps Zugriff angeboten (nach jeweils eigener
+Rollen-Freischaltung, siehe Schritt 6).
+
+### 5. ScandyPro konfigurieren
+
+Drei bzw. vier Umgebungsvariablen in ScandyPros `.env` setzen (siehe
+`.env.example`):
+
+| Variable | Wert |
+|---|---|
+| `OIDC_ISSUER` | die URL aus Schritt 3, **mit** abschließendem `/` |
+| `OIDC_CLIENT_ID` | aus Schritt 1 |
+| `OIDC_CLIENT_SECRET` | aus Schritt 1 |
+| `OIDC_PROVIDER_NAME` | optional, Beschriftung des Buttons, z. B. `Authentik` (Default: `SSO`) |
+
+```bash
+docker compose up -d --build app
+```
+
+(Neustart reicht auch ohne `--build`, solange sich nur `.env` geändert hat —
+`--build` nur nötig, falls parallel auch Code aktualisiert wurde.) Auf
+`/login` erscheint danach unter dem normalen Formular ein zusätzlicher
+Button "Mit \<OIDC_PROVIDER_NAME\> anmelden".
+
+### 6. Testen
+
+1. Ausloggen (oder privates Fenster), `/login` öffnen, auf den neuen Button
+   klicken
+2. Bei Authentik anmelden (+ ggf. Consent bestätigen)
+3. Zurück bei ScandyPro: Seite **"Fast geschafft"** sollte erscheinen (bei
+   **erstem** Login einer neuen Person) — die Person wartet jetzt auf
+   Freischaltung
+4. Als Einrichtungs-Admin einloggen (lokal, oder ein bereits freigeschaltetes
+   Konto), zu **Benutzerverwaltung → Accounts** (`/admin/benutzer`)
+5. Gruppe **"Wartet auf Freischaltung"** aufklappen, bei der neuen Person auf
+   **"Rolle zuweisen"** klicken
+6. Rolle (und bei Teilnehmer:innen die Abteilung) wählen, **Speichern**,
+   danach **"Account reaktivieren"**
+7. Die Person kann sich jetzt erneut über den Authentik-Button anmelden und
+   kommt direkt durch
+
+## Fehlerbehebung
+
+| Symptom | Wahrscheinliche Ursache | Lösung |
+|---|---|---|
+| Button "Mit ... anmelden" erscheint nicht | `OIDC_ISSUER`/`OIDC_CLIENT_ID`/`OIDC_CLIENT_SECRET` nicht (vollständig) gesetzt | alle drei in `.env` prüfen, `docker compose up -d app` erneut ausführen |
+| Nach Klick auf den Button: Fehlerseite bei Authentik ("invalid redirect_uri" o. ä.) | Redirect-URI in Authentik weicht ab | in Authentik exakt `https://<domain>/auth/oidc/callback` eintragen (Schema, Domain, Pfad müssen exakt passen) |
+| Nach Authentik-Login zurück bei ScandyPro: Fehlerseite/500 | `OIDC_ISSUER` falsch/unerreichbar, `OIDC_CLIENT_SECRET` falsch, oder Authentik nutzt ein selbstsigniertes Zertifikat, das der App-Container nicht vertraut | Werte prüfen; bei selbstsigniertem Zertifikat auf Authentik-Seite ein von der Umgebung vertrauenswürdiges Zertifikat verwenden (z. B. via Caddy/Let's Encrypt wie in Teil A.4) |
+| Bei Authentik: "Access denied" vor der Weiterleitung | Nutzer:in/Gruppe hat in Authentik keinen Zugriff auf die Application | unter der Application in Authentik den Zugriff freigeben (siehe Schritt 2) |
+| Konto bleibt dauerhaft auf "Wartet auf Freischaltung" | Noch niemand hat es freigeschaltet | als Admin unter Benutzerverwaltung freischalten (siehe Schritt 6) |
+| "Bitte zuerst eine Rolle zuweisen und speichern." beim Aktivieren-Versuch | Rolle wurde noch nicht gespeichert, bevor auf "Account reaktivieren" geklickt wurde | zuerst Rolle wählen und **Speichern**, danach erst aktivieren (zwei getrennte Formulare, bewusst so - siehe `app/routers/admin.py:benutzer_aktiv_umschalten`) |
+| Neue Person landet in der falschen/keiner Abteilung | Abteilung wird beim Freischalten bewusst erst dort festgelegt, nicht automatisch aus Authentik übernommen | beim Freischalten die richtige Abteilung wählen — danach wie gewohnt in der Benutzerverwaltung korrigierbar |
+| Zwei Accounts für dieselbe Person (einer lokal, einer per SSO) | Die E-Mail-Adressen bei Authentik und im bereits existierenden ScandyPro-Account stimmen nicht exakt überein | in Authentik die E-Mail der Person korrigieren, oder in ScandyPro die E-Mail des lokalen Accounts anpassen — bei nächstem SSO-Login mit übereinstimmender E-Mail verknüpft ScandyPro automatisch (siehe `app/core/oidc.py:finde_oder_lege_an`), Duplikat danach manuell in der Benutzerverwaltung deaktivieren |

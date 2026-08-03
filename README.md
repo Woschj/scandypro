@@ -90,6 +90,16 @@ Berufstrainer) in der Abteilung Medien & Digital, die Teilnehmergruppe
 Tanja Teilnehmer – so sind Kanban-Zusammenarbeit und Wochenberichte
 direkt sichtbar, ohne erst Grunddaten anlegen zu müssen.
 
+## Single Sign-On (SSO)
+
+Optional: Login über einen OIDC-Provider wie Authentik, gedacht für einen
+gemeinsamen Login mit [Scandy-Lite](https://github.com/Woschj/scandy-lite)
+(zentral gesteuerte Nutzer:innen über beide Apps hinweg). Ohne Konfiguration
+verhält sich ScandyPro exakt wie oben beschrieben - lokales Login bleibt
+immer verfügbar. Vollständige Installations- und Anbindungsanleitung
+(inkl. Authentik selbst aufsetzen, falls noch keine Instanz existiert):
+[SSO_AUTHENTIK.md](SSO_AUTHENTIK.md).
+
 ## Word-Vorlage für Wochenberichte
 
 `app/assets/wochenbericht_vorlage.docx` ist das von der Einrichtung
