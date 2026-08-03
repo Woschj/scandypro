@@ -64,18 +64,32 @@ async def betreute_teilnehmer_ids(session: AsyncSession, berufstrainer_id: int) 
 
 
 async def teilnehmer_hat_boardzugriff(session: AsyncSession, teilnehmer_id: int, board_id: int) -> bool:
-    result = await session.execute(
-        select(BoardFreigabe)
-        .join(
-            TeilnehmergruppeMitglied,
-            TeilnehmergruppeMitglied.gruppe_id == BoardFreigabe.gruppe_id,
-        )
-        .where(
-            BoardFreigabe.board_id == board_id,
-            TeilnehmergruppeMitglied.teilnehmer_id == teilnehmer_id,
+    """Zugriff über eine von drei Freigabe-Arten (siehe app/models/kanban.py:
+    BoardFreigabe): eigene Arbeitsgruppe, ganzes Handlungsfeld (direkte
+    Mitgliedschaft, siehe HandlungsfeldMitglied) oder individuelle
+    Freigabe an genau diese Person."""
+    direkt_result = await session.execute(
+        select(BoardFreigabe).where(
+            BoardFreigabe.board_id == board_id, BoardFreigabe.teilnehmer_id == teilnehmer_id
         )
     )
-    return result.first() is not None
+    if direkt_result.first() is not None:
+        return True
+
+    gruppe_result = await session.execute(
+        select(BoardFreigabe)
+        .join(TeilnehmergruppeMitglied, TeilnehmergruppeMitglied.gruppe_id == BoardFreigabe.gruppe_id)
+        .where(BoardFreigabe.board_id == board_id, TeilnehmergruppeMitglied.teilnehmer_id == teilnehmer_id)
+    )
+    if gruppe_result.first() is not None:
+        return True
+
+    handlungsfeld_result = await session.execute(
+        select(BoardFreigabe)
+        .join(HandlungsfeldMitglied, HandlungsfeldMitglied.handlungsfeld_id == BoardFreigabe.handlungsfeld_id)
+        .where(BoardFreigabe.board_id == board_id, HandlungsfeldMitglied.teilnehmer_id == teilnehmer_id)
+    )
+    return handlungsfeld_result.first() is not None
 
 
 async def ist_mitglied_von_handlungsfeld(session: AsyncSession, teilnehmer_id: int, handlungsfeld_id: int) -> bool:
@@ -125,19 +139,39 @@ async def ist_zustaendiger_trainer(session: AsyncSession, trainer_id: int, teiln
 
 async def boardmitglieder_ids(session: AsyncSession, board: Board) -> list[int]:
     """Teilnehmer:innen, denen auf diesem Board Karten zugewiesen werden
-    dürfen (IDOR-Schutz für Zuweisungen). Team-Board: Mitglieder der
-    freigegebenen Teilnehmergruppen. Personen-Board: nur die/der Owner.
+    dürfen (IDOR-Schutz für Zuweisungen). Team-Board: Mitglieder aller drei
+    Freigabe-Arten (Arbeitsgruppe, Handlungsfeld, individuell - siehe
+    app/models/kanban.py:BoardFreigabe). Personen-Board: nur die/der Owner.
     """
     if board.typ == BoardTyp.person:
         return [board.person_teilnehmer_id] if board.person_teilnehmer_id is not None else []
 
-    result = await session.execute(
+    ids: set[int] = set()
+
+    gruppe_result = await session.execute(
         select(TeilnehmergruppeMitglied.teilnehmer_id)
         .join(BoardFreigabe, BoardFreigabe.gruppe_id == TeilnehmergruppeMitglied.gruppe_id)
         .where(BoardFreigabe.board_id == board.id)
         .distinct()
     )
-    return list(result.scalars().all())
+    ids.update(gruppe_result.scalars().all())
+
+    handlungsfeld_result = await session.execute(
+        select(HandlungsfeldMitglied.teilnehmer_id)
+        .join(BoardFreigabe, BoardFreigabe.handlungsfeld_id == HandlungsfeldMitglied.handlungsfeld_id)
+        .where(BoardFreigabe.board_id == board.id)
+        .distinct()
+    )
+    ids.update(handlungsfeld_result.scalars().all())
+
+    direkt_result = await session.execute(
+        select(BoardFreigabe.teilnehmer_id).where(
+            BoardFreigabe.board_id == board.id, BoardFreigabe.teilnehmer_id.is_not(None)
+        )
+    )
+    ids.update(direkt_result.scalars().all())
+
+    return list(ids)
 
 
 def karte_ist_sichtbar_fuer(current_user: User, board: Board, karte: Karte) -> bool:
@@ -267,26 +301,41 @@ async def hat_bewerbungs_freigabe(session: AsyncSession, empfaenger_id: int, bew
 
 async def sichtbare_board_ids_fuer_teilnehmer(session: AsyncSession, teilnehmer_id: int) -> list[int]:
     """Alle Board-IDs, auf die eine/ein Teilnehmer:in Zugriff hat: das eigene
-    Personen-Board (falls vorhanden) plus alle Team-Boards, deren
-    Teilnehmergruppe für sie freigegeben ist. Grundlage für modulübergreifende
-    Übersichten wie die Dashboard-Fälligkeiten-Kachel (siehe
-    app/core/faellige_karten.py)."""
-    board_ids: list[int] = []
+    Personen-Board (falls vorhanden) plus alle Team-Boards, die über eine
+    der drei Freigabe-Arten (Arbeitsgruppe, Handlungsfeld, individuell -
+    siehe app/models/kanban.py:BoardFreigabe) für sie freigegeben sind.
+    Grundlage für modulübergreifende Übersichten wie die Dashboard-
+    Fälligkeiten-Kachel (siehe app/core/faellige_karten.py)."""
+    board_ids: set[int] = set()
     eigenes_board_result = await session.execute(
         select(Board.id).where(Board.typ == BoardTyp.person, Board.person_teilnehmer_id == teilnehmer_id)
     )
     eigenes_board_id = eigenes_board_result.scalars().first()
     if eigenes_board_id is not None:
-        board_ids.append(eigenes_board_id)
+        board_ids.add(eigenes_board_id)
 
-    team_result = await session.execute(
+    gruppe_result = await session.execute(
         select(BoardFreigabe.board_id)
         .join(TeilnehmergruppeMitglied, TeilnehmergruppeMitglied.gruppe_id == BoardFreigabe.gruppe_id)
         .where(TeilnehmergruppeMitglied.teilnehmer_id == teilnehmer_id)
         .distinct()
     )
-    board_ids.extend(team_result.scalars().all())
-    return board_ids
+    board_ids.update(gruppe_result.scalars().all())
+
+    handlungsfeld_result = await session.execute(
+        select(BoardFreigabe.board_id)
+        .join(HandlungsfeldMitglied, HandlungsfeldMitglied.handlungsfeld_id == BoardFreigabe.handlungsfeld_id)
+        .where(HandlungsfeldMitglied.teilnehmer_id == teilnehmer_id)
+        .distinct()
+    )
+    board_ids.update(handlungsfeld_result.scalars().all())
+
+    direkt_result = await session.execute(
+        select(BoardFreigabe.board_id).where(BoardFreigabe.teilnehmer_id == teilnehmer_id)
+    )
+    board_ids.update(direkt_result.scalars().all())
+
+    return list(board_ids)
 
 
 async def geleitete_team_board_ids(session: AsyncSession, berufstrainer_id: int) -> list[int]:

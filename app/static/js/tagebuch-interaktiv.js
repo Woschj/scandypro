@@ -174,6 +174,72 @@
     });
   }
 
+  /*
+   * Körper-Scan: bewusst eine lineare Liste antippbarer Körperregionen statt
+   * des Verbinde-die-Punkte-Widgets der Atemübung - ein Körper-Scan bedeutet
+   * nacheinander in Regionen hineinzuspüren, nicht eine Linie zwischen
+   * abstrakten Punkten zu ziehen. Jede Region wird erst nach der vorigen
+   * klickbar (serverseitig/client vorbereitet über [disabled]); ein Klick
+   * auf "Halten"-Regionen zählt erst sinnvoll herunter, dann automatisch
+   * weiter zur nächsten Region.
+   */
+  function initKoerperscan() {
+    document.querySelectorAll("[data-koerperscan]").forEach((wrapper) => {
+      const zonen = [...wrapper.querySelectorAll("[data-koerperscan-zone]")];
+      const hiddenInput = wrapper.querySelector('input[name="koerperscan_erledigt"]');
+      if (!hiddenInput || !zonen.length || hiddenInput.value === "true") return;
+
+      let index = 0;
+      let gesperrtBisMs = 0;
+
+      function markiereAktiv() {
+        zonen.forEach((z, i) => z.classList.toggle("koerperscan-zone--aktiv", i === index));
+      }
+      markiereAktiv();
+
+      function haltenCountdown(zone, sekunden, weiter) {
+        gesperrtBisMs = Date.now() + sekunden * 1000;
+        const status = zone.querySelector("[data-koerperscan-status]");
+        let verbleibend = sekunden;
+        status.textContent = String(verbleibend);
+        const intervall = setInterval(() => {
+          verbleibend -= 1;
+          if (verbleibend <= 0) {
+            clearInterval(intervall);
+            weiter();
+            return;
+          }
+          status.textContent = String(verbleibend);
+        }, 1000);
+      }
+
+      zonen.forEach((zone, i) => {
+        zone.addEventListener("click", () => {
+          if (i !== index || Date.now() < gesperrtBisMs) return;
+          const sekunden = parseFloat(zone.dataset.halten || "0");
+          const abschliessen = () => {
+            zone.classList.remove("koerperscan-zone--aktiv");
+            zone.classList.add("koerperscan-zone--erledigt");
+            zone.querySelector("[data-koerperscan-status]").textContent = "✓";
+            zone.disabled = true;
+            index += 1;
+            if (index >= zonen.length) {
+              hiddenInput.value = "true";
+            } else {
+              zonen[index].disabled = false;
+              markiereAktiv();
+            }
+          };
+          if (sekunden > 0) {
+            haltenCountdown(zone, sekunden, abschliessen);
+          } else {
+            abschliessen();
+          }
+        });
+      });
+    });
+  }
+
   function initWortDesTages() {
     document.querySelectorAll("[data-wort-des-tages]").forEach((wrapper) => {
       const hiddenInput = wrapper.querySelector('input[name="wort_des_tages"]');
@@ -265,6 +331,7 @@
     initPunkteUebungen();
     initZeichenfelder();
     initEnergieBatterien();
+    initKoerperscan();
     initWortDesTages();
     initStaerkenKarte();
     initSorgenLoslassen();

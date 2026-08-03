@@ -275,6 +275,7 @@ async def benutzer_erstellen(
     passwort: str = Form(...),
     rolle: RoleEnum = Form(...),
     abteilung_id: str = Form(""),
+    telefon: str = Form(""),
 ):
     await _require_admin(current_user)
 
@@ -303,6 +304,7 @@ async def benutzer_erstellen(
             password_hash=hash_password(passwort),
             role=rolle,
             abteilung_id=abteilung_id_wert,
+            telefon=telefon.strip() or None,
         )
     )
     await session.commit()
@@ -351,6 +353,7 @@ async def benutzer_bearbeiten(
     email: str = Form(...),
     rolle: RoleEnum = Form(...),
     abteilung_id: str = Form(""),
+    telefon: str = Form(""),
 ):
     await _require_admin(current_user)
 
@@ -392,6 +395,7 @@ async def benutzer_bearbeiten(
     benutzer.email = email_norm
     benutzer.role = rolle
     benutzer.abteilung_id = abteilung_id_wert
+    benutzer.telefon = telefon.strip() or None
     session.add(benutzer)
     await session.commit()
     return RedirectResponse(url="/admin/benutzer", status_code=303)

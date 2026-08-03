@@ -63,16 +63,16 @@
 
 <div class="card">
   <h3>Projekte</h3>
-  <p class="karte-meta">Team-Boards, die für deine Teilnehmergruppe(n) freigegeben sind - anders als bei
+  <p class="karte-meta">Team-Boards, die für dich freigegeben sind - anders als bei
     "Mein Tag" und Bewerbungen ist das eine organisatorische Freigabe, kein Widerruf durch dich möglich.</p>
   {% if board_freigaben %}
   <table style="margin-top: var(--space-3);">
-    <thead><tr><th>Board</th><th>Für Gruppe</th></tr></thead>
+    <thead><tr><th>Board</th><th>Freigegeben als</th></tr></thead>
     <tbody>
     {% for f in board_freigaben %}
     <tr>
       <td>{{ f.board_titel }}</td>
-      <td>{{ f.gruppe_name }}</td>
+      <td>{{ f.art }}</td>
     </tr>
     {% endfor %}
     </tbody>

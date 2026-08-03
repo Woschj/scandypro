@@ -14,7 +14,7 @@ from app.core.access import (
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.core.wochenbericht_export import wochenbericht_als_docx
-from app.models.kanban import Board, Karte, Spalte
+from app.models.kanban import Board, Karte, KartenBewegung, KartenZuweisung, Spalte
 from app.models.user import RoleEnum, User
 from app.models.wochenbericht import WOCHENTAG_LABELS, WOCHENTAGE, Wochenbericht, WochenberichtStatus, leere_tage
 
@@ -67,11 +67,20 @@ def _tage_mit_datum(bericht: Wochenbericht) -> list[dict]:
     return ergebnis
 
 
-async def _erledigte_kanban_karten_diese_woche(session: SessionDep, current_user: CurrentUser) -> dict[str, list[str]]:
-    """Titel der Kanban-Karten, die in der laufenden Kalenderwoche
-    abgeschlossen wurden, je Wochentag - als unverbindliche Vorschläge im
-    "Neuer Wochenbericht"-Formular (siehe teilnehmer_uebersicht.html), damit
-    nicht dieselbe Information doppelt eingetippt werden muss."""
+async def _kanban_vorschlaege_diese_woche(session: SessionDep, current_user: CurrentUser) -> dict[str, list[str]]:
+    """Titel von Kanban-Karten als unverbindliche Vorschläge im "Neuer
+    Wochenbericht"-Formular (siehe teilnehmer_uebersicht.html), je Wochentag
+    - damit nicht dieselbe Information doppelt eingetippt werden muss.
+
+    Zwei Quellen: (1) jede Karten-Bewegung, die die Person diese Woche selbst
+    ausgelöst hat (siehe KartenBewegung/_protokolliere_falls_vorwaerts in
+    app/routers/kanban_karten.py) - das protokolliert JEDE Vorwärtsbewegung,
+    nicht nur den Sprung in die Erledigt-Spalte, ordnet sich also auch unter
+    "auf eine 'In Arbeit'-Spalte verschoben" ein; (2) Karten, die gerade in
+    einer "In Arbeit"-Spalte liegen (weder erste noch Erledigt-Spalte ihres
+    Boards) und der Person zugeordnet sind, unter dem heutigen Tag - auch
+    ohne dass heute schon etwas bewegt wurde, ist "woran ich gerade dran
+    bin" ein sinnvoller Vorschlag für den heutigen Tätigkeitseintrag."""
     je_tag: dict[str, list[str]] = {tag: [] for tag in WOCHENTAGE}
     board_ids = await sichtbare_board_ids_fuer_teilnehmer(session, current_user.id)
     if not board_ids:
@@ -80,25 +89,81 @@ async def _erledigte_kanban_karten_diese_woche(session: SessionDep, current_user
     heute = date.today()
     wochenstart = heute - timedelta(days=heute.weekday())
     wochenende = wochenstart + timedelta(days=4)
+    heute_tag_key = WOCHENTAGE[heute.weekday()] if heute.weekday() < len(WOCHENTAGE) else None
+    bereits_vorgeschlagen: set[int] = set()
 
-    result = await session.execute(
-        select(Karte, Board)
+    bewegungen_result = await session.execute(
+        select(KartenBewegung, Karte, Board)
+        .join(Karte, Karte.id == KartenBewegung.karte_id)
         .join(Spalte, Spalte.id == Karte.spalte_id)
         .join(Board, Board.id == Spalte.board_id)
-        .where(Spalte.board_id.in_(board_ids), Karte.abgeschlossen_am.is_not(None))
+        .where(
+            Spalte.board_id.in_(board_ids),
+            KartenBewegung.bewegt_von_id == current_user.id,
+            KartenBewegung.bewegt_am >= datetime.combine(wochenstart, datetime.min.time()),
+            KartenBewegung.bewegt_am < datetime.combine(wochenende + timedelta(days=1), datetime.min.time()),
+        )
     )
-    for karte, board in result.all():
+    for bewegung, karte, board in bewegungen_result.all():
+        wochentag_index = bewegung.bewegt_am.weekday()
+        if wochentag_index >= len(WOCHENTAGE):  # Samstag/Sonntag - Wochenbericht kennt nur Mo-Fr
+            continue
         if not karte_ist_sichtbar_fuer(current_user, board, karte):
             continue
-        abgeschlossen_datum = karte.abgeschlossen_am.date()
-        if not (wochenstart <= abgeschlossen_datum <= wochenende):
-            continue
-        je_tag[WOCHENTAGE[abgeschlossen_datum.weekday()]].append(karte.titel)
+        je_tag[WOCHENTAGE[wochentag_index]].append(karte.titel)
+        bereits_vorgeschlagen.add(karte.id)
+
+    if heute_tag_key is not None:
+        spalten_result = await session.execute(select(Spalte).where(Spalte.board_id.in_(board_ids)))
+        spalten = list(spalten_result.scalars().all())
+        erste_reihenfolge_je_board: dict[int, int] = {}
+        for s in spalten:
+            bisher = erste_reihenfolge_je_board.get(s.board_id)
+            if bisher is None or s.reihenfolge < bisher:
+                erste_reihenfolge_je_board[s.board_id] = s.reihenfolge
+        in_arbeit_spalten_ids = {
+            s.id
+            for s in spalten
+            if not s.ist_system_erledigt and s.reihenfolge != erste_reihenfolge_je_board.get(s.board_id)
+        }
+
+        if in_arbeit_spalten_ids:
+            karten_result = await session.execute(
+                select(Karte, Board)
+                .join(Spalte, Spalte.id == Karte.spalte_id)
+                .join(Board, Board.id == Spalte.board_id)
+                .where(Karte.spalte_id.in_(in_arbeit_spalten_ids))
+            )
+            in_arbeit_karten = karten_result.all()
+            in_arbeit_karten_ids = [karte.id for karte, _ in in_arbeit_karten]
+
+            eigene_zuweisungen: set[int] = set()
+            if in_arbeit_karten_ids:
+                zuweisungen_result = await session.execute(
+                    select(KartenZuweisung.karte_id).where(
+                        KartenZuweisung.karte_id.in_(in_arbeit_karten_ids),
+                        KartenZuweisung.teilnehmer_id == current_user.id,
+                    )
+                )
+                eigene_zuweisungen = set(zuweisungen_result.scalars().all())
+
+            for karte, board in in_arbeit_karten:
+                if karte.id in bereits_vorgeschlagen:
+                    continue
+                if karte.ersteller_id != current_user.id and karte.id not in eigene_zuweisungen:
+                    continue
+                if not karte_ist_sichtbar_fuer(current_user, board, karte):
+                    continue
+                je_tag[heute_tag_key].append(karte.titel)
+                bereits_vorgeschlagen.add(karte.id)
+
     return je_tag
 
 
 @router.get("", response_class=HTMLResponse)
-async def uebersicht(request: Request, current_user: CurrentUser, session: SessionDep):
+async def uebersicht(
+    request: Request, current_user: CurrentUser, session: SessionDep, teilnehmer_id: str | None = None
+):
     if current_user.role == RoleEnum.teilnehmer:
         result = await session.execute(
             select(Wochenbericht)
@@ -109,7 +174,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         berichte_anzeige = [{"bericht": b, "tage": _tage_mit_datum(b)} for b in berichte]
         heute = date.today()
         aktuelle_kw = f"{heute.isocalendar().year}-W{heute.isocalendar().week:02d}"
-        kanban_vorschlaege = await _erledigte_kanban_karten_diese_woche(session, current_user)
+        kanban_vorschlaege = await _kanban_vorschlaege_diese_woche(session, current_user)
         return templates.TemplateResponse(
             request,
             "wochenberichte/teilnehmer_uebersicht.html",
@@ -127,23 +192,37 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         teilnehmer_ids = await betreute_teilnehmer_ids(session, current_user.id)
         berichte_anzeige = []
         teilnehmer_by_id: dict[int, User] = {}
+        ausgewaehlter_teilnehmer_id = int(teilnehmer_id) if teilnehmer_id else None
         if teilnehmer_ids:
+            gefilterte_ids = teilnehmer_ids
+            if ausgewaehlter_teilnehmer_id is not None:
+                if ausgewaehlter_teilnehmer_id not in teilnehmer_ids:
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, "Diese Person ist dir nicht zugeordnet.")
+                gefilterte_ids = [ausgewaehlter_teilnehmer_id]
+
             result = await session.execute(
                 select(Wochenbericht)
                 .where(
-                    Wochenbericht.teilnehmer_id.in_(teilnehmer_ids),
+                    Wochenbericht.teilnehmer_id.in_(gefilterte_ids),
                     Wochenbericht.status == WochenberichtStatus.abgegeben,
                 )
                 .order_by(Wochenbericht.kw_jahr.desc(), Wochenbericht.kw_nummer.desc())
             )
             berichte = list(result.scalars().all())
             berichte_anzeige = [{"bericht": b, "tage": _tage_mit_datum(b)} for b in berichte]
-            teilnehmer_result = await session.execute(select(User).where(User.id.in_(teilnehmer_ids)))
+            teilnehmer_result = await session.execute(
+                select(User).where(User.id.in_(teilnehmer_ids)).order_by(User.name)
+            )
             teilnehmer_by_id = {t.id: t for t in teilnehmer_result.scalars().all()}
         return templates.TemplateResponse(
             request,
             "wochenberichte/trainer_uebersicht.html",
-            {"current_user": current_user, "berichte_anzeige": berichte_anzeige, "teilnehmer_by_id": teilnehmer_by_id},
+            {
+                "current_user": current_user,
+                "berichte_anzeige": berichte_anzeige,
+                "teilnehmer_by_id": teilnehmer_by_id,
+                "ausgewaehlter_teilnehmer_id": ausgewaehlter_teilnehmer_id,
+            },
         )
 
     return templates.TemplateResponse(

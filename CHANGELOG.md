@@ -8,6 +8,40 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.11] - 2026-08-03
+
+Nutzer-Feedback zu 0.1.10 umgesetzt.
+
+### Fixed
+- **Ausmal-Mandala reagierte nicht auf Klicks**: SVG-Segmente mit
+  `fill="none"` zählen laut SVG-Spezifikation nur mit ihrem Rand als
+  klickbar, nicht mit der Innenfläche (`pointer-events: visiblePainted`-
+  Standardverhalten) - `pointer-events: all` ergänzt.
+- **Körper-Scan war eine reine Umbenennung der Atemübung** (gleiches
+  "Punkte verbinden"-Widget, ohne inhaltlichen Bezug zum Körper) - komplett
+  neu als eigenständiges Widget gebaut: eine Liste von Körperregionen, die
+  der Reihe nach antippbar wird, mit sinnvollem Halten-Timer pro Region
+  statt einer Linienzeichnung zwischen abstrakten Punkten.
+
+### Changed
+- **"Ich möchte jetzt Unterstützung"**: externe Hilfsangebote
+  (TelefonSeelsorge, Nummer gegen Kummer) entfernt - stattdessen eigene
+  PSM-Kontaktperson plus weitere psychosoziale Mitarbeiter:innen derselben
+  Abteilung, jeweils mit Telefonnummer sofern hinterlegt.
+- **Kanban-Board-Freigaben** gehen jetzt nicht mehr nur an einzelne
+  Arbeitsgruppen, sondern wahlweise an ein ganzes Handlungsfeld oder eine
+  einzelne Person (`app/models/kanban.py:BoardFreigabe` erweitert).
+- **Wochenberichte (Berufstrainer-Ansicht)** lassen sich jetzt nach
+  Teilnehmer:in filtern.
+- **Wochenbericht-Kanban-Vorschläge**: schlagen jetzt auch Karten vor, die
+  diese Woche auf eine "In Arbeit"-Spalte verschoben wurden (nicht nur bis
+  "Erledigt"), plus Karten, die gerade in einer "In Arbeit"-Spalte liegen
+  und der Person zugeordnet sind.
+- **Benutzerverwaltung**: neues Telefon-Feld für alle Rollen (vor allem für
+  Berufstrainer:in/PSM/Admin relevant), in der Benutzertabelle und überall
+  dort sichtbar, wo bisher schon Kontakt-E-Mails angezeigt wurden
+  (Dashboard, Mein-Tag-Unterstützung-Hinweis).
+
 ## [0.1.10] - 2026-08-03
 
 Rest von [tasks/ganzheitliche-verbesserungen/](tasks/ganzheitliche-verbesserungen/README.md)

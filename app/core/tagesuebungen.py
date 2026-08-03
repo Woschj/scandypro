@@ -22,8 +22,6 @@ import hashlib
 import random
 from datetime import date
 
-from app.core.punkte_layout import punkte_layout
-
 MORGEN_POOL: list[dict] = [
     {"slug": "atemuebung", "label": "Atemübung"},
     {"slug": "koerperscan", "label": "Körper-Scan"},
@@ -91,5 +89,13 @@ def staerken_karte_des_tages(teilnehmer_id: int, datum: date) -> str:
     return STAERKEN_KARTEN_PROMPTS[index]
 
 
-def koerperscan_punkte() -> list[dict]:
-    return punkte_layout(KOERPERSCAN_ZONEN)
+def koerperscan_zonen() -> list[dict]:
+    """Körperregionen der Reihe nach, für das Körper-Scan-Widget (siehe
+    app/templates/wohlbefinden/uebersicht.html, app/static/js/
+    tagebuch-interaktiv.js:initKoerperscan). Bewusst eine eigene, lineare
+    Zonen-Liste statt Wiederverwendung des Atemübungs-Punkte-Layouts
+    (app/core/punkte_layout.py) - ein Vieleck aus abstrakten Punkten hat
+    keinen inhaltlichen Bezug zu einem Körper-Scan; hier wandert man
+    der Reihe nach eine Liste von Körperregionen durch, ohne eine Linie
+    zwischen ihnen zu ziehen."""
+    return [{"label": label, "halten_sekunden": sekunden} for label, sekunden in KOERPERSCAN_ZONEN]

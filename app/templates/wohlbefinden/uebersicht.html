@@ -12,14 +12,20 @@
     {% if psm_kontakt %}
     <p style="margin-top: var(--space-3);">Deine zuständige psychosoziale Mitarbeiter:in ist
       <strong>{{ psm_kontakt.name }}</strong> -
-      <a href="mailto:{{ psm_kontakt.email }}">{{ psm_kontakt.email }}</a>.</p>
+      <a href="mailto:{{ psm_kontakt.email }}">{{ psm_kontakt.email }}</a>{% if psm_kontakt.telefon %},
+      {{ psm_kontakt.telefon }}{% endif %}.</p>
     {% endif %}
-    <div class="eyebrow" style="margin-top: var(--space-4);">Rund um die Uhr erreichbar</div>
+    {% if andere_psm %}
+    <div class="eyebrow" style="margin-top: var(--space-4);">Weitere psychosoziale Mitarbeiter:innen deiner Abteilung</div>
     <ul style="margin: var(--space-2) 0 0;">
-      {% for angebot in hilfsangebote %}
-      <li><strong>{{ angebot.name }}</strong>: {{ angebot.kontakt }} <span class="karte-meta">— {{ angebot.hinweis }}</span></li>
+      {% for psm in andere_psm %}
+      <li><strong>{{ psm.name }}</strong> - <a href="mailto:{{ psm.email }}">{{ psm.email }}</a>{% if psm.telefon %}, {{ psm.telefon }}{% endif %}</li>
       {% endfor %}
     </ul>
+    {% endif %}
+    {% if not psm_kontakt and not andere_psm %}
+    <p class="empty-state" style="margin-top: var(--space-3);">Dir ist noch keine psychosoziale Mitarbeiter:in zugeordnet - sprich deine Einrichtung an.</p>
+    {% endif %}
   </div>
 </details>
 
@@ -48,15 +54,15 @@
     <div class="field">
       {% if tag.morgen_uebung_typ == "koerperscan" %}
       <label class="eyebrow">Kurz ankommen — Körper-Scan</label>
-      <div class="atemuebung" data-punkte-uebung data-punkte-feld="koerperscan_erledigt">
-        <svg viewBox="0 0 240 220" class="atemuebung-svg">
-          <path data-linie fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          {% for p in tag.koerperscan_punkte %}
-          <circle data-punkt="{{ loop.index0 }}" data-halten="{{ p.halten_sekunden }}" cx="{{ p.cx }}" cy="{{ p.cy }}" r="10"/>
-          <text x="{{ p.cx }}" y="{{ p.cy + 28 if p.cy < 110 else p.cy - 18 }}" text-anchor="middle" class="atemuebung-label">{{ p.label }}</text>
-          {% endfor %}
-        </svg>
-        <p class="karte-meta" data-punkte-hinweis>Wandere der Reihe nach von Punkt zu Punkt und spüre kurz in die jeweilige Körperregion hinein.</p>
+      <p class="karte-meta">Tippe nacheinander auf jede Körperregion und spüre kurz hinein - ohne zu bewerten,
+        was du wahrnimmst.</p>
+      <div class="koerperscan" data-koerperscan>
+        {% for zone in tag.koerperscan_zonen %}
+        <button type="button" class="koerperscan-zone" data-koerperscan-zone data-halten="{{ zone.halten_sekunden }}" {% if tag.koerperscan_erledigt or not loop.first %}disabled{% endif %}>
+          <span class="koerperscan-zone-status" data-koerperscan-status>{{ "✓" if tag.koerperscan_erledigt else "○" }}</span>
+          <span>{{ zone.label }}</span>
+        </button>
+        {% endfor %}
         <input type="hidden" name="koerperscan_erledigt" value="{{ 'true' if tag.koerperscan_erledigt else '' }}">
       </div>
 

@@ -4,6 +4,18 @@
 <h1>Wochenberichte</h1>
 <p class="visibility-hint">Abgegebene Wochenberichte der Teilnehmer:innen deiner Handlungsfelder.</p>
 
+{% if teilnehmer_by_id %}
+<form method="get" action="/wochenberichte" class="field" style="max-width: 280px; margin-bottom: var(--space-4);">
+  <label for="teilnehmer_id">Nach Teilnehmer:in filtern</label>
+  <select id="teilnehmer_id" name="teilnehmer_id" onchange="this.form.submit()">
+    <option value="">– Alle –</option>
+    {% for t in teilnehmer_by_id.values() %}
+    <option value="{{ t.id }}" {% if t.id == ausgewaehlter_teilnehmer_id %}selected{% endif %}>{{ t.name }}</option>
+    {% endfor %}
+  </select>
+</form>
+{% endif %}
+
 {% if berichte_anzeige %}
 <div class="zuklapp-liste">
 {% for eintrag in berichte_anzeige %}

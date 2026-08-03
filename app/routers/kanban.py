@@ -235,21 +235,52 @@ async def board_detail(request: Request, board_id: int, current_user: CurrentUse
 
     freigaben_kontext = None
     if board.typ == BoardTyp.team and current_user.role == RoleEnum.berufstrainer:
-        freigaben_result = await session.execute(
-            select(BoardFreigabe, Teilnehmergruppe)
-            .join(Teilnehmergruppe, Teilnehmergruppe.id == BoardFreigabe.gruppe_id)
-            .where(BoardFreigabe.board_id == board_id)
-        )
-        freigaben = [(f, g) for f, g in freigaben_result.all()]
-        freigegebene_gruppen_ids = {g.id for _, g in freigaben}
+        alle_freigaben_result = await session.execute(select(BoardFreigabe).where(BoardFreigabe.board_id == board_id))
+        alle_freigaben = list(alle_freigaben_result.scalars().all())
 
-        gruppen_result = await session.execute(
+        gruppen_ids = {f.gruppe_id for f in alle_freigaben if f.gruppe_id is not None}
+        teilnehmer_ids = {f.teilnehmer_id for f in alle_freigaben if f.teilnehmer_id is not None}
+        hat_handlungsfeld_freigabe = any(f.handlungsfeld_id is not None for f in alle_freigaben)
+
+        gruppe_by_id: dict[int, Teilnehmergruppe] = {}
+        if gruppen_ids:
+            gruppen_result = await session.execute(select(Teilnehmergruppe).where(Teilnehmergruppe.id.in_(gruppen_ids)))
+            gruppe_by_id = {g.id: g for g in gruppen_result.scalars().all()}
+
+        teilnehmer_by_id: dict[int, User] = {}
+        if teilnehmer_ids:
+            teilnehmer_result = await session.execute(select(User).where(User.id.in_(teilnehmer_ids)))
+            teilnehmer_by_id = {t.id: t for t in teilnehmer_result.scalars().all()}
+
+        freigaben_anzeige = []
+        for f in alle_freigaben:
+            if f.gruppe_id is not None:
+                ziel_label = f"Arbeitsgruppe: {gruppe_by_id[f.gruppe_id].name}" if f.gruppe_id in gruppe_by_id else "Arbeitsgruppe"
+            elif f.handlungsfeld_id is not None:
+                ziel_label = "Ganzes Handlungsfeld"
+            else:
+                ziel_label = f"Person: {teilnehmer_by_id[f.teilnehmer_id].name}" if f.teilnehmer_id in teilnehmer_by_id else "Person"
+            freigaben_anzeige.append({"freigabe": f, "ziel_label": ziel_label})
+
+        gruppen_hf_result = await session.execute(
             select(Teilnehmergruppe).where(Teilnehmergruppe.handlungsfeld_id == board.handlungsfeld_id)
         )
-        verfuegbare_gruppen = [
-            g for g in gruppen_result.scalars().all() if g.id not in freigegebene_gruppen_ids
-        ]
-        freigaben_kontext = {"freigaben": freigaben, "verfuegbare_gruppen": verfuegbare_gruppen}
+        verfuegbare_gruppen = [g for g in gruppen_hf_result.scalars().all() if g.id not in gruppen_ids]
+
+        hf_mitglieder_result = await session.execute(
+            select(User)
+            .join(HandlungsfeldMitglied, HandlungsfeldMitglied.teilnehmer_id == User.id)
+            .where(HandlungsfeldMitglied.handlungsfeld_id == board.handlungsfeld_id)
+            .order_by(User.name)
+        )
+        verfuegbare_teilnehmer = [t for t in hf_mitglieder_result.scalars().all() if t.id not in teilnehmer_ids]
+
+        freigaben_kontext = {
+            "freigaben": freigaben_anzeige,
+            "verfuegbare_gruppen": verfuegbare_gruppen,
+            "verfuegbare_teilnehmer": verfuegbare_teilnehmer,
+            "hat_handlungsfeld_freigabe": hat_handlungsfeld_freigabe,
+        }
 
     return templates.TemplateResponse(
         request,
@@ -342,19 +373,44 @@ async def board_loeschen(board_id: int, current_user: CurrentUser, session: Sess
 
 @router.post("/boards/{board_id}/freigaben")
 async def freigabe_erstellen(
-    board_id: int, current_user: CurrentUser, session: SessionDep, gruppe_id: int = Form(...)
+    board_id: int,
+    current_user: CurrentUser,
+    session: SessionDep,
+    ziel_typ: str = Form(...),
+    ziel_id: str = Form(""),
 ):
+    """Gibt ein Team-Board für eine von drei Zielarten frei (siehe
+    app/models/kanban.py:BoardFreigabe): eine einzelne Arbeitsgruppe, das
+    ganze Handlungsfeld (dann ist `ziel_id` irrelevant - es gibt nur das
+    eine Handlungsfeld des Boards) oder eine einzelne Person aus dem
+    Handlungsfeld."""
     board = await session.get(Board, board_id)
     if board is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     if not await ist_leiter_von_handlungsfeld(session, current_user.id, board.handlungsfeld_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur die Leitung des Handlungsfelds verwaltet Freigaben.")
 
-    gruppe = await session.get(Teilnehmergruppe, gruppe_id)
-    if gruppe is None or gruppe.handlungsfeld_id != board.handlungsfeld_id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Gruppe gehört nicht zum Handlungsfeld des Boards.")
+    if ziel_typ == "gruppe":
+        gruppe_id = int(ziel_id) if ziel_id else None
+        gruppe = await session.get(Teilnehmergruppe, gruppe_id) if gruppe_id is not None else None
+        if gruppe is None or gruppe.handlungsfeld_id != board.handlungsfeld_id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Gruppe gehört nicht zum Handlungsfeld des Boards.")
+        session.add(BoardFreigabe(board_id=board_id, gruppe_id=gruppe_id))
+    elif ziel_typ == "handlungsfeld":
+        session.add(BoardFreigabe(board_id=board_id, handlungsfeld_id=board.handlungsfeld_id))
+    elif ziel_typ == "teilnehmer":
+        teilnehmer_id = int(ziel_id) if ziel_id else None
+        teilnehmer = await session.get(User, teilnehmer_id) if teilnehmer_id is not None else None
+        if teilnehmer is None or teilnehmer.role != RoleEnum.teilnehmer:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültige Teilnehmer-Auswahl.")
+        if not await ist_mitglied_von_handlungsfeld(session, teilnehmer_id, board.handlungsfeld_id):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "Diese Person gehört nicht zum Handlungsfeld des Boards."
+            )
+        session.add(BoardFreigabe(board_id=board_id, teilnehmer_id=teilnehmer_id))
+    else:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültiger Freigabe-Typ.")
 
-    session.add(BoardFreigabe(board_id=board_id, gruppe_id=gruppe_id))
     await session.commit()
     return RedirectResponse(url=f"/kanban/boards/{board_id}", status_code=303)
 

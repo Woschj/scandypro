@@ -16,11 +16,11 @@
   {% if freigaben_kontext.freigaben %}
   <table>
     <tbody>
-    {% for freigabe, gruppe in freigaben_kontext.freigaben %}
+    {% for eintrag in freigaben_kontext.freigaben %}
       <tr>
-        <td>{{ gruppe.name }}</td>
+        <td>{{ eintrag.ziel_label }}</td>
         <td style="text-align: right;">
-          <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben/{{ freigabe.id }}/entfernen">
+          <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben/{{ eintrag.freigabe.id }}/entfernen">
             {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Freigabe entfernen</button>
           </form>
@@ -30,27 +30,74 @@
     </tbody>
   </table>
   {% else %}
-  <p class="empty-state">Noch für keine Teilnehmergruppe freigegeben.</p>
+  <p class="empty-state">Noch für niemanden freigegeben.</p>
   {% endif %}
 
-  {% if freigaben_kontext.verfuegbare_gruppen %}
-  <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben" class="form-row" style="margin-top: var(--space-4);">
-    {% include "partials/csrf_field.html" %}
-    <div class="field">
-      <label for="gruppe_id">Arbeitsgruppe freigeben</label>
-      <select id="gruppe_id" name="gruppe_id" required>
-        <option value="" selected disabled>– Arbeitsgruppe wählen –</option>
-        {% for g in freigaben_kontext.verfuegbare_gruppen %}
-        <option value="{{ g.id }}">{{ g.name }}</option>
-        {% endfor %}
-      </select>
+  <div x-data="{ zielTyp: 'gruppe' }" style="margin-top: var(--space-4);">
+    <div class="form-row">
+      <label class="tagebuch-chip"><input type="radio" name="zielTypAnzeige" value="gruppe" x-model="zielTyp"> Arbeitsgruppe</label>
+      <label class="tagebuch-chip"><input type="radio" name="zielTypAnzeige" value="handlungsfeld" x-model="zielTyp"> Ganzes Handlungsfeld</label>
+      <label class="tagebuch-chip"><input type="radio" name="zielTypAnzeige" value="teilnehmer" x-model="zielTyp"> Einzelne Person</label>
     </div>
-    <button type="submit" class="btn btn-primary">Freigeben</button>
-  </form>
-  {% else %}
-  <p class="empty-state">Keine weiteren Arbeitsgruppen dieses Handlungsfelds verfügbar.
-    <a href="/kanban/gruppen?handlungsfeld_id={{ k.board.handlungsfeld_id }}">Neue Gruppe anlegen</a></p>
-  {% endif %}
+
+    <div x-show="zielTyp === 'gruppe'" x-cloak style="margin-top: var(--space-3);">
+      {% if freigaben_kontext.verfuegbare_gruppen %}
+      <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben" class="form-row">
+        {% include "partials/csrf_field.html" %}
+        <input type="hidden" name="ziel_typ" value="gruppe">
+        <div class="field">
+          <label for="gruppe_id">Arbeitsgruppe freigeben</label>
+          <select id="gruppe_id" name="ziel_id" required>
+            <option value="" selected disabled>– Arbeitsgruppe wählen –</option>
+            {% for g in freigaben_kontext.verfuegbare_gruppen %}
+            <option value="{{ g.id }}">{{ g.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Freigeben</button>
+      </form>
+      {% else %}
+      <p class="empty-state">Keine weiteren Arbeitsgruppen dieses Handlungsfelds verfügbar.
+        <a href="/kanban/gruppen?handlungsfeld_id={{ k.board.handlungsfeld_id }}">Neue Gruppe anlegen</a></p>
+      {% endif %}
+    </div>
+
+    <div x-show="zielTyp === 'handlungsfeld'" x-cloak style="margin-top: var(--space-3);">
+      {% if freigaben_kontext.hat_handlungsfeld_freigabe %}
+      <p class="empty-state">Bereits für das ganze Handlungsfeld freigegeben.</p>
+      {% else %}
+      <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben">
+        {% include "partials/csrf_field.html" %}
+        <input type="hidden" name="ziel_typ" value="handlungsfeld">
+        <p class="karte-meta" style="margin-bottom: var(--space-3);">Gibt das Board für alle Mitglieder von
+          {{ k.handlungsfeld.name if k.handlungsfeld else "diesem Handlungsfeld" }} frei, unabhängig von
+          Arbeitsgruppen.</p>
+        <button type="submit" class="btn btn-primary">Für das ganze Handlungsfeld freigeben</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div x-show="zielTyp === 'teilnehmer'" x-cloak style="margin-top: var(--space-3);">
+      {% if freigaben_kontext.verfuegbare_teilnehmer %}
+      <form method="post" action="/kanban/boards/{{ k.board.id }}/freigaben" class="form-row">
+        {% include "partials/csrf_field.html" %}
+        <input type="hidden" name="ziel_typ" value="teilnehmer">
+        <div class="field">
+          <label for="teilnehmer_id_freigabe">Einzelne Person freigeben</label>
+          <select id="teilnehmer_id_freigabe" name="ziel_id" required>
+            <option value="" selected disabled>– Person wählen –</option>
+            {% for t in freigaben_kontext.verfuegbare_teilnehmer %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Freigeben</button>
+      </form>
+      {% else %}
+      <p class="empty-state">Keine weiteren Personen dieses Handlungsfelds verfügbar.</p>
+      {% endif %}
+    </div>
+  </div>
 
   {% if k.darf_board_verwalten %}
   <form method="post" action="/kanban/boards/{{ k.board.id }}/loeschen" data-confirm="Board &quot;{{ k.board.titel }}&quot; inkl. aller Spalten und Karten endgültig löschen?" style="margin-top: var(--space-4);">

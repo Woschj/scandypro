@@ -22,6 +22,10 @@
       <input type="password" id="passwort" name="passwort" minlength="8" required autocomplete="new-password">
     </div>
     <div class="field">
+      <label for="telefon">Telefon (optional, vor allem für Berufstrainer:in/PSM/Admin relevant)</label>
+      <input type="tel" id="telefon" name="telefon">
+    </div>
+    <div class="field">
       <label for="rolle">Rolle</label>
       <select id="rolle" name="rolle" required>
         <option value="teilnehmer">Teilnehmer:in</option>
@@ -49,12 +53,13 @@
   <input type="search" id="benutzer-suche" data-table-filter="benutzer-tabelle" placeholder="Name, E-Mail oder Rolle …">
 </div>
 <table id="benutzer-tabelle">
-  <thead><tr><th data-sort>Name</th><th data-sort>E-Mail</th><th data-sort>Rolle</th><th data-sort>Abteilung</th><th data-sort>Status</th><th data-sort>Zuletzt angemeldet</th><th></th></tr></thead>
+  <thead><tr><th data-sort>Name</th><th data-sort>E-Mail</th><th data-sort>Telefon</th><th data-sort>Rolle</th><th data-sort>Abteilung</th><th data-sort>Status</th><th data-sort>Zuletzt angemeldet</th><th></th></tr></thead>
   <tbody>
   {% for b in benutzer %}
   <tr>
     <td>{{ b.name }}{% if b.id == current_user.id %} <span class="chip chip-neutral">du</span>{% endif %}</td>
     <td>{{ b.email }}</td>
+    <td>{{ b.telefon or "–" }}</td>
     <td>{{ b.role.value | rollenname }}</td>
     <td>{{ abteilung_by_id[b.abteilung_id].name if b.abteilung_id in abteilung_by_id else "–" }}</td>
     <td>{% if b.aktiv %}<span class="chip chip-success">aktiv</span>{% else %}<span class="chip chip-neutral">deaktiviert</span>{% endif %}</td>

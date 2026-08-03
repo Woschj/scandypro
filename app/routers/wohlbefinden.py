@@ -12,12 +12,11 @@ from app.core.access import hat_wohlbefinden_freigabe, require_owner
 from app.core.atemuebungen import atemuebung_des_tages, atemuebung_punkte
 from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
-from app.core.hilfsangebote import HILFSANGEBOTE
 from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
 from app.core.tagesuebungen import (
     WORT_DES_TAGES_OPTIONEN,
     abenduebung_des_tages,
-    koerperscan_punkte,
+    koerperscan_zonen,
     morgenuebung_des_tages,
     staerken_karte_des_tages,
 )
@@ -230,7 +229,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
         anzeige["morgen_uebung_typ"] = morgenuebung_des_tages(current_user.id, ausgewaehlter_tag)
     if anzeige["staerken_karte_frage"] is None:
         anzeige["staerken_karte_frage"] = staerken_karte_des_tages(current_user.id, ausgewaehlter_tag)
-    anzeige["koerperscan_punkte"] = koerperscan_punkte()
+    anzeige["koerperscan_zonen"] = koerperscan_zonen()
 
     if anzeige["abend_uebung_typ"] is None:
         anzeige["abend_uebung_typ"] = abenduebung_des_tages(current_user.id, ausgewaehlter_tag)
@@ -250,6 +249,20 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
     psm_zuordnung = psm_result.scalar_one_or_none()
     psm_kontakt = await session.get(User, psm_zuordnung.psm_id) if psm_zuordnung else None
 
+    # Weitere psychosoziale Mitarbeiter:innen derselben Abteilung als
+    # zusätzliche Kontaktoption (siehe VB-002-Feedback) - unabhängig von der
+    # organisatorischen PsmZuordnung, rein informativ, kein Datenzugriff.
+    andere_psm: list[User] = []
+    if current_user.abteilung_id is not None:
+        andere_psm_result = await session.execute(
+            select(User).where(
+                User.role == RoleEnum.psychosoziale_mitarbeit,
+                User.abteilung_id == current_user.abteilung_id,
+                User.id != (psm_kontakt.id if psm_kontakt else -1),
+            )
+        )
+        andere_psm = list(andere_psm_result.scalars().all())
+
     return templates.TemplateResponse(
         request,
         "wohlbefinden/uebersicht.html",
@@ -262,7 +275,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "verlauf": verlauf,
             "freigaben": freigaben,
             "psm_kontakt": psm_kontakt,
-            "hilfsangebote": HILFSANGEBOTE,
+            "andere_psm": andere_psm,
             "wort_optionen": WORT_DES_TAGES_OPTIONEN,
         },
     )

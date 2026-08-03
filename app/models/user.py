@@ -25,6 +25,10 @@ class User(SQLModel, table=True):
     password_hash: str
     role: RoleEnum
     abteilung_id: int | None = Field(default=None, foreign_key="abteilung.id")
+    # Kontakt-Telefonnummer, hauptsächlich für Berufstrainer:innen/PSM/Admin
+    # relevant (siehe app/routers/admin.py) - Teilnehmer:innen werden über
+    # ihre zuständigen Kontaktpersonen erreicht, nicht umgekehrt.
+    telefon: str | None = None
     # Deaktivierte Accounts können sich nicht mehr einloggen, bleiben aber
     # mit allen Daten erhalten und sind reaktivierbar - Zwischenstufe
     # zwischen "aktiv" und Löschung (siehe app/routers/admin.py).

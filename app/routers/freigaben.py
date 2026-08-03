@@ -22,7 +22,7 @@ from app.core.templating import templates
 from app.models.audit import AuditLogEintrag
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe
 from app.models.kanban import Board, BoardFreigabe
-from app.models.organisation import Teilnehmergruppe, TeilnehmergruppeMitglied
+from app.models.organisation import HandlungsfeldMitglied, Teilnehmergruppe, TeilnehmergruppeMitglied
 from app.models.user import RoleEnum, User
 from app.models.wohlbefinden import WohlbefindenFreigabe
 
@@ -69,7 +69,9 @@ async def meine_freigaben(request: Request, current_user: CurrentUser, session: 
         bewerbung_result = await session.execute(select(Bewerbung).where(Bewerbung.id.in_(bewerbung_ids)))
         bewerbung_by_id = {b.id: b for b in bewerbung_result.scalars().all()}
 
-    board_freigaben_result = await session.execute(
+    board_freigaben: list[dict] = []
+
+    gruppe_freigaben_result = await session.execute(
         select(Board.titel, Teilnehmergruppe.name)
         .select_from(BoardFreigabe)
         .join(Board, Board.id == BoardFreigabe.board_id)
@@ -77,9 +79,32 @@ async def meine_freigaben(request: Request, current_user: CurrentUser, session: 
         .join(TeilnehmergruppeMitglied, TeilnehmergruppeMitglied.gruppe_id == BoardFreigabe.gruppe_id)
         .where(TeilnehmergruppeMitglied.teilnehmer_id == current_user.id)
         .distinct()
-        .order_by(Board.titel)
     )
-    board_freigaben = [{"board_titel": t, "gruppe_name": g} for t, g in board_freigaben_result.all()]
+    board_freigaben += [
+        {"board_titel": t, "art": f"Arbeitsgruppe: {g}"} for t, g in gruppe_freigaben_result.all()
+    ]
+
+    handlungsfeld_freigaben_result = await session.execute(
+        select(Board.titel)
+        .select_from(BoardFreigabe)
+        .join(Board, Board.id == BoardFreigabe.board_id)
+        .join(HandlungsfeldMitglied, HandlungsfeldMitglied.handlungsfeld_id == BoardFreigabe.handlungsfeld_id)
+        .where(HandlungsfeldMitglied.teilnehmer_id == current_user.id)
+        .distinct()
+    )
+    board_freigaben += [
+        {"board_titel": titel, "art": "Ganzes Handlungsfeld"} for (titel,) in handlungsfeld_freigaben_result.all()
+    ]
+
+    direkte_freigaben_result = await session.execute(
+        select(Board.titel)
+        .select_from(BoardFreigabe)
+        .join(Board, Board.id == BoardFreigabe.board_id)
+        .where(BoardFreigabe.teilnehmer_id == current_user.id)
+    )
+    board_freigaben += [{"board_titel": titel, "art": "Persönlich an dich"} for (titel,) in direkte_freigaben_result.all()]
+
+    board_freigaben.sort(key=lambda f: f["board_titel"])
 
     audit_result = await session.execute(
         select(AuditLogEintrag)

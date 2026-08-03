@@ -30,11 +30,19 @@ class Board(SQLModel, table=True):
 
 
 class BoardFreigabe(SQLModel, table=True):
-    """Gibt ein Team-Board für alle Mitglieder einer Teilnehmergruppe frei."""
+    """Gibt ein Team-Board für einen Personenkreis frei - genau eines von
+    `gruppe_id` (eine Arbeitsgruppe), `handlungsfeld_id` (alle Mitglieder
+    des ganzen Handlungsfelds) oder `teilnehmer_id` (eine einzelne Person)
+    ist gesetzt, die anderen beiden bleiben None. Die Anwendungslogik
+    (app/routers/kanban.py:freigabe_erstellen) stellt das sicher - kein
+    DB-Constraint dafür, analog zu anderen optionalen Freigabe-Feldern im
+    Projekt (z.B. BewerbungsFreigabe.bewerbung_id)."""
 
     id: int | None = Field(default=None, primary_key=True)
     board_id: int = Field(foreign_key="board.id", index=True)
-    gruppe_id: int = Field(foreign_key="teilnehmergruppe.id", index=True)
+    gruppe_id: int | None = Field(default=None, foreign_key="teilnehmergruppe.id", index=True)
+    handlungsfeld_id: int | None = Field(default=None, foreign_key="handlungsfeld.id", index=True)
+    teilnehmer_id: int | None = Field(default=None, foreign_key="user.id", index=True)
     freigegeben_am: datetime = Field(default_factory=datetime.utcnow)
 
 

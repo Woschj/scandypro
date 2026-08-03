@@ -5,10 +5,12 @@
 <p class="visibility-hint">Deine Rolle: {{ current_user.role.value | rollenname }}</p>
 
 {% if psm_kontakt %}
-<p class="visibility-hint">Zuständige psychosoziale Mitarbeiter:in: <strong>{{ psm_kontakt.name }}</strong></p>
+<p class="visibility-hint">Zuständige psychosoziale Mitarbeiter:in: <strong>{{ psm_kontakt.name }}</strong> -
+  <a href="mailto:{{ psm_kontakt.email }}">{{ psm_kontakt.email }}</a>{% if psm_kontakt.telefon %}, {{ psm_kontakt.telefon }}{% endif %}</p>
 {% endif %}
 {% if trainer_kontakt %}
-<p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong></p>
+<p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong> -
+  <a href="mailto:{{ trainer_kontakt.email }}">{{ trainer_kontakt.email }}</a>{% if trainer_kontakt.telefon %}, {{ trainer_kontakt.telefon }}{% endif %}</p>
 {% endif %}
 
 {% if was_steht_an %}

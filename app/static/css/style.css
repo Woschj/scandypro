@@ -436,11 +436,34 @@ button:not(.btn) {
 
 .staerken-karte { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: var(--space-3); }
 
+.koerperscan { display: flex; flex-direction: column; gap: var(--space-2); max-width: 320px; }
+.koerperscan-zone {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+.koerperscan-zone:disabled { opacity: 0.5; cursor: default; }
+.koerperscan-zone.koerperscan-zone--aktiv { border-color: var(--accent); }
+.koerperscan-zone.koerperscan-zone--erledigt { color: var(--ink-soft); }
+.koerperscan-zone-status { font-size: 1.125rem; }
+
 [data-sorgen-loslassen] { transition: opacity 0.5s ease, transform 0.5s ease; }
 [data-sorgen-loslassen].sorgen-loslassen--animiert { opacity: 0; transform: translateY(-12px); }
 
 [data-mandala] svg { display: block; margin: 0 auto; }
-[data-mandala-segment] { cursor: pointer; }
+/* pointer-events:all noetig, weil die Segmente mit fill="none" starten -
+   SVGs zaehlen bei fill="none" per Default nur den Rand (stroke), nicht die
+   Flaeche als klickbar (visiblePainted-Regel), sonst reagiert nur ein
+   Klick exakt auf die Kontur, nicht auf die Innenflaeche. */
+[data-mandala-segment] { cursor: pointer; pointer-events: all; }
 :root {
   --mandala-1: #e8a33d;
   --mandala-2: #8aab98;
