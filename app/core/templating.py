@@ -67,6 +67,26 @@ def rollenname(rolle: str) -> str:
 
 templates.env.filters["rollenname"] = rollenname
 
+BEWERBUNGSSTATUS_NAMEN = {
+    "entwurf": "Entwurf",
+    "versendet": "Versendet",
+    "rueckmeldung_offen": "Rückmeldung offen",
+    "eingeladen": "Eingeladen",
+    "abgesagt": "Abgesagt",
+    "zugesagt": "Zugesagt",
+}
+
+
+def bewerbungsstatus_name(status: str) -> str:
+    """Menschenlesbarer Bewerbungsstatus statt des rohen Enum-Slugs (siehe
+    app/models/bewerbung.py:BewerbungStatus) - v.a. für "rueckmeldung_offen",
+    das ohne diesen Filter unverändert (mit Unterstrich, ohne Umlaut) im
+    Status-Select/Chip erschien."""
+    return BEWERBUNGSSTATUS_NAMEN.get(status, status)
+
+
+templates.env.filters["bewerbungsstatus"] = bewerbungsstatus_name
+
 
 def tojson(value) -> str:
     """Minimaler tojson-Filter (Jinja2 bringt ihn ohne Flask nicht mit) -

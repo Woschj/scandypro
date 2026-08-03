@@ -28,7 +28,7 @@
     <tr>
       <td>{{ e.bewerbung.firma }}</td>
       <td>{{ e.bewerbung.position }}</td>
-      <td><span class="chip">{{ e.bewerbung.status.value }}</span></td>
+      <td><span class="chip">{{ e.bewerbung.status.value | bewerbungsstatus }}</span></td>
       <td>
         {% if e.tage_bis_termin is not none %}
           {% if e.tage_bis_termin < 0 %}
@@ -53,81 +53,106 @@
 
 {% macro bewerbung_karte(b) %}
 <div class="card">
-  <h3 style="margin: 0 0 var(--space-3);">{{ b.firma }} — {{ b.position }}</h3>
-  <form method="post" action="/bewerbungen/{{ b.id }}/status" class="form-row" style="align-items: end;">
-    {% include "partials/csrf_field.html" %}
-    <div class="field">
-      <label for="status_wert-{{ b.id }}">Status</label>
-      <select id="status_wert-{{ b.id }}" name="status_wert">
-        {% for s in status_optionen %}
-        <option value="{{ s.value }}" {% if s == b.status %}selected{% endif %}>{{ s.value }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="field">
-      <label for="naechster_termin-{{ b.id }}">Nächster Termin</label>
-      <input type="date" id="naechster_termin-{{ b.id }}" name="naechster_termin" value="{{ b.naechster_termin or '' }}">
-    </div>
-    <div class="field">
-      <label for="naechster_termin_uhrzeit-{{ b.id }}">Uhrzeit</label>
-      <input type="time" id="naechster_termin_uhrzeit-{{ b.id }}" name="naechster_termin_uhrzeit" value="{{ b.naechster_termin_uhrzeit or '' }}">
-    </div>
-    <div class="field">
-      <label for="naechster_termin_ort-{{ b.id }}">Ort</label>
-      <input type="text" id="naechster_termin_ort-{{ b.id }}" name="naechster_termin_ort" value="{{ b.naechster_termin_ort or '' }}" placeholder="z. B. Adresse oder Video-Link">
-    </div>
-    <button type="submit" class="btn btn-ghost btn-sm">Aktualisieren</button>
-  </form>
-  <p class="karte-meta" style="margin-top: var(--space-3);">
+  <div class="form-row" style="align-items:center; justify-content:space-between; gap: var(--space-3); margin-bottom: var(--space-2);">
+    <h3 style="margin:0;">{{ b.firma }} — {{ b.position }}</h3>
+    <span class="chip {{ 'chip-success' if b.status.value == 'zugesagt' else 'chip-neutral' }}">{{ b.status.value | bewerbungsstatus }}</span>
+  </div>
+  <p class="karte-meta">
     Beworben am {{ b.beworben_am or "–" }}
+    {%- if b.naechster_termin %} · Nächster Termin {{ b.naechster_termin }}{% if b.naechster_termin_uhrzeit %}, {{ b.naechster_termin_uhrzeit }} Uhr{% endif %}{% if b.naechster_termin_ort %} · {{ b.naechster_termin_ort }}{% endif %}{% endif %}
   </p>
   {% if b.notizen %}<p>{{ b.notizen }}</p>{% endif %}
 
-  <div class="eyebrow" style="margin-top: var(--space-3); margin-bottom: var(--space-2);">Deckblatt (optional, vor dem Anschreiben)</div>
-  {% for u in deckblatt_by_bewerbung.get(b.id, []) %}
-  <div class="datei-zeile">
-    <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
-    {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
-    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Deckblatt löschen?">
-      {% include "partials/csrf_field.html" %}
-      <button type="submit" class="link-btn danger">Löschen</button>
-    </form>
-  </div>
-  {% else %}
-  <p class="empty-state">Kein Deckblatt hochgeladen.</p>
-  {% endfor %}
-  <form method="post" action="/bewerbungen/{{ b.id }}/deckblatt" enctype="multipart/form-data" class="form-row">
-    {% include "partials/csrf_field.html" %}
-    <div class="field">
-      <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
-    </div>
-    <button type="submit" class="btn btn-ghost btn-sm">Deckblatt hochladen</button>
-  </form>
+  <div class="zuklapp-liste" style="margin-top: var(--space-3);">
+    <details class="zuklapp-eintrag" open>
+      <summary>
+        <span class="zuklapp-eintrag-chevron">▸</span>
+        <span class="zuklapp-eintrag-titel">Status &amp; Termin bearbeiten</span>
+      </summary>
+      <div class="zuklapp-eintrag-body">
+        <form method="post" action="/bewerbungen/{{ b.id }}/status" class="form-row" style="align-items: end;">
+          {% include "partials/csrf_field.html" %}
+          <div class="field">
+            <label for="status_wert-{{ b.id }}">Status</label>
+            <select id="status_wert-{{ b.id }}" name="status_wert">
+              {% for s in status_optionen %}
+              <option value="{{ s.value }}" {% if s == b.status %}selected{% endif %}>{{ s.value | bewerbungsstatus }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="naechster_termin-{{ b.id }}">Nächster Termin</label>
+            <input type="date" id="naechster_termin-{{ b.id }}" name="naechster_termin" value="{{ b.naechster_termin or '' }}">
+          </div>
+          <div class="field">
+            <label for="naechster_termin_uhrzeit-{{ b.id }}">Uhrzeit</label>
+            <input type="time" id="naechster_termin_uhrzeit-{{ b.id }}" name="naechster_termin_uhrzeit" value="{{ b.naechster_termin_uhrzeit or '' }}">
+          </div>
+          <div class="field">
+            <label for="naechster_termin_ort-{{ b.id }}">Ort</label>
+            <input type="text" id="naechster_termin_ort-{{ b.id }}" name="naechster_termin_ort" value="{{ b.naechster_termin_ort or '' }}" placeholder="z. B. Adresse oder Video-Link">
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Speichern</button>
+        </form>
+      </div>
+    </details>
 
-  <div class="eyebrow" style="margin-top: var(--space-4); margin-bottom: var(--space-2);">Anschreiben</div>
-  {% for u in anschreiben_by_bewerbung.get(b.id, []) %}
-  <div class="datei-zeile">
-    <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
-    {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
-    <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Anschreiben löschen?">
-      {% include "partials/csrf_field.html" %}
-      <button type="submit" class="link-btn danger">Löschen</button>
-    </form>
-  </div>
-  {% else %}
-  <p class="empty-state">Noch kein Anschreiben hochgeladen.</p>
-  {% endfor %}
-  <form method="post" action="/bewerbungen/{{ b.id }}/anschreiben" enctype="multipart/form-data" class="form-row">
-    {% include "partials/csrf_field.html" %}
-    <div class="field">
-      <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
-    </div>
-    <button type="submit" class="btn btn-ghost btn-sm">Anschreiben hochladen</button>
-  </form>
+    <details class="zuklapp-eintrag">
+      <summary>
+        <span class="zuklapp-eintrag-chevron">▸</span>
+        <span class="zuklapp-eintrag-titel">Unterlagen</span>
+        {% set anzahl_unterlagen = deckblatt_by_bewerbung.get(b.id, []) | length + anschreiben_by_bewerbung.get(b.id, []) | length %}
+        {% if anzahl_unterlagen %}<span class="chip chip-neutral">{{ anzahl_unterlagen }}</span>{% endif %}
+      </summary>
+      <div class="zuklapp-eintrag-body">
+        <div class="eyebrow" style="margin-bottom: var(--space-2);">Deckblatt (optional, vor dem Anschreiben)</div>
+        {% for u in deckblatt_by_bewerbung.get(b.id, []) %}
+        <div class="datei-zeile">
+          <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+          {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
+          <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Deckblatt löschen?">
+            {% include "partials/csrf_field.html" %}
+            <button type="submit" class="link-btn danger">Löschen</button>
+          </form>
+        </div>
+        {% else %}
+        <p class="empty-state">Kein Deckblatt hochgeladen.</p>
+        {% endfor %}
+        <form method="post" action="/bewerbungen/{{ b.id }}/deckblatt" enctype="multipart/form-data" class="form-row">
+          {% include "partials/csrf_field.html" %}
+          <div class="field">
+            <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
+          </div>
+          <button type="submit" class="btn btn-ghost btn-sm">Deckblatt hochladen</button>
+        </form>
 
-  <div style="margin-top: var(--space-3); display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap;">
-    <a class="btn btn-ghost btn-sm" href="/bewerbungen/{{ b.id }}/pdf">Gesamt-PDF erzeugen</a>
-    <span class="karte-meta">Deckblatt + Anschreiben + Lebenslauf/Zeugnisse (in deiner Sortierung) in einem PDF. Nur PDF-/Bilddateien werden eingebunden, Word-Dokumente bitte separat anhängen.</span>
+        <div class="eyebrow" style="margin-top: var(--space-4); margin-bottom: var(--space-2);">Anschreiben</div>
+        {% for u in anschreiben_by_bewerbung.get(b.id, []) %}
+        <div class="datei-zeile">
+          <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
+          {% if u.id in nicht_einbettbare_ids %}<span class="karte-meta">– wird nicht ins PDF eingebunden</span>{% endif %}
+          <form method="post" action="/bewerbungen/unterlagen/{{ u.id }}/loeschen" data-confirm="Anschreiben löschen?">
+            {% include "partials/csrf_field.html" %}
+            <button type="submit" class="link-btn danger">Löschen</button>
+          </form>
+        </div>
+        {% else %}
+        <p class="empty-state">Noch kein Anschreiben hochgeladen.</p>
+        {% endfor %}
+        <form method="post" action="/bewerbungen/{{ b.id }}/anschreiben" enctype="multipart/form-data" class="form-row">
+          {% include "partials/csrf_field.html" %}
+          <div class="field">
+            <input type="file" name="datei" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" required>
+          </div>
+          <button type="submit" class="btn btn-ghost btn-sm">Anschreiben hochladen</button>
+        </form>
+
+        <div style="margin-top: var(--space-4); display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap;">
+          <a class="btn btn-ghost btn-sm" href="/bewerbungen/{{ b.id }}/pdf">Gesamt-PDF erzeugen</a>
+          <span class="karte-meta">Deckblatt + Anschreiben + Lebenslauf/Zeugnisse (in deiner Sortierung) in einem PDF. Nur PDF-/Bilddateien werden eingebunden, Word-Dokumente bitte separat anhängen.</span>
+        </div>
+      </div>
+    </details>
   </div>
 
   <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" data-confirm="Bewerbung &quot;{{ b.firma }} — {{ b.position }}&quot; endgültig löschen?" style="margin-top: var(--space-3);">

@@ -8,6 +8,26 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.21] - 2026-08-03
+
+### Changed
+- **Bewerbungs-Karte komplett neu strukturiert** - der "Aktualisieren"-
+  Button für den Status stand bisher mitten zwischen vier Feldern in einer
+  Zeile. Jetzt: Titel + Status-Chip klar oben, eine Meta-Zeile mit
+  Bewerbungs-/Termindatum, danach zwei klar betitelte, aufklappbare
+  Abschnitte ("Status & Termin bearbeiten" offen, "Unterlagen"
+  eingeklappt mit Anzahl-Badge) mit dem Speichern-Button jeweils am Ende
+  der zugehörigen Felder statt mittendrin. "Bewerbung löschen" steht jetzt
+  sichtbar abgesetzt am Kartenende.
+
+### Fixed
+- **Bewerbungsstatus wurde als roher Enum-Slug angezeigt** statt in
+  lesbarem Deutsch - `rueckmeldung_offen` erschien wortwörtlich (mit
+  Unterstrich, ohne Umlaut) im Status-Dropdown und in Status-Chips.
+  Neuer Filter `bewerbungsstatus` (analog `rollenname`,
+  `app/core/templating.py`) überall dort ergänzt, wo der Status angezeigt
+  wird (Bewerbungsübersicht, "Worauf du noch wartest", Trainer-Ansicht).
+
 ## [0.1.20] - 2026-08-03
 
 ### Changed

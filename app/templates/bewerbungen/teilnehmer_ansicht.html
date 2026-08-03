@@ -10,7 +10,7 @@
 {% for b in bewerbungen %}
 <div class="card">
   <h3 style="margin: 0;">{{ b.firma }} — {{ b.position }}</h3>
-  <span class="chip">{{ b.status.value }}</span>
+  <span class="chip">{{ b.status.value | bewerbungsstatus }}</span>
   <p class="karte-meta" style="margin-top: var(--space-3);">
     Beworben am {{ b.beworben_am or "–" }} · Nächster Termin: {{ b.naechster_termin or "–" }}{% if b.naechster_termin and b.naechster_termin_uhrzeit %}, {{ b.naechster_termin_uhrzeit }} Uhr{% endif %}{% if b.naechster_termin and b.naechster_termin_ort %} · {{ b.naechster_termin_ort }}{% endif %}
   </p>
