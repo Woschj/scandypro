@@ -8,6 +8,20 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.16] - 2026-08-03
+
+### Fixed
+- **"⋮"-Verwalten-Menü der Arbeitsgruppen (Handlungsfeld-Team) war praktisch
+  unbedienbar**: die Tabelle war (wie andere Verwaltungstabellen) in
+  `.table-scroll` (`overflow-x: auto`) gewrappt - das erzwingt laut CSS-Spec
+  automatisch auch `overflow-y: auto` auf demselben Element, wodurch das
+  `position: absolute` Dropdown-Menü vom Container geclippt wurde und nur
+  durch Scrollen in einem winzigen Bereich erreichbar war. Genau das Risiko,
+  das bei `admin/abteilungen.html` bereits bewusst vermieden wurde ([0.1.13]) -
+  hier beim Bauen der Arbeitsgruppen-Verwaltung übersehen. Wrapper entfernt;
+  die Tabelle hat nur drei Spalten und braucht auch auf schmalen Screens
+  keinen horizontalen Scroll.
+
 ## [0.1.15] - 2026-08-03
 
 ### Added

@@ -87,7 +87,12 @@
       <div class="card">
         <h3>Bestehende Arbeitsgruppen in {{ handlungsfeld_by_id[ausgewaehltes_handlungsfeld_id].name }}</h3>
         {% if gruppen_dieses_feldes %}
-        <div class="table-scroll">
+        {# Bewusst OHNE .table-scroll-Wrapper (anders als andere Tabellen):
+           .zeile-verwalten-body ist ein position:absolute-Dropdown - ein
+           overflow:auto-Vorfahre clippt es, das Dropdown-Menü verschwindet
+           dann "unter" dem sichtbaren Bereich und braucht internes Scrollen,
+           um erreichbar zu sein. Bei nur drei Spalten ist die Tabelle auch
+           auf schmalen Screens breit genug ohne horizontalen Scroll. #}
         <table>
           <thead><tr><th>Gruppe</th><th>Mitglieder</th><th></th></tr></thead>
           <tbody>
@@ -156,7 +161,6 @@
           {% endfor %}
           </tbody>
         </table>
-        </div>
         {% else %}
         <p class="empty-state">Noch keine Arbeitsgruppen in diesem Handlungsfeld.</p>
         {% endif %}
