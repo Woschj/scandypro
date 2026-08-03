@@ -8,6 +8,91 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.15] - 2026-08-03
+
+### Added
+- **Arbeitsgruppen (Handlungsfeld-Team) sind jetzt vollständig verwaltbar**:
+  bisher ließen sie sich nur anlegen, nicht mehr umbenennen, nicht löschen
+  und nach dem Anlegen keine Mitglieder mehr hinzufügen/entfernen - ein
+  Fund aus dem eigenen Testdurchlauf (siehe [0.1.14]), wo eine zu
+  Testzwecken angelegte Gruppe sich nicht mehr entfernen ließ. Neue Routen
+  `POST /kanban/gruppen/{id}/umbenennen`, `.../mitglieder`,
+  `.../mitglieder/{mitglied_id}/entfernen`, `.../loeschen`
+  (`app/routers/kanban.py`), neue kaskadierende Löschroutine
+  `loesche_teilnehmergruppe_kaskadierend` (`app/core/deletion.py` - entfernt
+  auch verwaiste `BoardFreigabe`-Einträge, die genau dieser Gruppe galten).
+  UI über dasselbe "⋮"-Verwalten-Muster wie bei Handlungsfeldern in der
+  Admin-Verwaltung (`.zeile-verwalten`).
+
+## [0.1.14] - 2026-08-03
+
+Nutzer-Feedback: Navigation/Übersicht für Berufstrainer:innen, PSM und
+Einrichtungs-Admin.
+
+### Added
+- **"Meine Teilnehmer:innen"** als neue, eigenständige Übersicht für
+  Berufstrainer:innen (`/kanban/teilnehmer`) und psychosoziale
+  Mitarbeiter:innen (`/wohlbefinden/teilnehmer`), jeweils mit eigenem
+  Nav-Eintrag. Löst die bisherige knappe Namensliste auf dem Dashboard ab:
+  Trainer:innen sehen jetzt Abteilung, Handlungsfeld-Zugehörigkeit,
+  persönliche Zuordnung sowie direkte Links zu Kanban-Board, Wochenbericht
+  und (falls freigegeben) Bewerbungen pro Person; PSM sieht Abteilung und
+  Freigabe-Status für "Mein Tag" mit Direktlink bei aktiver Freigabe.
+  Beide Tabellen durchsuchbar (`table-tools.js`).
+- **Stammdaten-Selbstverwaltung** für Berufstrainer:in/PSM/Admin: `/konto`
+  hat jetzt ein "Meine Stammdaten"-Formular (Name, E-Mail, Telefon) zusätzlich
+  zur bestehenden Passwortänderung - bewusst nicht für Teilnehmer:innen, deren
+  Stammdaten weiterhin über die Einrichtungs-Verwaltung laufen
+  (`app/routers/auth.py:stammdaten_aendern`).
+
+### Changed
+- **"Abteilungen & Handlungsfelder"** (Admin) navigiert jetzt wie
+  "Bewerbungen" bei Teilnehmer:innen über die vertikale Tab-Leiste
+  (`.seiten-tabs`) statt einer langen Seite - Tabs "Neue Abteilung" und
+  "Abteilungen".
+- **"Handlungsfeld-Team" komplett neu strukturiert**: nach Auswahl eines
+  Handlungsfelds trennen zwei Tabs ("Mitglieder" / "Arbeitsgruppen") jetzt
+  klar, was zusammengehört. Behebt nebenbei einen echten Verwirrungs-Bug:
+  "Bestehende Arbeitsgruppen" zeigte bisher ausnahmslos die Gruppen
+  **aller** geleiteten Handlungsfelder gemischt an, unabhängig von der
+  Auswahl oben auf der Seite - jetzt nur noch die des gewählten Feldes.
+- Dashboard-Karten für Berufstrainer:in/PSM zeigen nur noch einen Link zur
+  jeweiligen neuen Übersichtsseite statt einer eingebetteten Liste
+  (`app/main.py`: nicht mehr benötigte Server-Berechnung dafür entfernt).
+- Der "Projekte"-Nav-Punkt erscheint nicht mehr für PSM/Admin - beide
+  hatten dort ohnehin nie sichtbare Boards, nur eine leere Seite.
+
+## [0.1.13] - 2026-08-03
+
+Fund aus einem ersten realen Klick-Durchlauf durch alle fünf Demo-Rollen
+(Playwright, headless Chromium - kein Docker/Postgres-Mangel mehr, siehe
+frühere Sandbox-Einschränkungen in dieser Datei).
+
+### Fixed
+- **Kritischer Mobile-Bug: "Abmelden"-Button auf schmalen Screens
+  unerreichbar.** `.user-chip` (Theme-Toggle, Name+Rolle, Abmelden) in der
+  Topnav hatte kein `flex-wrap` und keine Textkürzung - bei Viewport-
+  Breiten ≤860px (z.B. iPhone 12/13/14, 390px) brach der Name+Rolle-Text
+  auf mehrere Zeilen um und drückte den Abmelden-Button über den rechten
+  Bildschirmrand hinaus, nur per horizontalem Scrollen erreichbar. Betraf
+  ausnahmslos jede Seite, für alle Rollen. Fix: Name/Rolle + Abmelden
+  ziehen jetzt mit in die bereits vorhandene kollabierbare Hamburger-Nav
+  (`.topnav-links`) um, nur der Theme-Toggle bleibt als kompakter
+  Icon-Button permanent sichtbar (`app/templates/base.html`,
+  `app/static/css/style.css`).
+- **Benutzerverwaltung (`/admin/benutzer`) sprengte auf Mobile die ganze
+  Seite horizontal** (953px statt 390px): die 8-spaltige Tabelle lag
+  außerhalb jeder `.card` (die eigenes `overflow-x: auto` mitbringt) und
+  damit ohne jeden Scroll-Container. Neue Utility-Klasse `.table-scroll`
+  ergänzt, in `admin/benutzer.html` und `admin/trainer_zuordnungen.html`
+  um die jeweilige Tabelle gelegt (dort bestätigt kein Aktions-Dropdown
+  in einer Tabellenzelle, das durch die Scroll-Clipping riskiert würde -
+  bei `admin/abteilungen.html`/`admin/psm_zuordnungen.html` war der
+  gemessene Mobile-Overflow nach dem Topnav-Fix bereits vollständig
+  verschwunden, dort bewusst nicht zusätzlich gewrappt, um die
+  Zeilen-Dropdowns (`.zeile-verwalten-body`, `position: absolute`) nicht
+  zu riskieren).
+
 ## [0.1.12] - 2026-08-03
 
 ### Added

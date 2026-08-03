@@ -8,7 +8,6 @@ from sqlmodel import select
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.core.access import hat_wohlbefinden_freigabe
 from app.core.config import settings
 from app.core.database import async_session_factory, init_db
 from app.core.deps import SessionDep, get_current_user_optional
@@ -17,7 +16,7 @@ from app.core.fortschritt import woechentliche_schritte, woechentliche_tagebuch_
 from app.core.seed import seed_admin, seed_demo_data
 from app.core.static_cache import CachedStaticFiles
 from app.core.templating import templates
-from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, BewerbungStatus
+from app.models.bewerbung import Bewerbung, BewerbungStatus
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
 from app.models.user import RoleEnum, User
 from app.routers import admin, auth, bewerbungen, freigaben, kanban, kanban_karten, wochenberichte, wohlbefinden
@@ -110,9 +109,6 @@ async def dashboard(request: Request, session: SessionDep):
 
     psm_kontakt = None
     trainer_kontakt = None
-    betreute_teilnehmer: list[User] = []
-    freigegebene_wohlbefinden_ids: set[int] = set()
-    freigegebene_bewerbungen_ids: set[int] = set()
     schritte_diese_woche: int | None = None
     tagebuch_tage_woche: int | None = None
     bewerbungen_uebersicht: dict | None = None
@@ -156,35 +152,6 @@ async def dashboard(request: Request, session: SessionDep):
         anzahl_wartend = len(list(wartend_result.scalars().all()))
         if anzahl_aktiv > 0:
             bewerbungen_uebersicht = {"aktiv": anzahl_aktiv, "wartend": anzahl_wartend}
-    elif current_user.role == RoleEnum.psychosoziale_mitarbeit:
-        result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.psm_id == current_user.id))
-        teilnehmer_ids = [z.teilnehmer_id for z in result.scalars().all()]
-        if teilnehmer_ids:
-            teilnehmer_result = await session.execute(select(User).where(User.id.in_(teilnehmer_ids)))
-            betreute_teilnehmer = list(teilnehmer_result.scalars().all())
-            for teilnehmer_id in teilnehmer_ids:
-                if await hat_wohlbefinden_freigabe(session, current_user.id, teilnehmer_id):
-                    freigegebene_wohlbefinden_ids.add(teilnehmer_id)
-    elif current_user.role == RoleEnum.berufstrainer:
-        result = await session.execute(
-            select(BerufstrainerZuordnung).where(BerufstrainerZuordnung.berufstrainer_id == current_user.id)
-        )
-        teilnehmer_ids = [z.teilnehmer_id for z in result.scalars().all()]
-        if teilnehmer_ids:
-            teilnehmer_result = await session.execute(select(User).where(User.id.in_(teilnehmer_ids)))
-            betreute_teilnehmer = list(teilnehmer_result.scalars().all())
-
-            heute = date.today()
-            freigaben_result = await session.execute(
-                select(BewerbungsFreigabe).where(
-                    BewerbungsFreigabe.empfaenger_id == current_user.id,
-                    BewerbungsFreigabe.teilnehmer_id.in_(teilnehmer_ids),
-                    BewerbungsFreigabe.widerrufen_am.is_(None),
-                )
-            )
-            for freigabe in freigaben_result.scalars().all():
-                if freigabe.gueltig_bis is None or freigabe.gueltig_bis >= heute:
-                    freigegebene_bewerbungen_ids.add(freigabe.teilnehmer_id)
 
     return templates.TemplateResponse(
         request,
@@ -193,9 +160,6 @@ async def dashboard(request: Request, session: SessionDep):
             "current_user": current_user,
             "psm_kontakt": psm_kontakt,
             "trainer_kontakt": trainer_kontakt,
-            "betreute_teilnehmer": betreute_teilnehmer,
-            "freigegebene_wohlbefinden_ids": freigegebene_wohlbefinden_ids,
-            "freigegebene_bewerbungen_ids": freigegebene_bewerbungen_ids,
             "schritte_diese_woche": schritte_diese_woche,
             "tagebuch_tage_woche": tagebuch_tage_woche,
             "bewerbungen_uebersicht": bewerbungen_uebersicht,

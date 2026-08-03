@@ -52,6 +52,7 @@
   <label for="benutzer-suche">Suchen</label>
   <input type="search" id="benutzer-suche" data-table-filter="benutzer-tabelle" placeholder="Name, E-Mail oder Rolle …">
 </div>
+<div class="table-scroll">
 <table id="benutzer-tabelle">
   <thead><tr><th data-sort>Name</th><th data-sort>E-Mail</th><th data-sort>Telefon</th><th data-sort>Rolle</th><th data-sort>Abteilung</th><th data-sort>Status</th><th data-sort>Zuletzt angemeldet</th><th></th></tr></thead>
   <tbody>
@@ -69,4 +70,5 @@
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% endblock %}

@@ -77,7 +77,50 @@ async def logout(request: Request):
 
 @router.get("/konto", response_class=HTMLResponse)
 async def konto_form(request: Request, current_user: CurrentUser):
-    return templates.TemplateResponse(request, "auth/konto.html", {"current_user": current_user, "error": None})
+    return templates.TemplateResponse(request, "auth/konto.html", {"current_user": current_user})
+
+
+@router.post("/konto/stammdaten", response_class=HTMLResponse, dependencies=[Depends(verify_csrf)])
+async def stammdaten_aendern(
+    request: Request,
+    current_user: CurrentUser,
+    session: SessionDep,
+    name: str = Form(...),
+    email: str = Form(...),
+    telefon: str = Form(""),
+):
+    """Berufstrainer:innen, PSM und Admins pflegen ihre eigenen Kontaktdaten
+    selbst - Teilnehmer:innen bewusst außen vor, für sie bleiben Name/E-Mail
+    Sache der Einrichtungs-Verwaltung (siehe app/routers/admin.py)."""
+    if current_user.role == RoleEnum.teilnehmer:
+        raise HTTPException(status.HTTP_403_FORBIDDEN)
+
+    name = name.strip()
+    email = email.strip().lower()
+    telefon = telefon.strip()
+    fehler = None
+    if not name:
+        fehler = "Name darf nicht leer sein."
+    elif not email:
+        fehler = "E-Mail darf nicht leer sein."
+    elif email != current_user.email:
+        vorhanden = await session.execute(select(User).where(User.email == email, User.id != current_user.id))
+        if vorhanden.first() is not None:
+            fehler = "Diese E-Mail-Adresse wird bereits verwendet."
+
+    if fehler:
+        return templates.TemplateResponse(
+            request, "auth/konto.html", {"current_user": current_user, "stammdaten_error": fehler}, status_code=400
+        )
+
+    current_user.name = name
+    current_user.email = email
+    current_user.telefon = telefon or None
+    session.add(current_user)
+    await session.commit()
+    return templates.TemplateResponse(
+        request, "auth/konto.html", {"current_user": current_user, "erfolg_stammdaten": True}
+    )
 
 
 @router.post("/konto/passwort", response_class=HTMLResponse, dependencies=[Depends(verify_csrf)])
@@ -99,14 +142,14 @@ async def passwort_aendern(
 
     if fehler:
         return templates.TemplateResponse(
-            request, "auth/konto.html", {"current_user": current_user, "error": fehler}, status_code=400
+            request, "auth/konto.html", {"current_user": current_user, "passwort_error": fehler}, status_code=400
         )
 
     current_user.password_hash = hash_password(neues_passwort)
     session.add(current_user)
     await session.commit()
     return templates.TemplateResponse(
-        request, "auth/konto.html", {"current_user": current_user, "error": None, "erfolg": True}
+        request, "auth/konto.html", {"current_user": current_user, "erfolg": True}
     )
 
 

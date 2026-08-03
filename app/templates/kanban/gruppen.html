@@ -6,7 +6,6 @@
 <p class="visibility-hint">Boards werden für Arbeitsgruppen freigegeben, nicht für einzelne Personen.
   Du siehst nur Handlungsfelder, die du leitest.</p>
 
-<h2>Handlungsfeld wählen</h2>
 <div class="card">
   {% if eigene_handlungsfelder %}
   <form method="get" action="/kanban/gruppen">
@@ -26,89 +25,171 @@
 </div>
 
 {% if ausgewaehltes_handlungsfeld_id %}
-<h2>Mitglieder des Handlungsfelds</h2>
-<div class="card">
-  <p class="karte-meta">Nur Mitglieder eines Handlungsfelds können in eine Arbeitsgruppe aufgenommen oder
-    persönlich mit Projekt-Aufgaben bedacht werden.</p>
-  {% if abteilungs_teilnehmer %}
-  <table>
-    <thead><tr><th>Teilnehmer:in</th><th></th></tr></thead>
-    <tbody>
-    {% for t in abteilungs_teilnehmer %}
-      <tr>
-        <td>{{ t.name }}</td>
-        <td style="text-align: right;">
-          {% if t.id in hf_mitglied_teilnehmer_ids %}
-          <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder/{{ hf_mitglied_id_by_teilnehmer[t.id] }}/entfernen">
-            {% include "partials/csrf_field.html" %}
-            <button type="submit" class="link-btn danger">Entfernen</button>
-          </form>
-          {% else %}
-          <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder">
-            {% include "partials/csrf_field.html" %}
-            <input type="hidden" name="teilnehmer_id" value="{{ t.id }}">
-            <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p class="empty-state">Keine Teilnehmer:innen in der Abteilung dieses Handlungsfelds.</p>
-  {% endif %}
-</div>
-{% endif %}
+{% set gruppen_dieses_feldes = gruppen | selectattr("handlungsfeld_id", "equalto", ausgewaehltes_handlungsfeld_id) | list %}
+<div class="seiten-tabs" x-data="{ tab: 'mitglieder' }" style="margin-top: var(--space-6);">
+  <nav class="seiten-tabs-nav" aria-label="Handlungsfeld-Bereiche">
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'mitglieder' }" @click="tab = 'mitglieder'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </span>
+      Mitglieder
+      {% if hf_mitglied_teilnehmer_ids %}<span class="seiten-tabs-badge">{{ hf_mitglied_teilnehmer_ids | length }}</span>{% endif %}
+    </button>
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'gruppen' }" @click="tab = 'gruppen'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>
+      </span>
+      Arbeitsgruppen
+      {% if gruppen_dieses_feldes %}<span class="seiten-tabs-badge">{{ gruppen_dieses_feldes | length }}</span>{% endif %}
+    </button>
+  </nav>
 
-<h2>Bestehende Arbeitsgruppen</h2>
-{% if gruppen %}
-<table>
-  <thead><tr><th>Gruppe</th><th>Handlungsfeld</th><th>Mitglieder</th></tr></thead>
-  <tbody>
-  {% for g in gruppen %}
-    <tr>
-      <td>{{ g.name }}</td>
-      <td>{{ handlungsfeld_by_id[g.handlungsfeld_id].name }}</td>
-      <td>
-        {% for tid in mitglieder_by_gruppe.get(g.id, []) %}
-          {{ teilnehmer_by_id[tid].name }}{% if not loop.last %}, {% endif %}
+  <div class="seiten-tabs-panels">
+    <div x-show="tab === 'mitglieder'" x-cloak>
+      <div class="card">
+        <h3>Mitglieder des Handlungsfelds</h3>
+        <p class="karte-meta">Nur Mitglieder eines Handlungsfelds können in eine Arbeitsgruppe aufgenommen oder
+          persönlich mit Projekt-Aufgaben bedacht werden.</p>
+        {% if abteilungs_teilnehmer %}
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Teilnehmer:in</th><th></th></tr></thead>
+          <tbody>
+          {% for t in abteilungs_teilnehmer %}
+            <tr>
+              <td>{{ t.name }}</td>
+              <td style="text-align: right;">
+                {% if t.id in hf_mitglied_teilnehmer_ids %}
+                <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder/{{ hf_mitglied_id_by_teilnehmer[t.id] }}/entfernen">
+                  {% include "partials/csrf_field.html" %}
+                  <button type="submit" class="link-btn danger">Entfernen</button>
+                </form>
+                {% else %}
+                <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder">
+                  {% include "partials/csrf_field.html" %}
+                  <input type="hidden" name="teilnehmer_id" value="{{ t.id }}">
+                  <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
         {% else %}
-          <span class="empty-state">keine Mitglieder</span>
-        {% endfor %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<p class="empty-state">Noch keine Gruppen angelegt.</p>
-{% endif %}
-
-{% if ausgewaehltes_handlungsfeld_id %}
-<h2>Neue Arbeitsgruppe</h2>
-<div class="card">
-  <form method="post" action="/kanban/gruppen">
-    {% include "partials/csrf_field.html" %}
-    <input type="hidden" name="handlungsfeld_id" value="{{ ausgewaehltes_handlungsfeld_id }}">
-    <div class="field">
-      <label for="name">Gruppenname</label>
-      <input type="text" id="name" name="name" required>
-    </div>
-    <div class="field">
-      <label>Mitglieder ({{ handlungsfeld_by_id[ausgewaehltes_handlungsfeld_id].name }})</label>
-      {% if auswahl_teilnehmer %}
-      <div class="checkbox-list">
-        {% for t in auswahl_teilnehmer %}
-        <label><input type="checkbox" name="mitglieder" value="{{ t.id }}"> {{ t.name }}</label>
-        {% endfor %}
+        <p class="empty-state">Keine Teilnehmer:innen in der Abteilung dieses Handlungsfelds.</p>
+        {% endif %}
       </div>
-      {% else %}
-      <p class="empty-state">Noch keine Mitglieder in diesem Handlungsfeld – oben zuerst hinzufügen.</p>
-      {% endif %}
     </div>
-    <button type="submit" class="btn btn-primary">Gruppe anlegen</button>
-  </form>
+
+    <div x-show="tab === 'gruppen'" x-cloak>
+      <div class="card">
+        <h3>Bestehende Arbeitsgruppen in {{ handlungsfeld_by_id[ausgewaehltes_handlungsfeld_id].name }}</h3>
+        {% if gruppen_dieses_feldes %}
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Gruppe</th><th>Mitglieder</th><th></th></tr></thead>
+          <tbody>
+          {% for g in gruppen_dieses_feldes %}
+            <tr>
+              <td>{{ g.name }}</td>
+              <td>
+                {% for tid in mitglieder_by_gruppe.get(g.id, []) %}
+                  {{ teilnehmer_by_id[tid].name }}{% if not loop.last %}, {% endif %}
+                {% else %}
+                  <span class="empty-state">keine Mitglieder</span>
+                {% endfor %}
+              </td>
+              <td style="text-align: right;">
+                <details class="zeile-verwalten">
+                  <summary title="Arbeitsgruppe verwalten" aria-label="Arbeitsgruppe &quot;{{ g.name }}&quot; verwalten">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="3" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="13" r="1.4" fill="currentColor"/></svg>
+                  </summary>
+                  <div class="zeile-verwalten-body">
+                    <form method="post" action="/kanban/gruppen/{{ g.id }}/umbenennen" class="form-row">
+                      {% include "partials/csrf_field.html" %}
+                      <div class="field" style="flex: 1;">
+                        <input type="text" name="name" value="{{ g.name }}" required>
+                      </div>
+                      <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
+                    </form>
+
+                    <div class="eyebrow">Mitglieder</div>
+                    {% for tid in mitglieder_by_gruppe.get(g.id, []) %}
+                    <span class="chip chip-neutral">
+                      {{ teilnehmer_by_id[tid].name }}
+                      <form method="post" action="/kanban/gruppen/{{ g.id }}/mitglieder/{{ gruppe_mitglied_id_by_teilnehmer[g.id][tid] }}/entfernen" style="display:inline; margin-left: var(--space-2);">
+                        {% include "partials/csrf_field.html" %}
+                        <button type="submit" class="link-btn danger" style="min-height:auto; min-width:auto; padding:0;">Entfernen</button>
+                      </form>
+                    </span>
+                    {% else %}
+                    <span class="empty-state">keine Mitglieder</span>
+                    {% endfor %}
+
+                    {% set verfuegbare_teilnehmer = auswahl_teilnehmer | rejectattr("id", "in", mitglieder_by_gruppe.get(g.id, [])) | list %}
+                    {% if verfuegbare_teilnehmer %}
+                    <form method="post" action="/kanban/gruppen/{{ g.id }}/mitglieder" class="form-row">
+                      {% include "partials/csrf_field.html" %}
+                      <div class="field" style="flex: 1;">
+                        <select name="teilnehmer_id" required>
+                          <option value="" selected disabled>– Teilnehmer:in wählen –</option>
+                          {% for t in verfuegbare_teilnehmer %}
+                          <option value="{{ t.id }}">{{ t.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+                    </form>
+                    {% endif %}
+
+                    <hr class="section-divider">
+                    <form method="post" action="/kanban/gruppen/{{ g.id }}/loeschen" data-confirm="Arbeitsgruppe &quot;{{ g.name }}&quot; endgültig löschen? Boards, die an diese Gruppe freigegeben sind, verlieren dadurch diese Freigabe.">
+                      {% include "partials/csrf_field.html" %}
+                      <button type="submit" class="link-btn danger">Arbeitsgruppe löschen</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="empty-state">Noch keine Arbeitsgruppen in diesem Handlungsfeld.</p>
+        {% endif %}
+
+        <hr class="section-divider">
+        <h3>Neue Arbeitsgruppe</h3>
+        <form method="post" action="/kanban/gruppen">
+          {% include "partials/csrf_field.html" %}
+          <input type="hidden" name="handlungsfeld_id" value="{{ ausgewaehltes_handlungsfeld_id }}">
+          <div class="field">
+            <label for="name">Gruppenname</label>
+            <input type="text" id="name" name="name" required>
+          </div>
+          <div class="field">
+            <label>Mitglieder ({{ handlungsfeld_by_id[ausgewaehltes_handlungsfeld_id].name }})</label>
+            {% if auswahl_teilnehmer %}
+            <div class="checkbox-list">
+              {% for t in auswahl_teilnehmer %}
+              <label><input type="checkbox" name="mitglieder" value="{{ t.id }}"> {{ t.name }}</label>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-state">Noch keine Mitglieder in diesem Handlungsfeld – im Tab "Mitglieder" zuerst hinzufügen.</p>
+            {% endif %}
+          </div>
+          <button type="submit" class="btn btn-primary" {% if not auswahl_teilnehmer %}disabled{% endif %}>Gruppe anlegen</button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
+{% else %}
+<p class="empty-state" style="margin-top: var(--space-4);">Wähle oben ein Handlungsfeld, um seine Mitglieder und
+  Arbeitsgruppen zu verwalten.</p>
 {% endif %}
 {% endblock %}

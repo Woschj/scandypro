@@ -4,9 +4,33 @@
 <h1>Mein Konto</h1>
 <p class="visibility-hint">Angemeldet als {{ current_user.name }} ({{ current_user.email }}).</p>
 
+{% if current_user.role.value != "teilnehmer" %}
+<div class="card" style="max-width: 420px;">
+  <h3>Meine Stammdaten</h3>
+  {% if stammdaten_error %}<div class="form-error">{{ stammdaten_error }}</div>{% endif %}
+  {% if erfolg_stammdaten %}<div class="form-success">Stammdaten gespeichert.</div>{% endif %}
+  <form method="post" action="/konto/stammdaten">
+    {% include "partials/csrf_field.html" %}
+    <div class="field">
+      <label for="stammdaten_name">Name</label>
+      <input type="text" id="stammdaten_name" name="name" value="{{ current_user.name }}" required>
+    </div>
+    <div class="field">
+      <label for="stammdaten_email">E-Mail</label>
+      <input type="email" id="stammdaten_email" name="email" value="{{ current_user.email }}" required>
+    </div>
+    <div class="field">
+      <label for="stammdaten_telefon">Telefon (optional)</label>
+      <input type="tel" id="stammdaten_telefon" name="telefon" value="{{ current_user.telefon or '' }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Speichern</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="card" style="max-width: 420px;">
   <h3>Passwort ändern</h3>
-  {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+  {% if passwort_error %}<div class="form-error">{{ passwort_error }}</div>{% endif %}
   {% if erfolg %}<div class="form-success">Passwort geändert.</div>{% endif %}
   <form method="post" action="/konto/passwort">
     {% include "partials/csrf_field.html" %}

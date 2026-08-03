@@ -23,7 +23,7 @@ from app.core.tagesuebungen import (
 from app.core.templating import templates
 from app.core.uploads import datei_lesen_entschluesselt, datei_loeschen, datei_speichern
 from app.models.audit import AuditAktion, AuditZieltyp
-from app.models.organisation import PsmZuordnung
+from app.models.organisation import Abteilung, PsmZuordnung
 from app.models.user import RoleEnum, User
 from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
 
@@ -277,6 +277,48 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "psm_kontakt": psm_kontakt,
             "andere_psm": andere_psm,
             "wort_optionen": WORT_DES_TAGES_OPTIONEN,
+        },
+    )
+
+
+@router.get("/teilnehmer", response_class=HTMLResponse)
+async def meine_teilnehmer(request: Request, current_user: CurrentUser, session: SessionDep):
+    """Gebündelte Übersicht "Meine Teilnehmer:innen" für psychosoziale
+    Mitarbeiter:innen - bisher stand dafür nur eine knappe Namensliste auf
+    dem Dashboard zur Verfügung, ohne Abteilung oder erkennbaren nächsten
+    Schritt bei fehlender Freigabe."""
+    if current_user.role != RoleEnum.psychosoziale_mitarbeit:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur psychosoziale Mitarbeiter:innen nutzen diese Ansicht.")
+
+    zuordnung_result = await session.execute(
+        select(PsmZuordnung).where(PsmZuordnung.psm_id == current_user.id)
+    )
+    teilnehmer_ids = [z.teilnehmer_id for z in zuordnung_result.scalars().all()]
+
+    teilnehmer_liste: list[User] = []
+    abteilung_by_id: dict[int, Abteilung] = {}
+    freigegebene_ids: set[int] = set()
+    if teilnehmer_ids:
+        teilnehmer_result = await session.execute(
+            select(User).where(User.id.in_(teilnehmer_ids)).order_by(User.name)
+        )
+        teilnehmer_liste = list(teilnehmer_result.scalars().all())
+        abteilungs_ids = {t.abteilung_id for t in teilnehmer_liste if t.abteilung_id is not None}
+        if abteilungs_ids:
+            abteilung_result = await session.execute(select(Abteilung).where(Abteilung.id.in_(abteilungs_ids)))
+            abteilung_by_id = {a.id: a for a in abteilung_result.scalars().all()}
+        for teilnehmer_id in teilnehmer_ids:
+            if await hat_wohlbefinden_freigabe(session, current_user.id, teilnehmer_id):
+                freigegebene_ids.add(teilnehmer_id)
+
+    return templates.TemplateResponse(
+        request,
+        "wohlbefinden/teilnehmer_liste.html",
+        {
+            "current_user": current_user,
+            "teilnehmer_liste": teilnehmer_liste,
+            "abteilung_by_id": abteilung_by_id,
+            "freigegebene_ids": freigegebene_ids,
         },
     )
 

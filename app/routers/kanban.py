@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 
 from app.core.access import (
+    betreute_teilnehmer_ids,
     boardmitglieder_ids,
     geleitete_handlungsfeld_ids,
     ist_leiter_von_handlungsfeld,
@@ -16,11 +17,18 @@ from app.core.access import (
     require_role,
     sichtbare_karten_filter,
 )
-from app.core.deletion import loesche_board_kaskadierend, loesche_spalte_kaskadierend
+from app.core.deletion import (
+    loesche_board_kaskadierend,
+    loesche_spalte_kaskadierend,
+    loesche_teilnehmergruppe_kaskadierend,
+)
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
+from app.models.bewerbung import BewerbungsFreigabe
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenZuweisung, Spalte, Unteraufgabe
 from app.models.organisation import (
+    Abteilung,
+    BerufstrainerZuordnung,
     Handlungsfeld,
     HandlungsfeldMitglied,
     Teilnehmergruppe,
@@ -432,6 +440,79 @@ async def freigabe_entfernen(board_id: int, freigabe_id: int, current_user: Curr
     return RedirectResponse(url=f"/kanban/boards/{board_id}", status_code=303)
 
 
+@router.get("/teilnehmer", response_class=HTMLResponse)
+async def meine_teilnehmer(request: Request, current_user: CurrentUser, session: SessionDep):
+    """Gebündelte Übersicht "Meine Teilnehmer:innen" für Berufstrainer:innen -
+    fasst zwei bisher getrennte, nur schwer auffindbare Sichten zusammen
+    (Handlungsfeld-Mitglieder aus /kanban/gruppen, persönliche Zuordnung aus
+    dem Dashboard) zu einer einzigen, durchsuchbaren Tabelle."""
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen haben eine Teilnehmer:innen-Übersicht.")
+
+    geleitete_ids = await geleitete_handlungsfeld_ids(session, current_user.id)
+    handlungsfeld_by_id: dict[int, Handlungsfeld] = {}
+    if geleitete_ids:
+        hf_result = await session.execute(select(Handlungsfeld).where(Handlungsfeld.id.in_(geleitete_ids)))
+        handlungsfeld_by_id = {h.id: h for h in hf_result.scalars().all()}
+
+    hf_mitglied_handlungsfelder: dict[int, list[str]] = {}
+    if geleitete_ids:
+        hf_mitglieder_result = await session.execute(
+            select(HandlungsfeldMitglied).where(HandlungsfeldMitglied.handlungsfeld_id.in_(geleitete_ids))
+        )
+        for m in hf_mitglieder_result.scalars().all():
+            hf_mitglied_handlungsfelder.setdefault(m.teilnehmer_id, []).append(
+                handlungsfeld_by_id[m.handlungsfeld_id].name
+            )
+
+    zuordnung_result = await session.execute(
+        select(BerufstrainerZuordnung).where(BerufstrainerZuordnung.berufstrainer_id == current_user.id)
+    )
+    persoenlich_zugeordnet_ids = {z.teilnehmer_id for z in zuordnung_result.scalars().all()}
+
+    alle_ids = set(hf_mitglied_handlungsfelder) | persoenlich_zugeordnet_ids
+    teilnehmer_liste: list[User] = []
+    abteilung_by_id: dict[int, Abteilung] = {}
+    if alle_ids:
+        teilnehmer_result = await session.execute(
+            select(User).where(User.id.in_(alle_ids)).order_by(User.name)
+        )
+        teilnehmer_liste = list(teilnehmer_result.scalars().all())
+        abteilungs_ids = {t.abteilung_id for t in teilnehmer_liste if t.abteilung_id is not None}
+        if abteilungs_ids:
+            abteilung_result = await session.execute(select(Abteilung).where(Abteilung.id.in_(abteilungs_ids)))
+            abteilung_by_id = {a.id: a for a in abteilung_result.scalars().all()}
+
+    wochenbericht_sichtbar_ids = set(await betreute_teilnehmer_ids(session, current_user.id))
+
+    heute = date.today()
+    bewerbung_freigabe_ids: set[int] = set()
+    if alle_ids:
+        freigaben_result = await session.execute(
+            select(BewerbungsFreigabe).where(
+                BewerbungsFreigabe.empfaenger_id == current_user.id,
+                BewerbungsFreigabe.teilnehmer_id.in_(alle_ids),
+                BewerbungsFreigabe.widerrufen_am.is_(None),
+            )
+        )
+        for freigabe in freigaben_result.scalars().all():
+            if freigabe.gueltig_bis is None or freigabe.gueltig_bis >= heute:
+                bewerbung_freigabe_ids.add(freigabe.teilnehmer_id)
+
+    return templates.TemplateResponse(
+        request,
+        "kanban/teilnehmer.html",
+        {
+            "current_user": current_user,
+            "teilnehmer_liste": teilnehmer_liste,
+            "abteilung_by_id": abteilung_by_id,
+            "hf_mitglied_handlungsfelder": hf_mitglied_handlungsfelder,
+            "persoenlich_zugeordnet_ids": persoenlich_zugeordnet_ids,
+            "wochenbericht_sichtbar_ids": wochenbericht_sichtbar_ids,
+            "bewerbung_freigabe_ids": bewerbung_freigabe_ids,
+        },
+    )
+
+
 @router.get("/gruppen", response_class=HTMLResponse)
 async def gruppen_liste(
     request: Request, current_user: CurrentUser, session: SessionDep, handlungsfeld_id: str | None = None
@@ -460,8 +541,10 @@ async def gruppen_liste(
     mitglieder_result = await session.execute(select(TeilnehmergruppeMitglied))
     mitglieder = list(mitglieder_result.scalars().all())
     mitglieder_by_gruppe: dict[int, list[int]] = {}
+    gruppe_mitglied_id_by_teilnehmer: dict[int, dict[int, int]] = {}
     for m in mitglieder:
         mitglieder_by_gruppe.setdefault(m.gruppe_id, []).append(m.teilnehmer_id)
+        gruppe_mitglied_id_by_teilnehmer.setdefault(m.gruppe_id, {})[m.teilnehmer_id] = m.id
 
     teilnehmer_result = await session.execute(select(User).where(User.role == RoleEnum.teilnehmer))
     alle_teilnehmer = list(teilnehmer_result.scalars().all())
@@ -495,6 +578,7 @@ async def gruppen_liste(
             "gruppen": gruppen,
             "handlungsfeld_by_id": handlungsfeld_by_id,
             "mitglieder_by_gruppe": mitglieder_by_gruppe,
+            "gruppe_mitglied_id_by_teilnehmer": gruppe_mitglied_id_by_teilnehmer,
             "teilnehmer_by_id": teilnehmer_by_id,
             "ausgewaehltes_handlungsfeld_id": handlungsfeld_id,
             "auswahl_teilnehmer": auswahl_teilnehmer,
@@ -585,4 +669,66 @@ async def gruppe_erstellen(
         session.add(TeilnehmergruppeMitglied(gruppe_id=gruppe.id, teilnehmer_id=teilnehmer_id))
 
     await session.commit()
+    return RedirectResponse(url=f"/kanban/gruppen?handlungsfeld_id={handlungsfeld_id}", status_code=303)
+
+
+async def _hole_eigene_gruppe(session: SessionDep, current_user: User, gruppe_id: int) -> Teilnehmergruppe:
+    """Lädt eine Arbeitsgruppe und prüft, dass current_user das zugehörige
+    Handlungsfeld leitet - gemeinsame Berechtigungsprüfung für Umbenennen/
+    Löschen/Mitgliederverwaltung einer bestehenden Gruppe."""
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen verwalten Arbeitsgruppen.")
+    gruppe = await session.get(Teilnehmergruppe, gruppe_id)
+    if gruppe is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if not await ist_leiter_von_handlungsfeld(session, current_user.id, gruppe.handlungsfeld_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Du leitest dieses Handlungsfeld nicht.")
+    return gruppe
+
+
+@router.post("/gruppen/{gruppe_id}/umbenennen")
+async def gruppe_umbenennen(gruppe_id: int, current_user: CurrentUser, session: SessionDep, name: str = Form(...)):
+    gruppe = await _hole_eigene_gruppe(session, current_user, gruppe_id)
+    gruppe.name = name
+    session.add(gruppe)
+    await session.commit()
+    return RedirectResponse(url=f"/kanban/gruppen?handlungsfeld_id={gruppe.handlungsfeld_id}", status_code=303)
+
+
+@router.post("/gruppen/{gruppe_id}/mitglieder")
+async def gruppe_mitglied_hinzufuegen(
+    gruppe_id: int, current_user: CurrentUser, session: SessionDep, teilnehmer_id: int = Form(...)
+):
+    gruppe = await _hole_eigene_gruppe(session, current_user, gruppe_id)
+    if not await ist_mitglied_von_handlungsfeld(session, teilnehmer_id, gruppe.handlungsfeld_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Person gehört nicht zum Handlungsfeld dieser Gruppe.")
+
+    vorhanden = await session.execute(
+        select(TeilnehmergruppeMitglied).where(
+            TeilnehmergruppeMitglied.gruppe_id == gruppe_id,
+            TeilnehmergruppeMitglied.teilnehmer_id == teilnehmer_id,
+        )
+    )
+    if vorhanden.first() is None:
+        session.add(TeilnehmergruppeMitglied(gruppe_id=gruppe_id, teilnehmer_id=teilnehmer_id))
+        await session.commit()
+    return RedirectResponse(url=f"/kanban/gruppen?handlungsfeld_id={gruppe.handlungsfeld_id}", status_code=303)
+
+
+@router.post("/gruppen/{gruppe_id}/mitglieder/{mitglied_id}/entfernen")
+async def gruppe_mitglied_entfernen(gruppe_id: int, mitglied_id: int, current_user: CurrentUser, session: SessionDep):
+    gruppe = await _hole_eigene_gruppe(session, current_user, gruppe_id)
+    mitglied = await session.get(TeilnehmergruppeMitglied, mitglied_id)
+    if mitglied is None or mitglied.gruppe_id != gruppe_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    await session.delete(mitglied)
+    await session.commit()
+    return RedirectResponse(url=f"/kanban/gruppen?handlungsfeld_id={gruppe.handlungsfeld_id}", status_code=303)
+
+
+@router.post("/gruppen/{gruppe_id}/loeschen")
+async def gruppe_loeschen(gruppe_id: int, current_user: CurrentUser, session: SessionDep):
+    gruppe = await _hole_eigene_gruppe(session, current_user, gruppe_id)
+    handlungsfeld_id = gruppe.handlungsfeld_id
+    await loesche_teilnehmergruppe_kaskadierend(session, gruppe_id)
     return RedirectResponse(url=f"/kanban/gruppen?handlungsfeld_id={handlungsfeld_id}", status_code=303)

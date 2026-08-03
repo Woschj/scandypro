@@ -104,6 +104,12 @@
 
   {% if current_user.role.value == "berufstrainer" %}
   <div class="card">
+    <h3>Meine Teilnehmer:innen</h3>
+    <p>Alle Teilnehmer:innen deiner Handlungsfelder und persönlichen Zuordnungen an einem Ort, mit Links zu
+      Kanban-Board, Wochenberichten und freigegebenen Bewerbungen.</p>
+    <a class="btn btn-primary" href="/kanban/teilnehmer">Öffnen</a>
+  </div>
+  <div class="card">
     <h3>Handlungsfeld-Team</h3>
     <p>Mitglieder verwalten, Arbeitsgruppen bilden und Boards für sie freigeben.</p>
     <a class="btn btn-primary" href="/kanban/gruppen">Öffnen</a>
@@ -113,45 +119,12 @@
     <p>Abgegebene Berichte der Teilnehmer:innen deiner Handlungsfelder.</p>
     <a class="btn btn-primary" href="/wochenberichte">Öffnen</a>
   </div>
-  <div class="card">
-    <h3>Bewerbungen deiner Teilnehmer:innen</h3>
-    {% if betreute_teilnehmer %}
-    <div class="checkbox-list" style="gap: var(--space-3);">
-      {% for t in betreute_teilnehmer %}
-      <div>
-        {% if t.id in freigegebene_bewerbungen_ids %}
-        <a href="/bewerbungen/teilnehmer/{{ t.id }}">{{ t.name }}</a>
-        {% else %}
-        <span class="empty-state">{{ t.name }} (noch keine Freigabe)</span>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="empty-state">Dir ist noch niemand persönlich zugeordnet.</p>
-    {% endif %}
-    <p class="empty-state" style="margin-top: var(--space-3);">Nur sichtbar, wenn die Teilnehmer:in aktiv freigegeben hat.</p>
-  </div>
 
   {% elif current_user.role.value == "psychosoziale_mitarbeit" %}
   <div class="card">
-    <h3>Deine Teilnehmer:innen</h3>
-    {% if betreute_teilnehmer %}
-    <div class="checkbox-list" style="gap: var(--space-3);">
-      {% for t in betreute_teilnehmer %}
-      <div>
-        {% if t.id in freigegebene_wohlbefinden_ids %}
-        <a href="/wohlbefinden/teilnehmer/{{ t.id }}">{{ t.name }}</a>
-        {% else %}
-        <span class="empty-state">{{ t.name }} (noch keine Freigabe)</span>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="empty-state">Dir sind noch keine Teilnehmer:innen zugeordnet.</p>
-    {% endif %}
-    <p class="empty-state" style="margin-top: var(--space-3);">Zugriff auf Einträge zu "Mein Tag" nur nach expliziter Freigabe durch die Teilnehmer:innen selbst.</p>
+    <h3>Meine Teilnehmer:innen</h3>
+    <p>Alle dir zugeordneten Teilnehmer:innen mit Abteilung und Freigabe-Status für "Mein Tag" auf einen Blick.</p>
+    <a class="btn btn-primary" href="/wohlbefinden/teilnehmer">Öffnen</a>
   </div>
 
   {% elif current_user.role.value == "einrichtungs_admin" %}

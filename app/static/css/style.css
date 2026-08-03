@@ -675,6 +675,12 @@ button:not(.btn) {
     display: flex !important;
     position: static !important;
   }
+  /* Name/Rolle + Abmelden leben im Markup innerhalb von .topnav-links (siehe
+     base.html), damit sie auf schmalen Screens denselben Kollaps-Mechanismus
+     wie die übrigen Nav-Punkte nutzen. Auf breiten Screens sollen sie aber
+     weiterhin optisch abgesetzt ganz rechts stehen wie zuvor der eigene
+     .user-chip. */
+  .topnav-links .user-chip { margin-left: auto; }
 }
 
 @media (max-width: 860px) {
@@ -698,6 +704,16 @@ button:not(.btn) {
   .topnav-links a:last-child { border-bottom: none; }
   .nav-dropdown { width: 100%; }
   .nav-dropdown-body { position: static; box-shadow: none; border: none; padding: 0; margin-top: 0; }
+  /* Eigener Umbruch statt starrem einzeiligem Chip (der frühere, immer
+     sichtbare .user-chip sprengte hier die Topnav horizontal, siehe
+     base.html-Kommentar) - Name/Rolle und Abmelden dürfen jetzt umbrechen. */
+  .topnav-links .user-chip {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+    padding: var(--space-3) 0 var(--space-2);
+    margin-top: var(--space-2);
+    border-top: 1px solid var(--line);
+  }
 }
 
 .main-content { flex: 1; width: 100%; max-width: 1000px; margin: 0 auto; padding: var(--space-6); }
@@ -1127,6 +1143,11 @@ button:not(.btn) {
 
 /* Tabellen */
 table { width: 100%; border-collapse: collapse; }
+/* Für Tabellen außerhalb einer .card (die schon eigenes overflow-x:auto hat,
+   siehe oben) - ohne diesen Wrapper sprengen breite Tabellen (z.B.
+   Benutzerverwaltung mit 8 Spalten) auf schmalen Screens die ganze Seite
+   horizontal statt nur innerhalb der Tabelle zu scrollen. */
+.table-scroll { overflow-x: auto; }
 th {
   text-align: left;
   padding: var(--space-2) var(--space-3);

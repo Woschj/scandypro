@@ -20,6 +20,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.uploads import datei_loeschen
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, Bewerbungsunterlage
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenBewegung, KartenZuweisung, Spalte, Unteraufgabe
+from app.models.organisation import Teilnehmergruppe, TeilnehmergruppeMitglied
 from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe
 
 
@@ -119,6 +120,38 @@ async def loesche_board_kaskadierend(session: AsyncSession, board_id: int) -> No
     if board is not None:
         await session.delete(board)
     await session.flush()
+
+
+async def loesche_teilnehmergruppe_kaskadierend(session: AsyncSession, gruppe_id: int) -> None:
+    """Löscht eine Arbeitsgruppe vollständig: eigene Mitgliedschaften sowie
+    Board-Freigaben, die genau dieser Gruppe gelten (BoardFreigabe.gruppe_id
+    hat keine DB-seitige ON-DELETE-Regel, siehe app/models/kanban.py -
+    stehen bleibende Freigaben würden sonst die Fremdschlüssel-Constraint
+    verletzen). Boards selbst bleiben unberührt, nur die Freigabe an diese
+    eine Gruppe fällt weg (siehe app/routers/kanban.py:gruppe_loeschen)."""
+    mitglieder = list(
+        (
+            await session.execute(
+                select(TeilnehmergruppeMitglied).where(TeilnehmergruppeMitglied.gruppe_id == gruppe_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for mitglied in mitglieder:
+        await session.delete(mitglied)
+
+    freigaben = list(
+        (await session.execute(select(BoardFreigabe).where(BoardFreigabe.gruppe_id == gruppe_id))).scalars().all()
+    )
+    for freigabe in freigaben:
+        await session.delete(freigabe)
+    await session.flush()
+
+    gruppe = await session.get(Teilnehmergruppe, gruppe_id)
+    if gruppe is not None:
+        await session.delete(gruppe)
+    await session.commit()
 
 
 async def loesche_persoenliches_kanban_board(session: AsyncSession, teilnehmer_id: int) -> None:

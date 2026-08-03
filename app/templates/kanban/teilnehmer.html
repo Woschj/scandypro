@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Meine Teilnehmer:innen – ScandyPro{% endblock %}
+{% block content %}
+<p><a href="/kanban">&larr; Projekte</a></p>
+<h1>Meine Teilnehmer:innen</h1>
+<p class="visibility-hint">Alle Teilnehmer:innen, die entweder zu einem von dir geleiteten Handlungsfeld gehören
+  oder dir persönlich zugeordnet sind. Bewerbungs- und Wochenbericht-Zugriff bleiben unabhängig davon an die
+  jeweilige Freigabe bzw. Arbeitsgruppen-Zugehörigkeit gebunden.</p>
+
+{% if teilnehmer_liste %}
+<div class="field" style="max-width: 320px;">
+  <label for="teilnehmer-suche">Suchen</label>
+  <input type="search" id="teilnehmer-suche" data-table-filter="teilnehmer-tabelle" placeholder="Name, Abteilung, Handlungsfeld …">
+</div>
+<div class="table-scroll">
+<table id="teilnehmer-tabelle">
+  <thead>
+    <tr>
+      <th data-sort>Name</th>
+      <th data-sort>Abteilung</th>
+      <th>Handlungsfeld(er)</th>
+      <th>Persönlich zugeordnet</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in teilnehmer_liste %}
+  <tr>
+    <td>{{ t.name }}</td>
+    <td>{{ abteilung_by_id[t.abteilung_id].name if t.abteilung_id in abteilung_by_id else "–" }}</td>
+    <td>
+      {% if t.id in hf_mitglied_handlungsfelder %}
+      {{ hf_mitglied_handlungsfelder[t.id] | join(", ") }}
+      {% else %}
+      <span class="empty-state">–</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if t.id in persoenlich_zugeordnet_ids %}
+      <span class="chip chip-success">ja</span>
+      {% else %}
+      <span class="chip chip-neutral">nein</span>
+      {% endif %}
+    </td>
+    <td style="white-space: nowrap;">
+      {% if t.id in persoenlich_zugeordnet_ids %}
+      <a href="/kanban/boards/personen/{{ t.id }}" class="btn btn-ghost btn-sm">Kanban-Board</a>
+      {% endif %}
+      {% if t.id in wochenbericht_sichtbar_ids %}
+      <a href="/wochenberichte?teilnehmer_id={{ t.id }}" class="btn btn-ghost btn-sm">Wochenberichte</a>
+      {% endif %}
+      {% if t.id in bewerbung_freigabe_ids %}
+      <a href="/bewerbungen/teilnehmer/{{ t.id }}" class="btn btn-ghost btn-sm">Bewerbungen</a>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Dir sind aktuell weder Handlungsfeld-Mitglieder noch persönlich zugeordnete
+  Teilnehmer:innen zugewiesen.</p>
+{% endif %}
+{% endblock %}

@@ -40,15 +40,33 @@
     <header class="topnav" x-data="{ menuOpen: false }">
       <a class="wordmark" href="/">SCANDY<span class="dot">//</span>PRO</a>
 
+      <button type="button" id="theme-toggle" class="icon-btn" aria-pressed="false" aria-label="Zu dunklem Modus wechseln">
+        <span class="theme-toggle-sonne">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.6 3.4L11.6 4.4M4.4 11.6L3.4 12.6M12.6 12.6L11.6 11.6M4.4 4.4L3.4 3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </span>
+        <span class="theme-toggle-mond">
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 106.7 6.7 6 6 0 010.3.3z" fill="currentColor"/></svg>
+        </span>
+      </button>
+
       <button type="button" class="icon-btn nav-trigger-btn" @click="menuOpen = !menuOpen" aria-label="Menü" :aria-expanded="menuOpen.toString()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
 
       <div class="nav-backdrop" x-show="menuOpen" @click="menuOpen = false" x-cloak></div>
 
+      {# Name/Rolle + Abmelden leben bewusst IN der kollabierbaren .topnav-links-Nav statt in
+         einem eigenen, immer sichtbaren .user-chip: bei langen Namen sprengte das feste Chip-
+         Element (Name + Rolle + Logout-Button ohne Umbruch) ab ~860px Breite die Topnav nach
+         rechts über den Viewport hinaus - der Abmelden-Button war dann nur per horizontalem
+         Scrollen erreichbar. Auf breiten Screens bleibt der Chip optisch weiterhin rechts
+         (siehe .topnav-links .user-chip { margin-left: auto } in style.css). #}
       <nav class="topnav-links" x-show="menuOpen" x-cloak @click="menuOpen = false">
+        {% if current_user.role.value in ["teilnehmer", "berufstrainer"] %}
         <a href="/kanban" class="{% if request.url.path.startswith('/kanban') %}active{% endif %}">Projekte</a>
+        {% endif %}
         {% if current_user.role.value == "berufstrainer" %}
+        <a href="/kanban/teilnehmer" class="{% if request.url.path.startswith('/kanban/teilnehmer') %}active{% endif %}">Meine Teilnehmer:innen</a>
         <a href="/kanban/gruppen" class="{% if request.url.path.startswith('/kanban/gruppen') %}active{% endif %}">Handlungsfeld-Team</a>
         {% endif %}
         {% if current_user.role.value in ["teilnehmer", "berufstrainer"] %}
@@ -58,6 +76,9 @@
         <a href="/wohlbefinden" class="{% if request.url.path.startswith('/wohlbefinden') %}active{% endif %}">Mein Tag</a>
         <a href="/bewerbungen" class="{% if request.url.path.startswith('/bewerbungen') %}active{% endif %}">Bewerbungen</a>
         <a href="/freigaben" class="{% if request.url.path.startswith('/freigaben') %}active{% endif %}">Meine Freigaben</a>
+        {% endif %}
+        {% if current_user.role.value == "psychosoziale_mitarbeit" %}
+        <a href="/wohlbefinden/teilnehmer" class="{% if request.url.path.startswith('/wohlbefinden/teilnehmer') %}active{% endif %}">Meine Teilnehmer:innen</a>
         {% endif %}
         {% if current_user.role.value == "einrichtungs_admin" %}
         <details class="nav-dropdown">
@@ -70,23 +91,15 @@
           </div>
         </details>
         {% endif %}
-      </nav>
 
-      <div class="user-chip">
-        <button type="button" id="theme-toggle" class="icon-btn" aria-pressed="false" aria-label="Zu dunklem Modus wechseln">
-          <span class="theme-toggle-sonne">
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.6 3.4L11.6 4.4M4.4 11.6L3.4 12.6M12.6 12.6L11.6 11.6M4.4 4.4L3.4 3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          </span>
-          <span class="theme-toggle-mond">
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><path d="M13.5 9.5A6 6 0 016.5 2.5a6 6 0 106.7 6.7 6 6 0 010.3.3z" fill="currentColor"/></svg>
-          </span>
-        </button>
-        <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
-        <form method="post" action="/logout" style="margin:0;">
-          {% include "partials/csrf_field.html" %}
-          <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
-        </form>
-      </div>
+        <div class="user-chip">
+          <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
+          <form method="post" action="/logout" style="margin:0;">
+            {% include "partials/csrf_field.html" %}
+            <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
+          </form>
+        </div>
+      </nav>
     </header>
     {% endif %}
     <main class="main-content {% block content_class %}{% endblock %}">

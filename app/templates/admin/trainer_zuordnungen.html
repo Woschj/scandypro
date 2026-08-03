@@ -34,6 +34,7 @@
 
 <h2>Bestehende Zuordnungen</h2>
 {% if zuordnungen %}
+<div class="table-scroll">
 <table>
   <thead><tr><th>Berufstrainer:in</th><th>Teilnehmer:in</th><th></th></tr></thead>
   <tbody>
@@ -51,6 +52,7 @@
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% else %}
 <p class="empty-state">Noch keine Zuordnungen.</p>
 {% endif %}

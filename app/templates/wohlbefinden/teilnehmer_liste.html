@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Meine Teilnehmer:innen – ScandyPro{% endblock %}
+{% block content %}
+<h1>Meine Teilnehmer:innen</h1>
+<p class="visibility-hint">Zugriff auf Einträge zu "Mein Tag" nur nach expliziter, jederzeit widerrufbarer
+  Freigabe durch die Teilnehmer:innen selbst - die organisatorische Zuordnung allein gewährt keinen Einblick.</p>
+
+{% if teilnehmer_liste %}
+<div class="field" style="max-width: 320px;">
+  <label for="teilnehmer-suche">Suchen</label>
+  <input type="search" id="teilnehmer-suche" data-table-filter="teilnehmer-tabelle" placeholder="Name oder Abteilung …">
+</div>
+<div class="table-scroll">
+<table id="teilnehmer-tabelle">
+  <thead>
+    <tr>
+      <th data-sort>Name</th>
+      <th data-sort>Abteilung</th>
+      <th>Freigabe für "Mein Tag"</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in teilnehmer_liste %}
+  <tr>
+    <td>{{ t.name }}</td>
+    <td>{{ abteilung_by_id[t.abteilung_id].name if t.abteilung_id in abteilung_by_id else "–" }}</td>
+    <td>
+      {% if t.id in freigegebene_ids %}
+      <span class="chip chip-success">freigegeben</span>
+      {% else %}
+      <span class="chip chip-neutral">noch keine Freigabe</span>
+      {% endif %}
+    </td>
+    <td>
+      {% if t.id in freigegebene_ids %}
+      <a href="/wohlbefinden/teilnehmer/{{ t.id }}" class="btn btn-ghost btn-sm">Einträge ansehen</a>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty-state">Dir sind aktuell keine Teilnehmer:innen zugeordnet - das übernimmt der Einrichtungs-Admin
+  in der Verwaltung.</p>
+{% endif %}
+{% endblock %}

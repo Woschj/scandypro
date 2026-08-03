@@ -5,115 +5,145 @@
 <p class="visibility-hint">Handlungsfelder sind die operativen Arbeitsgruppen innerhalb einer Abteilung.
   Jedes Handlungsfeld braucht mindestens eine Leitung (Berufstrainer:in), damit dort Boards angelegt werden können.</p>
 
-<div class="card">
-  <h3>Neue Abteilung</h3>
-  <form method="post" action="/admin/abteilungen" class="form-row">
-    {% include "partials/csrf_field.html" %}
-    <div class="field">
-      <label for="neue_abteilung_name">Name</label>
-      <input type="text" id="neue_abteilung_name" name="name" required>
+<div class="seiten-tabs" x-data="{ tab: 'neu' }">
+  <nav class="seiten-tabs-nav" aria-label="Abteilungs-Bereiche">
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'neu' }" @click="tab = 'neu'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      </span>
+      Neue Abteilung
+    </button>
+    <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'liste' }" @click="tab = 'liste'">
+      <span class="seiten-tabs-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
+      </span>
+      Abteilungen
+      {% if abteilungen %}<span class="seiten-tabs-badge">{{ abteilungen | length }}</span>{% endif %}
+    </button>
+  </nav>
+
+  <div class="seiten-tabs-panels">
+    <div x-show="tab === 'neu'" x-cloak>
+      <div class="card">
+        <h3>Neue Abteilung</h3>
+        <form method="post" action="/admin/abteilungen" class="form-row">
+          {% include "partials/csrf_field.html" %}
+          <div class="field">
+            <label for="neue_abteilung_name">Name</label>
+            <input type="text" id="neue_abteilung_name" name="name" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Anlegen</button>
+        </form>
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary">Anlegen</button>
-  </form>
-</div>
 
-<div class="zuklapp-liste">
-{% for abteilung in abteilungen %}
-{% set handlungsfelder = handlungsfelder_by_abteilung.get(abteilung.id, []) %}
-<details class="zuklapp-eintrag">
-  <summary>
-    <span class="zuklapp-eintrag-chevron">▸</span>
-    <span class="zuklapp-eintrag-titel">{{ abteilung.name }}</span>
-    <span class="chip chip-neutral">{{ handlungsfelder | length }} Handlungsfeld{{ "er" if handlungsfelder | length != 1 else "" }}</span>
-  </summary>
-  <div class="zuklapp-eintrag-body">
-    <form method="post" action="/admin/abteilungen/{{ abteilung.id }}/umbenennen" class="form-row" style="margin-bottom: var(--space-4);">
-      {% include "partials/csrf_field.html" %}
-      <div class="field">
-        <label>Abteilung</label>
-        <input type="text" name="name" value="{{ abteilung.name }}" required>
-      </div>
-      <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
-    </form>
-
-    <hr class="section-divider">
-    <h3>Handlungsfelder</h3>
-
-    <form method="post" action="/admin/handlungsfelder" class="form-row" style="margin-bottom: var(--space-3);">
-      {% include "partials/csrf_field.html" %}
-      <input type="hidden" name="abteilung_id" value="{{ abteilung.id }}">
-      <div class="field" style="flex: 1;">
-        <input type="text" name="name" placeholder="Neues Handlungsfeld" required>
-      </div>
-      <button type="submit" class="btn btn-primary btn-sm">Anlegen</button>
-    </form>
-
-    {% if handlungsfelder %}
-    <table>
-      <thead><tr><th>Name</th><th>Leitung</th><th></th></tr></thead>
-      <tbody>
-      {% for h in handlungsfelder %}
-      {% set leitungen = leitungen_by_handlungsfeld.get(h.id, []) %}
-      <tr>
-        <td>{{ h.name }}</td>
-        <td>
-          {% if leitungen %}
-          {% for leitung in leitungen %}{{ trainer_by_id[leitung.berufstrainer_id].name }}{% if not loop.last %}, {% endif %}{% endfor %}
-          {% else %}
-          <span class="empty-state">keine Leitung</span>
-          {% endif %}
-        </td>
-        <td style="text-align: right;">
-          <details class="zeile-verwalten">
-            <summary title="Handlungsfeld verwalten" aria-label="Handlungsfeld &quot;{{ h.name }}&quot; verwalten">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="3" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="13" r="1.4" fill="currentColor"/></svg>
-            </summary>
-            <div class="zeile-verwalten-body">
-              <form method="post" action="/admin/handlungsfelder/{{ h.id }}/umbenennen" class="form-row">
-                {% include "partials/csrf_field.html" %}
-                <div class="field" style="flex: 1;">
-                  <input type="text" name="name" value="{{ h.name }}" required>
-                </div>
-                <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
-              </form>
-
-              <div class="eyebrow">Leitung</div>
-              {% for leitung in leitungen %}
-              <span class="chip chip-neutral">
-                {{ trainer_by_id[leitung.berufstrainer_id].name }}
-                <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung/{{ leitung.id }}/entfernen" style="display:inline; margin-left: var(--space-2);">
-                  {% include "partials/csrf_field.html" %}
-                  <button type="submit" class="link-btn danger" style="min-height:auto; min-width:auto; padding:0;">Entfernen</button>
-                </form>
-              </span>
-              {% else %}
-              <span class="empty-state">keine Leitung zugewiesen</span>
-              {% endfor %}
-
-              <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung" class="form-row">
-                {% include "partials/csrf_field.html" %}
-                <div class="field" style="flex: 1;">
-                  <select name="berufstrainer_id" required>
-                    <option value="" selected disabled>– Berufstrainer:in wählen –</option>
-                    {% for t in alle_trainer %}
-                    <option value="{{ t.id }}">{{ t.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
-              </form>
+    <div x-show="tab === 'liste'" x-cloak>
+      {% if abteilungen %}
+      <div class="zuklapp-liste">
+      {% for abteilung in abteilungen %}
+      {% set handlungsfelder = handlungsfelder_by_abteilung.get(abteilung.id, []) %}
+      <details class="zuklapp-eintrag">
+        <summary>
+          <span class="zuklapp-eintrag-chevron">▸</span>
+          <span class="zuklapp-eintrag-titel">{{ abteilung.name }}</span>
+          <span class="chip chip-neutral">{{ handlungsfelder | length }} Handlungsfeld{{ "er" if handlungsfelder | length != 1 else "" }}</span>
+        </summary>
+        <div class="zuklapp-eintrag-body">
+          <form method="post" action="/admin/abteilungen/{{ abteilung.id }}/umbenennen" class="form-row" style="margin-bottom: var(--space-4);">
+            {% include "partials/csrf_field.html" %}
+            <div class="field">
+              <label>Abteilung</label>
+              <input type="text" name="name" value="{{ abteilung.name }}" required>
             </div>
-          </details>
-        </td>
-      </tr>
+            <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
+          </form>
+
+          <hr class="section-divider">
+          <h3>Handlungsfelder</h3>
+
+          <form method="post" action="/admin/handlungsfelder" class="form-row" style="margin-bottom: var(--space-3);">
+            {% include "partials/csrf_field.html" %}
+            <input type="hidden" name="abteilung_id" value="{{ abteilung.id }}">
+            <div class="field" style="flex: 1;">
+              <input type="text" name="name" placeholder="Neues Handlungsfeld" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Anlegen</button>
+          </form>
+
+          {% if handlungsfelder %}
+          <div class="table-scroll">
+          <table>
+            <thead><tr><th>Name</th><th>Leitung</th><th></th></tr></thead>
+            <tbody>
+            {% for h in handlungsfelder %}
+            {% set leitungen = leitungen_by_handlungsfeld.get(h.id, []) %}
+            <tr>
+              <td>{{ h.name }}</td>
+              <td>
+                {% if leitungen %}
+                {% for leitung in leitungen %}{{ trainer_by_id[leitung.berufstrainer_id].name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                {% else %}
+                <span class="empty-state">keine Leitung</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <details class="zeile-verwalten">
+                  <summary title="Handlungsfeld verwalten" aria-label="Handlungsfeld &quot;{{ h.name }}&quot; verwalten">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="3" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="13" r="1.4" fill="currentColor"/></svg>
+                  </summary>
+                  <div class="zeile-verwalten-body">
+                    <form method="post" action="/admin/handlungsfelder/{{ h.id }}/umbenennen" class="form-row">
+                      {% include "partials/csrf_field.html" %}
+                      <div class="field" style="flex: 1;">
+                        <input type="text" name="name" value="{{ h.name }}" required>
+                      </div>
+                      <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
+                    </form>
+
+                    <div class="eyebrow">Leitung</div>
+                    {% for leitung in leitungen %}
+                    <span class="chip chip-neutral">
+                      {{ trainer_by_id[leitung.berufstrainer_id].name }}
+                      <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung/{{ leitung.id }}/entfernen" style="display:inline; margin-left: var(--space-2);">
+                        {% include "partials/csrf_field.html" %}
+                        <button type="submit" class="link-btn danger" style="min-height:auto; min-width:auto; padding:0;">Entfernen</button>
+                      </form>
+                    </span>
+                    {% else %}
+                    <span class="empty-state">keine Leitung zugewiesen</span>
+                    {% endfor %}
+
+                    <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung" class="form-row">
+                      {% include "partials/csrf_field.html" %}
+                      <div class="field" style="flex: 1;">
+                        <select name="berufstrainer_id" required>
+                          <option value="" selected disabled>– Berufstrainer:in wählen –</option>
+                          {% for t in alle_trainer %}
+                          <option value="{{ t.id }}">{{ t.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          </div>
+          {% else %}
+          <p class="empty-state">Noch keine Handlungsfelder.</p>
+          {% endif %}
+        </div>
+      </details>
       {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p class="empty-state">Noch keine Handlungsfelder.</p>
-    {% endif %}
+      </div>
+      {% else %}
+      <p class="empty-state">Noch keine Abteilungen angelegt – im Tab "Neue Abteilung" starten.</p>
+      {% endif %}
+    </div>
   </div>
-</details>
-{% endfor %}
 </div>
 {% endblock %}
