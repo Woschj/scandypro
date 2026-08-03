@@ -43,37 +43,58 @@ kann direkt zu Teil B springen.
   ersten Aufruf von ScandyPro eine Warnung, die einmalig pro Gerät bestätigt
   werden muss - der SSO-Ablauf selbst funktioniert davon unabhängig.
 - **Bei selbstsigniertem Zertifikat auf BEIDEN Seiten (ScandyPro/Scandy-Lite
-  UND Authentik ohne echte Domain) muss ScandyPro dem Authentik-Zertifikat
-  explizit vertrauen** - live getestet (2026-08-03, `proxmox/ct/scandy-stack.sh`
-  gegen einen frisch installierten Authentik-Container): Authentiks
-  Community-Skript generiert beim ersten Start ein generisches
-  Selbstsigniert-Zertifikat (`CN=authentik default certificate`, **ohne**
-  passenden SAN-Eintrag für die tatsächliche Server-IP/-Domain). Der
-  serverseitige OIDC-Discovery-Aufruf von ScandyPro (`/auth/oidc/login` →
-  `authlib` ruft `.well-known/openid-configuration` ab) schlägt dadurch
-  IMMER fehl (`SSL: no alternative certificate subject name matches target
-  ipv4 address ...`), selbst wenn die CA selbst als vertrauenswürdig
-  eingetragen wurde. Zwei Wege, das zu beheben:
-  1. **Empfohlen:** Authentik hinter einer echten Domain mit gültigem
-     Zertifikat betreiben (Let's Encrypt) statt mit dem generischen
-     Selbstsigniert-Zertifikat - dann entfällt dieser Schritt komplett.
-  2. **Für rein interne Testumgebungen:** Authentiks Zertifikat manuell
-     durch eines mit korrektem SAN ersetzen (analog zu
-     `/etc/ssl/scandypro/scandypro.crt`, siehe README.md "TLS
-     (Produktivbetrieb)") und/oder das Zertifikat in den
-     ScandyPro-Container importieren:
+  UND Authentik ohne echte Domain) sind zwei Anpassungen nötig, damit der
+  serverseitige OIDC-Discovery-Aufruf funktioniert** - live getestet und
+  gelöst (2026-08-03, `proxmox/ct/scandy-stack.sh` gegen einen frisch
+  installierten Authentik-Container). **`scandy-stack.sh` erledigt beides
+  automatisch**, wenn Authentik zusammen mit mindestens einer App installiert
+  wird - relevant ist dieser Abschnitt nur bei manueller Einrichtung oder bei
+  einer bereits bestehenden Authentik-Instanz:
+  1. **Authentiks Zertifikat hat standardmäßig keinen passenden
+     SAN-Eintrag.** Das Community-Skript generiert beim ersten Start ein
+     generisches Selbstsigniert-Zertifikat (`CN=authentik default
+     certificate`, **ohne** SAN für die tatsächliche Server-IP/-Domain) -
+     jeder TLS-Client mit echter Zertifikatsprüfung lehnt es deshalb ab,
+     unabhängig vom CA-Vertrauen (`SSL: no alternative certificate subject
+     name matches target ipv4 address ...`). Fix: eigenes Zertifikat mit
+     korrektem SAN erzeugen (analog zu `/etc/ssl/scandypro/scandypro.crt`)
+     und als Web-Zertifikat der Default-Brand setzen:
      ```bash
-     # Auf dem Proxmox-Host, <authentik-vmid> anpassen:
-     pct exec <authentik-vmid> -- bash -c \
-       "openssl s_client -connect 127.0.0.1:9443 -servername <authentik-ip> </dev/null 2>/dev/null | openssl x509" \
-       > /root/authentik-ca.crt
-     pct push <scandypro-vmid> /root/authentik-ca.crt /usr/local/share/ca-certificates/authentik-selfsigned.crt
-     pct exec <scandypro-vmid> -- update-ca-certificates
+     # Auf dem Proxmox-Host, <authentik-vmid>/<authentik-ip> anpassen:
+     pct exec <authentik-vmid> -- bash -c '
+       mkdir -p /etc/ssl/authentik
+       openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+         -keyout /etc/ssl/authentik/authentik.key -out /etc/ssl/authentik/authentik.crt \
+         -subj "/CN=authentik.fritz.box" \
+         -addext "subjectAltName=DNS:authentik.fritz.box,DNS:localhost,IP:<authentik-ip>,IP:127.0.0.1"
+     '
+     pct exec <authentik-vmid> -- bash -c "cd /opt/authentik && .venv/bin/python manage.py shell -c \"
+     from authentik.crypto.models import CertificateKeyPair
+     from authentik.brands.models import Brand
+     ckp, _ = CertificateKeyPair.objects.update_or_create(name='scandy-stack-web-cert', defaults={
+         'certificate_data': open('/etc/ssl/authentik/authentik.crt').read(),
+         'key_data': open('/etc/ssl/authentik/authentik.key').read()})
+     b = Brand.objects.filter(domain='authentik-default').first(); b.web_certificate = ckp; b.save()
+     \""
+     pct exec <authentik-vmid> -- systemctl restart authentik-server
      ```
-     Behebt nur das CA-Vertrauen, NICHT den fehlenden SAN-Eintrag - für
-     einen echten Fix muss das Authentik-Zertifikat selbst durch eines mit
-     passendem SAN ersetzt werden (liegt außerhalb dieses Dokuments, siehe
-     Authentik-eigene Doku zu `AUTHENTIK_WEB__CERTIFICATE`/eigenem Zertifikat).
+  2. **CA-Vertrauen muss an ZWEI Stellen eingetragen werden**, nicht nur im
+     OS-Zertifikatsspeicher: Python-`httpx`/`authlib` (von ScandyPro und
+     Scandy-Lite für den Discovery-Aufruf genutzt) verwendet standardmäßig
+     das mitgelieferte `certifi`-Bundle **statt** des OS-Speichers - ein
+     `update-ca-certificates` allein reicht deshalb NICHT:
+     ```bash
+     # Auf dem Proxmox-Host, IDs/Pfad anpassen (Scandy-Lite: python3.11 statt python3.13):
+     pct exec <authentik-vmid> -- cat /etc/ssl/authentik/authentik.crt > /root/authentik-ca.crt
+     pct pull <authentik-vmid> /etc/ssl/authentik/authentik.crt /root/authentik-ca.crt
+     pct push <app-vmid> /root/authentik-ca.crt /usr/local/share/ca-certificates/authentik-selfsigned.crt
+     pct exec <app-vmid> -- update-ca-certificates
+     pct push <app-vmid> /root/authentik-ca.crt /tmp/authentik-ca.crt
+     pct exec <app-vmid> -- bash -c "cat /tmp/authentik-ca.crt >> /opt/<app>/venv/lib/python3.1?/site-packages/certifi/cacert.pem"
+     ```
+  Bei Authentik hinter einer echten Domain mit gültigem Let's-Encrypt-Zertifikat
+  entfallen beide Schritte komplett - das ist der empfohlene Weg für echten
+  Produktivbetrieb.
 
 ---
 

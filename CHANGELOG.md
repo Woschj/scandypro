@@ -8,6 +8,31 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.34] - 2026-08-03
+
+SSO gegen den echten Testaufbau aus 0.1.33 bis zum funktionierenden
+Ende-zu-Ende-Login durchgetestet - dabei zwei weitere, tiefer liegende
+TLS-Probleme gefunden und in `scandy-stack.sh` automatisiert behoben (nicht
+nur dokumentiert):
+
+### Fixed
+- **Authentiks generisches Zertifikat hat keinen zur Server-IP passenden
+  SAN-Eintrag** - `scandy-stack.sh` erzeugt jetzt automatisch ein eigenes
+  Zertifikat mit korrektem SAN und setzt es als Web-Zertifikat der
+  Default-Brand, sobald Authentik zusammen mit mindestens einer App
+  installiert wird.
+- **CA-Vertrauen allein reicht nicht** - Python `httpx`/`authlib` (von
+  ScandyPro/Scandy-Lite für den OIDC-Discovery-Aufruf genutzt) verwendet
+  standardmäßig das mitgelieferte `certifi`-Bundle statt des
+  OS-Zertifikatsspeichers. `scandy-stack.sh` trägt Authentiks CA jetzt an
+  beiden Stellen ein (OS-Store per `update-ca-certificates` UND
+  `certifi/cacert.pem` im jeweiligen App-venv).
+- Live end-to-end verifiziert: `/auth/oidc/login` liefert bei ScandyPro
+  **und** Scandy-Lite jetzt einen korrekten 302-Redirect zu Authentiks
+  Autorisierungs-Endpunkt.
+- `SSO_AUTHENTIK.md` "Voraussetzungen" um beide Fixes (inkl. manueller
+  Befehle für bereits bestehende Installationen) ergänzt.
+
 ## [0.1.33] - 2026-08-03
 
 Live-Test von `scandy-stack.sh` gegen einen echten Proxmox-Host (alle drei

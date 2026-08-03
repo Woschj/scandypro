@@ -156,6 +156,43 @@ if [[ "$DO_AUTHENTIK" -eq 1 ]]; then
           echo "Konnte venv-Python neben manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
           echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
         else
+        # Authentiks vom Community-Skript generiertes Default-Zertifikat hat
+        # keinen zur Container-IP passenden SAN-Eintrag - jeder TLS-Client
+        # mit echter Zertifikatspruefung (u.a. Pythons httpx/authlib, das
+        # ScandyPro/Scandy-Lite fuer den OIDC-Discovery-Aufruf nutzen) lehnt
+        # es deshalb IMMER ab, unabhaengig vom CA-Vertrauen. Eigenes
+        # Zertifikat mit korrektem SAN erzeugen und als Web-Zertifikat der
+        # Default-Brand setzen (analog zu /etc/ssl/scandypro/scandypro.crt).
+        echo "Erzeuge Authentik-Zertifikat mit korrektem SAN-Eintrag (${AUTHENTIK_IP})..."
+        pct exec "$AUTHENTIK_VMID" -- bash -c "
+          mkdir -p /etc/ssl/authentik
+          openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+            -keyout /etc/ssl/authentik/authentik.key -out /etc/ssl/authentik/authentik.crt \
+            -subj '/CN=authentik.fritz.box' \
+            -addext 'subjectAltName=DNS:authentik.fritz.box,DNS:localhost,IP:${AUTHENTIK_IP},IP:127.0.0.1' \
+            >/dev/null 2>&1
+        "
+        pct exec "$AUTHENTIK_VMID" -- bash -c "cd '${AK_DIR}' && '${AK_PYTHON}' manage.py shell -c \"
+from authentik.crypto.models import CertificateKeyPair
+from authentik.brands.models import Brand
+with open('/etc/ssl/authentik/authentik.crt') as f:
+    cert_data = f.read()
+with open('/etc/ssl/authentik/authentik.key') as f:
+    key_data = f.read()
+ckp, _ = CertificateKeyPair.objects.update_or_create(
+    name='scandy-stack-web-cert',
+    defaults={'certificate_data': cert_data, 'key_data': key_data},
+)
+brand = Brand.objects.filter(domain='authentik-default').first() or Brand.objects.first()
+if brand:
+    brand.web_certificate = ckp
+    brand.save()
+\"" >/dev/null 2>&1
+        pct exec "$AUTHENTIK_VMID" -- systemctl restart authentik-server
+        sleep 5
+        AUTHENTIK_CA_LOCAL="/tmp/authentik-ca-${AUTHENTIK_VMID}.crt"
+        pct pull "$AUTHENTIK_VMID" /etc/ssl/authentik/authentik.crt "$AUTHENTIK_CA_LOCAL"
+
         for app in "${!APP_VMID[@]}"; do
           app_vmid="${APP_VMID[$app]}"
           app_ip="$(pct exec "$app_vmid" -- hostname -I 2>/dev/null | awk '{print $1}' || true)"
@@ -165,6 +202,19 @@ if [[ "$DO_AUTHENTIK" -eq 1 ]]; then
             scandypro) app_name="ScandyPro"; app_dir="/opt/scandypro"; service_name="scandypro" ;;
             scandylite) app_name="Scandy-Lite"; app_dir="/opt/scandy-lite"; service_name="scandy-lite" ;;
           esac
+
+          # Authentik-Zertifikat als vertrauenswuerdig eintragen - NOTWENDIG
+          # an zwei Stellen: im OS-Zertifikatsspeicher (fuer Tools wie curl)
+          # UND im certifi-Bundle des App-venv (Pythons httpx/authlib nutzt
+          # standardmaessig certifi.where(), NICHT den OS-Speicher, auch
+          # wenn ein OS-CA-Import erfolgt ist).
+          pct push "$app_vmid" "$AUTHENTIK_CA_LOCAL" /usr/local/share/ca-certificates/authentik-selfsigned.crt >/dev/null
+          pct exec "$app_vmid" -- update-ca-certificates >/dev/null 2>&1
+          app_certifi="$(pct exec "$app_vmid" -- bash -c "find '${app_dir}/venv' -maxdepth 4 -path '*/certifi/cacert.pem' 2>/dev/null | head -1" || true)"
+          if [[ -n "$app_certifi" ]]; then
+            pct push "$app_vmid" "$AUTHENTIK_CA_LOCAL" /tmp/authentik-ca-for-certifi.crt >/dev/null
+            pct exec "$app_vmid" -- bash -c "cat /tmp/authentik-ca-for-certifi.crt >> '${app_certifi}'"
+          fi
 
           client_id="$(openssl rand -hex 16)"
           client_secret="$(openssl rand -hex 32)"
