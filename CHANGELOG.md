@@ -8,6 +8,20 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.29] - 2026-08-03
+
+### Added
+- **TLS/Domain-Produktivbetrieb vorbereitet** - `caddy/Caddyfile.domain-example`
+  als fertige Vorlage für eine echte Domain mit automatischem
+  Let's-Encrypt-Zertifikat; README.md neuer Abschnitt "TLS/Domain
+  (Produktivbetrieb)" mit Schritt-für-Schritt-Anleitung, "Bekannte Lücken"
+  verweist jetzt darauf statt die Lücke nur zu benennen. `SESSION_COOKIE_SECURE`-
+  Setting ergänzt (`app/core/config.py`, `app/main.py`) für das Secure-Flag
+  am Session-Cookie nach der Umstellung. Standard-HTTP-Setup bleibt
+  unverändert (Default weiterhin unverschlüsselt, nur für lokale
+  Bewertung). `SSO_AUTHENTIK.md` verweist jetzt auf dieselbe Anleitung
+  statt eine zweite, separat gepflegte Caddyfile-Vorlage vorzuhalten.
+
 ## [0.1.28] - 2026-08-03
 
 ### Added
