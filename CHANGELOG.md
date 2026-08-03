@@ -8,6 +8,15 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.20] - 2026-08-03
+
+### Changed
+- **Bewerbungs-Statuswechsel** erlaubt jetzt direkt im selben Formular,
+  auch Datum/Uhrzeit/Ort des nächsten Termins anzupassen (z. B. neuer
+  Gesprächstermin bei Wechsel zu "eingeladen") - vorher waren diese Felder
+  nur beim Anlegen setzbar und danach nur als statischer Text sichtbar
+  (`app/routers/bewerbungen.py:status_aendern`).
+
 ## [0.1.19] - 2026-08-03
 
 ### Added

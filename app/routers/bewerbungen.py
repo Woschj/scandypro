@@ -195,13 +195,25 @@ async def bewerbung_erstellen(
 
 @router.post("/{bewerbung_id}/status")
 async def status_aendern(
-    bewerbung_id: int, current_user: CurrentUser, session: SessionDep, status_wert: BewerbungStatus = Form(...)
+    bewerbung_id: int,
+    current_user: CurrentUser,
+    session: SessionDep,
+    status_wert: BewerbungStatus = Form(...),
+    naechster_termin: str = Form(""),
+    naechster_termin_uhrzeit: str = Form(""),
+    naechster_termin_ort: str = Form(""),
 ):
     bewerbung = await session.get(Bewerbung, bewerbung_id)
     if bewerbung is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     require_owner(current_user, bewerbung.teilnehmer_id, "Kein Zugriff auf diese Bewerbung.")
     bewerbung.status = status_wert
+    # Termin wird beim Statuswechsel direkt mitgepflegt (z.B. neuer
+    # Gesprächstermin bei "eingeladen") statt eines separaten Bearbeiten-
+    # Formulars nur für dieses eine Feld.
+    bewerbung.naechster_termin = date.fromisoformat(naechster_termin) if naechster_termin else None
+    bewerbung.naechster_termin_uhrzeit = naechster_termin_uhrzeit or None
+    bewerbung.naechster_termin_ort = naechster_termin_ort or None
     session.add(bewerbung)
     await session.commit()
 

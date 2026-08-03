@@ -53,19 +53,33 @@
 
 {% macro bewerbung_karte(b) %}
 <div class="card">
-  <div class="form-row" style="align-items: center; margin-bottom: var(--space-3);">
-    <h3 style="margin: 0; flex: 1;">{{ b.firma }} — {{ b.position }}</h3>
-    <form method="post" action="/bewerbungen/{{ b.id }}/status">
-      {% include "partials/csrf_field.html" %}
-      <select name="status_wert" onchange="this.form.submit()">
+  <h3 style="margin: 0 0 var(--space-3);">{{ b.firma }} — {{ b.position }}</h3>
+  <form method="post" action="/bewerbungen/{{ b.id }}/status" class="form-row" style="align-items: end;">
+    {% include "partials/csrf_field.html" %}
+    <div class="field">
+      <label for="status_wert-{{ b.id }}">Status</label>
+      <select id="status_wert-{{ b.id }}" name="status_wert">
         {% for s in status_optionen %}
         <option value="{{ s.value }}" {% if s == b.status %}selected{% endif %}>{{ s.value }}</option>
         {% endfor %}
       </select>
-    </form>
-  </div>
-  <p class="karte-meta">
-    Beworben am {{ b.beworben_am or "–" }} · Nächster Termin: {{ b.naechster_termin or "–" }}{% if b.naechster_termin and b.naechster_termin_uhrzeit %}, {{ b.naechster_termin_uhrzeit }} Uhr{% endif %}{% if b.naechster_termin and b.naechster_termin_ort %} · {{ b.naechster_termin_ort }}{% endif %}
+    </div>
+    <div class="field">
+      <label for="naechster_termin-{{ b.id }}">Nächster Termin</label>
+      <input type="date" id="naechster_termin-{{ b.id }}" name="naechster_termin" value="{{ b.naechster_termin or '' }}">
+    </div>
+    <div class="field">
+      <label for="naechster_termin_uhrzeit-{{ b.id }}">Uhrzeit</label>
+      <input type="time" id="naechster_termin_uhrzeit-{{ b.id }}" name="naechster_termin_uhrzeit" value="{{ b.naechster_termin_uhrzeit or '' }}">
+    </div>
+    <div class="field">
+      <label for="naechster_termin_ort-{{ b.id }}">Ort</label>
+      <input type="text" id="naechster_termin_ort-{{ b.id }}" name="naechster_termin_ort" value="{{ b.naechster_termin_ort or '' }}" placeholder="z. B. Adresse oder Video-Link">
+    </div>
+    <button type="submit" class="btn btn-ghost btn-sm">Aktualisieren</button>
+  </form>
+  <p class="karte-meta" style="margin-top: var(--space-3);">
+    Beworben am {{ b.beworben_am or "–" }}
   </p>
   {% if b.notizen %}<p>{{ b.notizen }}</p>{% endif %}
 
