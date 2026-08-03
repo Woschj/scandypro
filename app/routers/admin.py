@@ -309,12 +309,23 @@ async def benutzer_uebersicht(request: Request, current_user: CurrentUser, sessi
     abteilungen = list(abteilungen_result.scalars().all())
     abteilung_by_id = {a.id: a for a in abteilungen}
 
+    rollen_reihenfolge = [
+        RoleEnum.teilnehmer,
+        RoleEnum.berufstrainer,
+        RoleEnum.psychosoziale_mitarbeit,
+        RoleEnum.einrichtungs_admin,
+    ]
+    benutzer_by_rolle: dict[RoleEnum, list[User]] = {rolle: [] for rolle in rollen_reihenfolge}
+    for b in benutzer:
+        benutzer_by_rolle.setdefault(b.role, []).append(b)
+
     return templates.TemplateResponse(
         request,
         "admin/benutzer.html",
         {
             "current_user": current_user,
             "benutzer": benutzer,
+            "benutzer_by_rolle": benutzer_by_rolle,
             "abteilungen": abteilungen,
             "abteilung_by_id": abteilung_by_id,
         },
