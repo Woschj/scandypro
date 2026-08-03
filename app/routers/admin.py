@@ -140,22 +140,33 @@ async def psm_zuordnungen_uebersicht(request: Request, current_user: CurrentUser
     zuordnungen_result = await session.execute(select(PsmZuordnung))
     zuordnungen = list(zuordnungen_result.scalars().all())
 
-    psm_result = await session.execute(select(User).where(User.role == RoleEnum.psychosoziale_mitarbeit))
+    psm_result = await session.execute(
+        select(User).where(User.role == RoleEnum.psychosoziale_mitarbeit).order_by(User.name)
+    )
     alle_psm = list(psm_result.scalars().all())
 
-    teilnehmer_result = await session.execute(select(User).where(User.role == RoleEnum.teilnehmer))
+    teilnehmer_result = await session.execute(
+        select(User).where(User.role == RoleEnum.teilnehmer).order_by(User.name)
+    )
     alle_teilnehmer = list(teilnehmer_result.scalars().all())
     user_by_id = {u.id: u for u in alle_psm + alle_teilnehmer}
+
+    teilnehmer_ids_by_psm: dict[int, list[int]] = {}
+    zuordnung_id_by_psm_teilnehmer: dict[int, dict[int, int]] = {}
+    for z in zuordnungen:
+        teilnehmer_ids_by_psm.setdefault(z.psm_id, []).append(z.teilnehmer_id)
+        zuordnung_id_by_psm_teilnehmer.setdefault(z.psm_id, {})[z.teilnehmer_id] = z.id
 
     return templates.TemplateResponse(
         request,
         "admin/psm_zuordnungen.html",
         {
             "current_user": current_user,
-            "zuordnungen": zuordnungen,
             "alle_psm": alle_psm,
             "alle_teilnehmer": alle_teilnehmer,
             "user_by_id": user_by_id,
+            "teilnehmer_ids_by_psm": teilnehmer_ids_by_psm,
+            "zuordnung_id_by_psm_teilnehmer": zuordnung_id_by_psm_teilnehmer,
         },
     )
 
@@ -195,22 +206,33 @@ async def trainer_zuordnungen_uebersicht(request: Request, current_user: Current
     zuordnungen_result = await session.execute(select(BerufstrainerZuordnung))
     zuordnungen = list(zuordnungen_result.scalars().all())
 
-    trainer_result = await session.execute(select(User).where(User.role == RoleEnum.berufstrainer))
+    trainer_result = await session.execute(
+        select(User).where(User.role == RoleEnum.berufstrainer).order_by(User.name)
+    )
     alle_trainer = list(trainer_result.scalars().all())
 
-    teilnehmer_result = await session.execute(select(User).where(User.role == RoleEnum.teilnehmer))
+    teilnehmer_result = await session.execute(
+        select(User).where(User.role == RoleEnum.teilnehmer).order_by(User.name)
+    )
     alle_teilnehmer = list(teilnehmer_result.scalars().all())
     user_by_id = {u.id: u for u in alle_trainer + alle_teilnehmer}
+
+    teilnehmer_ids_by_trainer: dict[int, list[int]] = {}
+    zuordnung_id_by_trainer_teilnehmer: dict[int, dict[int, int]] = {}
+    for z in zuordnungen:
+        teilnehmer_ids_by_trainer.setdefault(z.berufstrainer_id, []).append(z.teilnehmer_id)
+        zuordnung_id_by_trainer_teilnehmer.setdefault(z.berufstrainer_id, {})[z.teilnehmer_id] = z.id
 
     return templates.TemplateResponse(
         request,
         "admin/trainer_zuordnungen.html",
         {
             "current_user": current_user,
-            "zuordnungen": zuordnungen,
             "alle_trainer": alle_trainer,
             "alle_teilnehmer": alle_teilnehmer,
             "user_by_id": user_by_id,
+            "teilnehmer_ids_by_trainer": teilnehmer_ids_by_trainer,
+            "zuordnung_id_by_trainer_teilnehmer": zuordnung_id_by_trainer_teilnehmer,
         },
     )
 

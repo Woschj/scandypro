@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Berufstrainer:innen-Zuordnungen – ScandyPro{% endblock %}
+{% block title %}Zuordnungen Berufstrainer:innen – ScandyPro{% endblock %}
 {% block content %}
-<h1>Berufstrainer:innen-Zuordnungen</h1>
+<h1>Zuordnungen Berufstrainer:innen</h1>
 <p class="visibility-hint">Rein organisatorisch: legt fest, welche Berufstrainer:in als zuständig angezeigt wird
   und wer persönliche Projekt-Aufgaben für diese Teilnehmer:in anlegen darf.
   Gewährt keinen automatischen Zugriff auf Einträge zu "Mein Tag" oder Bewerbungsdaten.</p>
@@ -33,27 +33,62 @@
 </div>
 
 <h2>Bestehende Zuordnungen</h2>
-{% if zuordnungen %}
-<div class="table-scroll">
-<table>
-  <thead><tr><th>Berufstrainer:in</th><th>Teilnehmer:in</th><th></th></tr></thead>
-  <tbody>
-  {% for z in zuordnungen %}
-    <tr>
-      <td>{{ user_by_id[z.berufstrainer_id].name }}</td>
-      <td>{{ user_by_id[z.teilnehmer_id].name }}</td>
-      <td>
-        <form method="post" action="/admin/trainer-zuordnungen/{{ z.id }}/entfernen">
-          {% include "partials/csrf_field.html" %}
-          <button type="submit" class="link-btn danger">Entfernen</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+{% if alle_trainer %}
+<div class="zuklapp-liste">
+{% for trainer in alle_trainer %}
+{% set zugeordnete_ids = teilnehmer_ids_by_trainer.get(trainer.id, []) %}
+<details class="zuklapp-eintrag">
+  <summary>
+    <span class="zuklapp-eintrag-chevron">▸</span>
+    <span class="zuklapp-eintrag-titel">{{ trainer.name }}</span>
+    <span class="chip chip-neutral">{{ zugeordnete_ids | length }} Teilnehmer:in{{ "nen" if zugeordnete_ids | length != 1 }}</span>
+  </summary>
+  <div class="zuklapp-eintrag-body">
+    {% if zugeordnete_ids %}
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Teilnehmer:in</th><th></th></tr></thead>
+      <tbody>
+      {% for teilnehmer_id in zugeordnete_ids %}
+      <tr>
+        <td>{{ user_by_id[teilnehmer_id].name }}</td>
+        <td style="text-align: right;">
+          <form method="post" action="/admin/trainer-zuordnungen/{{ zuordnung_id_by_trainer_teilnehmer[trainer.id][teilnehmer_id] }}/entfernen">
+            {% include "partials/csrf_field.html" %}
+            <button type="submit" class="link-btn danger">Entfernen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-state">Noch keine Teilnehmer:innen zugeordnet.</p>
+    {% endif %}
+
+    {% set verfuegbare_teilnehmer = alle_teilnehmer | rejectattr("id", "in", zugeordnete_ids) | list %}
+    {% if verfuegbare_teilnehmer %}
+    <hr class="section-divider">
+    <form method="post" action="/admin/trainer-zuordnungen" class="form-row">
+      {% include "partials/csrf_field.html" %}
+      <input type="hidden" name="berufstrainer_id" value="{{ trainer.id }}">
+      <div class="field" style="flex: 1;">
+        <select name="teilnehmer_id" required>
+          <option value="" selected disabled>– Teilnehmer:in wählen –</option>
+          {% for t in verfuegbare_teilnehmer %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+    </form>
+    {% endif %}
+  </div>
+</details>
+{% endfor %}
 </div>
 {% else %}
-<p class="empty-state">Noch keine Zuordnungen.</p>
+<p class="empty-state">Noch keine Berufstrainer:innen angelegt.</p>
 {% endif %}
 {% endblock %}

@@ -32,25 +32,62 @@
 </div>
 
 <h2>Bestehende Zuordnungen</h2>
-{% if zuordnungen %}
-<table>
-  <thead><tr><th>Psychosoziale Mitarbeiter:in</th><th>Teilnehmer:in</th><th></th></tr></thead>
-  <tbody>
-  {% for z in zuordnungen %}
-    <tr>
-      <td>{{ user_by_id[z.psm_id].name }}</td>
-      <td>{{ user_by_id[z.teilnehmer_id].name }}</td>
-      <td>
-        <form method="post" action="/admin/psm-zuordnungen/{{ z.id }}/entfernen">
-          {% include "partials/csrf_field.html" %}
-          <button type="submit" class="link-btn danger">Entfernen</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+{% if alle_psm %}
+<div class="zuklapp-liste">
+{% for psm in alle_psm %}
+{% set zugeordnete_ids = teilnehmer_ids_by_psm.get(psm.id, []) %}
+<details class="zuklapp-eintrag">
+  <summary>
+    <span class="zuklapp-eintrag-chevron">▸</span>
+    <span class="zuklapp-eintrag-titel">{{ psm.name }}</span>
+    <span class="chip chip-neutral">{{ zugeordnete_ids | length }} Teilnehmer:in{{ "nen" if zugeordnete_ids | length != 1 }}</span>
+  </summary>
+  <div class="zuklapp-eintrag-body">
+    {% if zugeordnete_ids %}
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Teilnehmer:in</th><th></th></tr></thead>
+      <tbody>
+      {% for teilnehmer_id in zugeordnete_ids %}
+      <tr>
+        <td>{{ user_by_id[teilnehmer_id].name }}</td>
+        <td style="text-align: right;">
+          <form method="post" action="/admin/psm-zuordnungen/{{ zuordnung_id_by_psm_teilnehmer[psm.id][teilnehmer_id] }}/entfernen">
+            {% include "partials/csrf_field.html" %}
+            <button type="submit" class="link-btn danger">Entfernen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-state">Noch keine Teilnehmer:innen zugeordnet.</p>
+    {% endif %}
+
+    {% set verfuegbare_teilnehmer = alle_teilnehmer | rejectattr("id", "in", zugeordnete_ids) | list %}
+    {% if verfuegbare_teilnehmer %}
+    <hr class="section-divider">
+    <form method="post" action="/admin/psm-zuordnungen" class="form-row">
+      {% include "partials/csrf_field.html" %}
+      <input type="hidden" name="psm_id" value="{{ psm.id }}">
+      <div class="field" style="flex: 1;">
+        <select name="teilnehmer_id" required>
+          <option value="" selected disabled>– Teilnehmer:in wählen –</option>
+          {% for t in verfuegbare_teilnehmer %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+    </form>
+    {% endif %}
+  </div>
+</details>
+{% endfor %}
+</div>
 {% else %}
-<p class="empty-state">Noch keine Zuordnungen.</p>
+<p class="empty-state">Noch keine psychosozialen Mitarbeiter:innen angelegt.</p>
 {% endif %}
 {% endblock %}

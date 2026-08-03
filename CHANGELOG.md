@@ -8,6 +8,21 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.17] - 2026-08-03
+
+### Changed
+- **Admin-Zuordnungsseiten** (`/admin/psm-zuordnungen`, `/admin/trainer-zuordnungen`)
+  navigieren jetzt wie "Projekte": statt einer einzigen, ungruppierten Tabelle
+  mit einer Zeile je Zuordnung (bei größeren Einrichtungen schnell mehrere
+  hundert Zeilen) gibt es pro Berufstrainer:in/PSM einen aufklappbaren
+  Eintrag (`.zuklapp-liste`, analog `admin/abteilungen.html`), der die
+  zugeordneten Teilnehmer:innen zeigt - inklusive Entfernen und einem
+  Inline-Formular zum Hinzufügen weiterer Teilnehmer:innen direkt in diesem
+  Eintrag.
+- Menüpunkte einheitlich benannt: "Berufstrainer:innen-Zuordnungen" heißt
+  jetzt wie die PSM-Seite "Zuordnungen Berufstrainer:innen" (Verwaltungs-
+  Dropdown, Seitentitel, Dashboard-Kachel).
+
 ## [0.1.16] - 2026-08-03
 
 ### Fixed
