@@ -95,33 +95,34 @@ direkt sichtbar, ohne erst Grunddaten anlegen zu müssen.
 
 ## Proxmox-Stack: beliebige Kombination installieren
 
-ScandyPro, [Scandy-Lite](https://github.com/Woschj/scandy-lite) und
-Authentik haben jeweils ihr **eigenes, unabhängiges** Proxmox-Installer-
-Skript (community-scripts-Konvention: `proxmox/ct/<app>.sh` +
-`proxmox/install/<app>-install.sh`, siehe Kommentare in
-[`proxmox/ct/scandypro.sh`](proxmox/ct/scandypro.sh)). Jedes legt seinen
-**eigenen** LXC-Container an und läuft komplett unabhängig von den
-anderen beiden - keine gemeinsame Zustandsverwaltung, keine
-Port-Kollision. Eine beliebige Kombination der drei zu installieren
-bedeutet daher einfach: nur die Skripte der gewünschten Komponenten
-ausführen, in beliebiger Reihenfolge, alle auf demselben Proxmox-Host (als
-root):
+[`proxmox/ct/scandy-stack.sh`](proxmox/ct/scandy-stack.sh) ist **ein**
+Einstiegspunkt für den ganzen Stack - Mehrfachauswahl-Menü (ScandyPro /
+Scandy-Lite / Authentik, jede Kombination), installiert die gewählten
+Komponenten danach nacheinander. Auf dem Proxmox-Host (als root):
 
 ```bash
-# ScandyPro
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandypro/main/proxmox/ct/scandypro.sh)"
-
-# Scandy-Lite (siehe dortiges README für den genauen Skriptpfad)
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandy-lite/main/proxmox/ct/scandy-lite.sh)"
-
-# Authentik (Community-Skript, siehe SSO_AUTHENTIK.md Teil A)
-bash -c "$(curl -fsSL https://community-scripts.github.io/ProxmoxVE/ct/authentik.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandypro/main/proxmox/ct/scandy-stack.sh)"
 ```
 
-Nur ScandyPro + Authentik gewünscht? Einfach die Scandy-Lite-Zeile
-weglassen - entsprechend für jede andere Kombination. Erneuter Aufruf
-eines Skripts bietet jeweils "Aktualisieren" für eine bestehende
-Installation an, statt einen weiteren Container anzulegen.
+Ruft dafür bewusst nur die bereits vorhandenen, einzeln getesteten
+Installer der drei Komponenten auf (`proxmox/ct/scandypro.sh` in diesem
+Repo, `proxmox/ct/scandy-lite.sh` im [Scandy-Lite-Repo](https://github.com/Woschj/scandy-lite),
+das offizielle [Authentik-Community-Skript](https://community-scripts.github.io/ProxmoxVE/scripts?id=authentik))
+statt eigene Container-Erstellungs-Logik zu duplizieren - jede Komponente
+bekommt weiterhin ihren eigenen, unabhängigen LXC-Container.
+
+Werden Authentik **und** mindestens eine App zusammen ausgewählt, versucht
+das Skript danach automatisch, einen OAuth2/OIDC-Provider + Application je
+App in Authentik anzulegen und die `OIDC_*`-Werte direkt in deren `.env`
+einzutragen (per `ak apply_blueprint`) - spart die manuellen Schritte aus
+`SSO_AUTHENTIK.md` Teil B. **Experimentell**, da nicht gegen eine echte
+Authentik-Instanz verifiziert: schlägt dieser letzte Schritt fehl, ist die
+Installation selbst trotzdem fertig, nur die SSO-Verknüpfung muss dann
+manuell nach `SSO_AUTHENTIK.md` Teil B nachgeholt werden.
+
+Die einzelnen Installer bleiben weiterhin auch direkt aufrufbar (siehe
+oben bzw. Scandy-Lite-README) - `scandy-stack.sh` ist nur die bequeme
+Sammelvariante, keine Voraussetzung.
 
 ## TLS (Produktivbetrieb)
 

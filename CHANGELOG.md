@@ -8,6 +8,21 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.32] - 2026-08-03
+
+### Added
+- **`proxmox/ct/scandy-stack.sh`**: EIN Einstiegspunkt für den ganzen
+  Stack - Mehrfachauswahl-Menü (ScandyPro/Scandy-Lite/Authentik, jede
+  Kombination), installiert die gewählten Komponenten nacheinander durch
+  Aufruf der bereits vorhandenen Einzel-Installer (keine duplizierte
+  Container-Erstellungs-Logik). Bei Authentik + mind. einer App zusammen:
+  experimenteller Zusatzschritt, der versucht, automatisch einen
+  OAuth2/OIDC-Provider + Application je App anzulegen (`ak
+  apply_blueprint`) und `OIDC_*` direkt in deren `.env` einzutragen -
+  nicht gegen eine echte Authentik-Instanz verifiziert, fällt bei Fehlschlag
+  auf die manuelle Anleitung in `SSO_AUTHENTIK.md` Teil B zurück, ohne die
+  bereits abgeschlossene Installation zu gefährden.
+
 ## [0.1.31] - 2026-08-03
 
 Fehlersuche/Fixes waehrend der Erstinbetriebnahme auf einem frischen
