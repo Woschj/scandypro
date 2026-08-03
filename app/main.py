@@ -17,9 +17,10 @@ from app.core.seed import seed_admin, seed_demo_data
 from app.core.static_cache import CachedStaticFiles
 from app.core.templating import templates
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, BewerbungStatus
+from app.models.kanban import Board, Karte, KartenBewegung, Spalte
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
 from app.models.user import RoleEnum, User
-from app.models.wohlbefinden import Unterstuetzungsanfrage, WohlbefindenFreigabe
+from app.models.wohlbefinden import TagebuchEintrag, Unterstuetzungsanfrage, WohlbefindenFreigabe
 from app.routers import admin, auth, bewerbungen, freigaben, kanban, kanban_karten, wochenberichte, wohlbefinden
 
 logging.basicConfig(level=logging.DEBUG if settings.debug else logging.INFO)
@@ -114,6 +115,9 @@ async def dashboard(request: Request, session: SessionDep):
     tagebuch_tage_woche: int | None = None
     bewerbungen_uebersicht: dict | None = None
     was_steht_an: list[dict] = []
+    letzte_kanban_aktivitaet: dict | None = None
+    letztes_tagebuch_wort: str | None = None
+    letzte_aktive_bewerbung: str | None = None
     neu_geteilt: list[dict] = []
     offene_unterstuetzungsanfragen: list[dict] = []
 
@@ -155,6 +159,48 @@ async def dashboard(request: Request, session: SessionDep):
         anzahl_wartend = len(list(wartend_result.scalars().all()))
         if anzahl_aktiv > 0:
             bewerbungen_uebersicht = {"aktiv": anzahl_aktiv, "wartend": anzahl_wartend}
+            letzte_bewerbung_result = await session.execute(
+                select(Bewerbung.firma)
+                .where(Bewerbung.teilnehmer_id == current_user.id, Bewerbung.status != BewerbungStatus.entwurf)
+                .order_by(Bewerbung.erstellt_am.desc())
+                .limit(1)
+            )
+            letzte_aktive_bewerbung = letzte_bewerbung_result.scalar_one_or_none()
+
+        # Persönliche Anknüpfungspunkte für die Rückblick-Kacheln (siehe
+        # dashboard.html) - zeigen konkret, was zuletzt/als Nächstes ansteht,
+        # statt nur abstrakter Zahlen; bewusst nur positiv formuliert, nie als
+        # Mahnung (CLAUDE.md §24).
+        if schritte_diese_woche:
+            seit = datetime.utcnow() - timedelta(days=7)
+            letzte_bewegung_result = await session.execute(
+                select(Karte.titel, Board.id, Board.titel)
+                .select_from(KartenBewegung)
+                .join(Karte, Karte.id == KartenBewegung.karte_id)
+                .join(Spalte, Spalte.id == Karte.spalte_id)
+                .join(Board, Board.id == Spalte.board_id)
+                .where(KartenBewegung.bewegt_von_id == current_user.id, KartenBewegung.bewegt_am >= seit)
+                .order_by(KartenBewegung.bewegt_am.desc())
+                .limit(1)
+            )
+            treffer = letzte_bewegung_result.first()
+            if treffer is not None:
+                karten_titel, board_id, board_titel = treffer
+                letzte_kanban_aktivitaet = {
+                    "titel": karten_titel,
+                    "link": f"/kanban/boards/{board_id}",
+                    "kontext": board_titel,
+                }
+        elif was_steht_an:
+            letzte_kanban_aktivitaet = was_steht_an[0]
+
+        letztes_wort_result = await session.execute(
+            select(TagebuchEintrag.wort_des_tages)
+            .where(TagebuchEintrag.teilnehmer_id == current_user.id, TagebuchEintrag.wort_des_tages.is_not(None))
+            .order_by(TagebuchEintrag.datum.desc())
+            .limit(1)
+        )
+        letztes_tagebuch_wort = letztes_wort_result.scalar_one_or_none()
 
     # "Neu geteilt" fürs Dashboard von Berufstrainer:in/PSM: bewusst nur ein
     # schmaler Hinweis (letzte 14 Tage, jederzeit widerrufbare Freigabe),
@@ -229,6 +275,9 @@ async def dashboard(request: Request, session: SessionDep):
             "schritte_diese_woche": schritte_diese_woche,
             "tagebuch_tage_woche": tagebuch_tage_woche,
             "bewerbungen_uebersicht": bewerbungen_uebersicht,
+            "letzte_kanban_aktivitaet": letzte_kanban_aktivitaet,
+            "letztes_tagebuch_wort": letztes_tagebuch_wort,
+            "letzte_aktive_bewerbung": letzte_aktive_bewerbung,
             "was_steht_an": was_steht_an,
             "neu_geteilt": neu_geteilt,
             "offene_unterstuetzungsanfragen": offene_unterstuetzungsanfragen,

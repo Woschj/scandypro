@@ -2,15 +2,52 @@
 {% block title %}Dashboard – ScandyPro{% endblock %}
 {% block content %}
 <h1>Willkommen, {{ current_user.name }}</h1>
-<p class="visibility-hint">Deine Rolle: {{ current_user.role.value | rollenname }}</p>
 
-{% if psm_kontakt %}
-<p class="visibility-hint">Zuständige psychosoziale Mitarbeiter:in: <strong>{{ psm_kontakt.name }}</strong> -
-  <a href="mailto:{{ psm_kontakt.email }}">{{ psm_kontakt.email }}</a>{% if psm_kontakt.telefon %}, {{ psm_kontakt.telefon }}{% endif %}</p>
-{% endif %}
-{% if trainer_kontakt %}
-<p class="visibility-hint">Zuständige Berufstrainer:in: <strong>{{ trainer_kontakt.name }}</strong> -
-  <a href="mailto:{{ trainer_kontakt.email }}">{{ trainer_kontakt.email }}</a>{% if trainer_kontakt.telefon %}, {{ trainer_kontakt.telefon }}{% endif %}</p>
+{% if trainer_kontakt or psm_kontakt %}
+<div class="kontakt-karten" style="margin-bottom: var(--space-6);">
+  {% if trainer_kontakt %}
+  <div class="kontakt-karte">
+    <span class="avatar avatar-{{ trainer_kontakt.id % 5 }}">{{ trainer_kontakt.name | initialen }}</span>
+    <div class="kontakt-karte-info">
+      <div class="eyebrow">Deine Berufstrainer:in</div>
+      <div class="kontakt-karte-name">{{ trainer_kontakt.name }}</div>
+    </div>
+    <div class="kontakt-karte-aktionen">
+      <a class="btn btn-ghost btn-sm" href="mailto:{{ trainer_kontakt.email }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+        E-Mail
+      </a>
+      {% if trainer_kontakt.telefon %}
+      <a class="btn btn-ghost btn-sm" href="tel:{{ trainer_kontakt.telefon }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+        {{ trainer_kontakt.telefon }}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% if psm_kontakt %}
+  <div class="kontakt-karte">
+    <span class="avatar avatar-{{ psm_kontakt.id % 5 }}">{{ psm_kontakt.name | initialen }}</span>
+    <div class="kontakt-karte-info">
+      <div class="eyebrow">Deine psychosoziale Mitarbeiter:in</div>
+      <div class="kontakt-karte-name">{{ psm_kontakt.name }}</div>
+    </div>
+    <div class="kontakt-karte-aktionen">
+      <a class="btn btn-ghost btn-sm" href="mailto:{{ psm_kontakt.email }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+        E-Mail
+      </a>
+      {% if psm_kontakt.telefon %}
+      <a class="btn btn-ghost btn-sm" href="tel:{{ psm_kontakt.telefon }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+        {{ psm_kontakt.telefon }}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
 {% endif %}
 
 {% if was_steht_an %}
@@ -70,7 +107,7 @@
 <h2 style="margin-top: 0;">Deine Woche im Rückblick</h2>
 <div class="rueckblick-grid" style="margin-bottom: var(--space-6);">
   {% if schritte_diese_woche is not none %}
-  <div class="rueckblick-stat">
+  <a class="rueckblick-stat" href="{{ letzte_kanban_aktivitaet.link if letzte_kanban_aktivitaet else '/kanban' }}">
     {% if schritte_diese_woche > 0 %}
     <div class="rueckblick-zahl">{{ schritte_diese_woche }}</div>
     <div class="rueckblick-label">{{ "Schritt geschafft" if schritte_diese_woche == 1 else "Schritte geschafft" }}</div>
@@ -78,10 +115,16 @@
     <div class="rueckblick-emoji">🌱</div>
     <div class="rueckblick-label">Was möchtest du angehen?</div>
     {% endif %}
-  </div>
+    {% if letzte_kanban_aktivitaet %}
+    <div class="rueckblick-hinweis">
+      {% if schritte_diese_woche > 0 %}Zuletzt bewegt: {% else %}Zum Beispiel: {% endif %}
+      <strong>{{ letzte_kanban_aktivitaet.titel }}</strong> ({{ letzte_kanban_aktivitaet.kontext }})
+    </div>
+    {% endif %}
+  </a>
   {% endif %}
   {% if tagebuch_tage_woche is not none %}
-  <div class="rueckblick-stat">
+  <a class="rueckblick-stat" href="/wohlbefinden">
     {% if tagebuch_tage_woche > 0 %}
     <div class="rueckblick-zahl">{{ tagebuch_tage_woche }}</div>
     <div class="rueckblick-label">{{ "Tag ins Tagebuch geschrieben" if tagebuch_tage_woche == 1 else "Tage ins Tagebuch geschrieben" }}</div>
@@ -89,43 +132,25 @@
     <div class="rueckblick-emoji">📝</div>
     <div class="rueckblick-label">Magst du heute reinschreiben?</div>
     {% endif %}
-  </div>
+    {% if letztes_tagebuch_wort %}
+    <div class="rueckblick-hinweis">Dein letztes Wort des Tages: <strong>{{ letztes_tagebuch_wort }}</strong></div>
+    {% endif %}
+  </a>
   {% endif %}
   {% if bewerbungen_uebersicht %}
-  <div class="rueckblick-stat">
+  <a class="rueckblick-stat" href="/bewerbungen">
     <div class="rueckblick-zahl">{{ bewerbungen_uebersicht.aktiv }}</div>
     <div class="rueckblick-label">Laufende Bewerbung{{ "en" if bewerbungen_uebersicht.aktiv != 1 }}</div>
     {% if bewerbungen_uebersicht.wartend > 0 %}
     <div class="karte-meta" style="margin-top: var(--space-2);">Davon {{ bewerbungen_uebersicht.wartend }} auf Rückmeldung wartend</div>
     {% endif %}
-  </div>
+    {% if letzte_aktive_bewerbung %}
+    <div class="rueckblick-hinweis">Zuletzt: <strong>{{ letzte_aktive_bewerbung }}</strong></div>
+    {% endif %}
+  </a>
   {% endif %}
 </div>
 {% endif %}
-
-<h2 style="margin-top: 0;">Schnellzugriff</h2>
-<div class="quick-tiles">
-  <a class="quick-tile quick-tile-accent" href="/kanban">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>
-    Projekte
-  </a>
-  <a class="quick-tile" href="/wochenberichte">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 15 2 2 4-4"/></svg>
-    Wochenberichte
-  </a>
-  <a class="quick-tile" href="/wohlbefinden">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
-    Mein Tag
-  </a>
-  <a class="quick-tile" href="/bewerbungen">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-    Bewerbungen
-  </a>
-  <a class="quick-tile" href="/freigaben">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
-    Meine Freigaben
-  </a>
-</div>
 
 {% else %}
 

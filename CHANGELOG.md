@@ -8,11 +8,38 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.26] - 2026-08-03
+
+### Changed
+- **Dashboard: Kontakt zu Berufstrainer:in/PSM** - "Deine Rolle: ..." entfernt
+  (redundant zur Topnav). Zuständige Berufstrainer:in/PSM werden jetzt als
+  Kontakt-Karten mit Avatar dargestellt, inkl. direkter "E-Mail"- und
+  "Anrufen"-Aktion (`mailto:`/`tel:`) statt reinem Fließtext-Link.
+- **Dashboard: "Schnellzugriff"-Kacheln entfernt** - dupliziierten für
+  Teilnehmer:innen 1:1 die Topnav-Links (Projekte, Wochenberichte, Mein Tag,
+  Bewerbungen, Meine Freigaben) ohne eigenen Mehrwert.
+- **Dashboard: "Deine Woche im Rückblick"-Kacheln sind jetzt anklickbare
+  Links** statt reiner Statistik-Anzeige, und zeigen einen persönlichen,
+  positiv formulierten Bezug zur eigenen Nutzung statt nur einer Zahl:
+  die Kanban-Kachel verlinkt direkt auf die zuletzt bewegte Karte (oder,
+  wenn diese Woche noch nichts bewegt wurde, auf eine anstehende Aufgabe
+  als Vorschlag), die Tagebuch-Kachel zeigt das zuletzt eingetragene
+  "Wort des Tages", die Bewerbungs-Kachel die zuletzt aktualisierte
+  Bewerbung.
+
 ## [0.1.25] - 2026-08-03
 
 Fixes aus einem gezielten Chrome-Klickthrough über alle vier Rollen
 (Teilnehmer:in, Berufstrainer:in, Psychosoziale Mitarbeiter:in,
 Einrichtungs-Admin).
+
+### Changed
+- **Benutzerverwaltung aufgeräumt** - "Neuer Account" ist jetzt ein eigener
+  Tab statt ganz oben auf der Seite zu stehen und vom eigentlichen Zweck
+  (bestehende Accounts finden/bearbeiten) abzulenken. Accounts-Liste ist
+  nach Rolle gruppiert (Teilnehmer:in/Berufstrainer:in/Psychosoziale
+  Mitarbeiter:in/Einrichtungs-Admin) mit je eigener Such-/Filterbox statt
+  einer einzigen ~150-Zeilen-Tabelle mit redundanter Rollen-Spalte.
 
 ### Fixed
 - **Verwaiste Kartenzuweisungen zeigten "?" statt Namen** - wenn eine
