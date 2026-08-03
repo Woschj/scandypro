@@ -8,6 +8,24 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.23] - 2026-08-03
+
+### Fixed
+- **Absage-/Zusage-Rückmeldung erschien nicht beim Verschieben per
+  Drag&Drop** - nur beim Verschieben über ein Formular (Server-Redirect
+  mit `?feedback=...`). `bewerbungen-board.js` machte nach dem
+  Drag&Drop-Request ein reines `location.reload()`, das lud die aktuelle
+  URL ohne die Feedback-Parameter neu. Jetzt folgt es der von `fetch()`
+  bereits aufgelösten Redirect-Ziel-URL (`antwort.url`).
+
+### Removed
+- **"Verschieben"-Auswahlfeld** in der Bewerbungskarte entfernt - auf
+  ausdrücklichen Wunsch, da Drag&Drop dieselbe Funktion abdeckt.
+  Bewusster Kompromiss: das Feld war zugleich die einzige
+  Tastatur-Alternative zum Ziehen (analog zum echten Kanban-Board,
+  siehe UI-003 in `tasks/uiux-audit/`) - Bewerbungen lassen sich damit
+  aktuell nur per Maus/Touch zwischen Spalten verschieben.
+
 ## [0.1.22] - 2026-08-03
 
 ### Added

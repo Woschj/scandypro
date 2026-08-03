@@ -85,7 +85,7 @@
     <div x-show="tab === 'board'" x-cloak>
       {% if bewerbungen %}
       <p class="karte-meta" style="margin-bottom: var(--space-4);">Ziehe eine Bewerbung in eine andere Spalte, um ihren
-        Status zu ändern - oder nutze das "Verschieben"-Feld in der Karte (auch per Tastatur bedienbar).</p>
+        Status zu ändern.</p>
       <div class="board-columns">
         {% for s in status_optionen %}
         {% set bewerbungen_in_spalte = bewerbungen | selectattr("status", "equalto", s) | list %}
@@ -116,23 +116,6 @@
             </summary>
 
             <div class="karte-body">
-              {% if status_optionen | length > 1 %}
-              <form method="post" action="/bewerbungen/{{ b.id }}/verschieben" class="form-row">
-                {% include "partials/csrf_field.html" %}
-                <div class="field" style="flex:1;">
-                  <label for="verschieben-{{ b.id }}">In anderen Status verschieben (auch per Tastatur bedienbar, als Alternative zum Ziehen mit der Maus)</label>
-                  <select id="verschieben-{{ b.id }}" name="status_wert" required aria-label="Neuer Status für {{ b.firma }} — {{ b.position }}">
-                    <option value="" selected disabled>– Status wählen –</option>
-                    {% for ziel in status_optionen %}
-                    {% if ziel != s %}
-                    <option value="{{ ziel.value }}">{{ ziel.value | bewerbungsstatus }}</option>
-                    {% endif %}
-                    {% endfor %}
-                  </select>
-                </div>
-                <button type="submit" class="btn btn-ghost btn-sm">Verschieben</button>
-              </form>
-              {% endif %}
 
               <div class="zuklapp-liste" style="margin-top: var(--space-3);">
                 <details class="zuklapp-eintrag">

@@ -2,10 +2,13 @@
  * Bewerbungen als Kanban-artiges Board: Drag&Drop zwischen Status-Spalten,
  * analog zu kanban.js. Bewusst OHNE Kartenreihenfolge-Persistenz - anders
  * als bei Kanban-Karten hat die Position einer Bewerbung innerhalb einer
- * Spalte keine Bedeutung, nur die Spalte selbst (= der Status) zählt. Die
- * Tastatur-Alternative zum Ziehen bleibt das "Verschieben"-Select in jeder
- * Karte (siehe app/templates/bewerbungen/uebersicht.html), das ganz ohne
- * JavaScript funktioniert.
+ * Spalte keine Bedeutung, nur die Spalte selbst (= der Status) zählt.
+ *
+ * Bewusste Abweichung von kanban.js: dort gibt es zusätzlich ein
+ * "Verschieben"-Select als Tastatur-Alternative zum Ziehen - hier auf
+ * expliziten Wunsch NICHT (Drag&Drop ist der einzige Weg, Bewerbungen
+ * zu verschieben; für Tastatur-/Switch-Nutzer:innen aktuell nicht
+ * erreichbar).
  */
 (function () {
   function csrfToken() {
@@ -24,11 +27,17 @@
         body: formData,
       });
       if (!antwort.ok) throw new Error("Verschieben fehlgeschlagen");
+      // status_aendern/verschieben leitet serverseitig auf /bewerbungen
+      // um, bei Abgesagt/Zugesagt mit ?feedback=...&firma=... fuer die
+      // sanfte Rueckmeldung (siehe uebersicht.html) - fetch() folgt dem
+      // Redirect automatisch, antwort.url ist bereits die Ziel-URL mit
+      // Query-String. Ein reines location.reload() wuerde stattdessen nur
+      // die aktuelle URL ohne Feedback-Parameter neu laden.
+      location.href = antwort.url;
     } catch (err) {
       // Serverstand kann von der optimistisch verschobenen Karte abweichen
       // (z.B. Formularfehler) - Seite neu laden, damit nie stillschweigend
       // ein falscher Stand stehen bleibt.
-    } finally {
       location.reload();
     }
   }
