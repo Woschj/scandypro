@@ -11,70 +11,6 @@
  * nie ausgewertet, nur gespeichert.
  */
 (function () {
-  // Sanftes, positives Feedback für JEDES einzelne Element im Tagebuch, nicht
-  // nur für den ganzen Tag (siehe CLAUDE.md §24/25 "positive Verstärkung",
-  // Nutzer-Feedback) - ein kurzer Toast (siehe app/static/js/toast.js), kein
-  // Punktestand, keine Bewertung des Inhalts. Ein kleiner, rotierender
-  // Textpool statt einer festen Formulierung, damit es nicht wie eine
-  // automatisierte Floskel wirkt.
-  const TAGEBUCH_LOB_TEXTE = [
-    "Schön, dass du dir das notierst.",
-    "Danke, dass du dir die Zeit dafür nimmst.",
-    "Gut, dass du kurz innehältst.",
-    "Schön, dass du das mit dir teilst.",
-    "Danke fürs Dranbleiben.",
-  ];
-
-  function zufallsLob() {
-    return TAGEBUCH_LOB_TEXTE[Math.floor(Math.random() * TAGEBUCH_LOB_TEXTE.length)];
-  }
-
-  function lob() {
-    if (window.zeigeToast) window.zeigeToast(zufallsLob());
-  }
-
-  // Für Freitextfelder: verhindert wiederholtes Lob beim erneuten
-  // Fokussieren/Verlassen desselben Felds in derselben Seitenansicht -
-  // einmal gewürdigt reicht, sonst wirkt es wie eine aufgesetzte Floskel
-  // statt einer echten Reaktion.
-  function wuerdige(el) {
-    if (!el || el.dataset.gewuerdigt === "true") return;
-    el.dataset.gewuerdigt = "true";
-    lob();
-  }
-
-  function initTextfeldLob() {
-    document
-      .querySelectorAll(
-        '[data-tagebuch-formular] input[type="text"], [data-tagebuch-formular] input[type="tel"], [data-tagebuch-formular] textarea'
-      )
-      .forEach((feld) => {
-        if (feld.closest("[data-sorgen-loslassen]")) return; // eigene, bewusst spätere Rückmeldung beim Loslassen
-        feld.addEventListener("blur", () => {
-          if (feld.value.trim()) wuerdige(feld);
-        });
-      });
-  }
-
-  function initChipLob() {
-    document
-      .querySelectorAll('[data-tagebuch-formular] .tagebuch-chip input[type="checkbox"]')
-      .forEach((checkbox) => {
-        if (checkbox.dataset.keinLob === "true") return; // z.B. "Foto entfernen" - keine Löschaktion feiern
-        checkbox.addEventListener("change", () => {
-          if (checkbox.checked) lob();
-        });
-      });
-  }
-
-  function initDankbarkeitsfotoLob() {
-    document.querySelectorAll('input[name="dankbarkeitsfoto"]').forEach((input) => {
-      input.addEventListener("change", () => {
-        if (input.files && input.files.length) lob();
-      });
-    });
-  }
-
   function svgPunkt(svg, evt) {
     const punkt = svg.createSVGPoint();
     const quelle = evt.touches ? evt.touches[0] : evt;
@@ -144,7 +80,6 @@
             hiddenInput.value = "true";
             if (hinweis) hinweis.textContent = "Geschafft - schön, dass du dir die Pause genommen hast.";
             aktiv = false;
-            lob();
           } else if (haltenSekunden > 0) {
             starteHaltenCountdown(haltenSekunden);
           }
@@ -215,7 +150,6 @@
         const p = position(evt);
         ctx.lineTo(p.x, p.y);
         ctx.stroke();
-        if (!hatInhalt) lob();
         hatInhalt = true;
       });
       window.addEventListener("pointerup", () => {
@@ -291,7 +225,6 @@
             index += 1;
             if (index >= zonen.length) {
               hiddenInput.value = "true";
-              lob();
             } else {
               zonen[index].disabled = false;
               markiereAktiv();
@@ -318,10 +251,8 @@
       markiere();
       chips.forEach((chip) => {
         chip.addEventListener("click", () => {
-          const wurdeGesetzt = hiddenInput.value !== chip.dataset.wortChip;
           hiddenInput.value = hiddenInput.value === chip.dataset.wortChip ? "" : chip.dataset.wortChip;
           markiere();
-          if (wurdeGesetzt) lob();
         });
       });
     });
@@ -332,10 +263,7 @@
       const hiddenInput = details.querySelector('input[name="staerken_karte_erledigt"]');
       if (!hiddenInput) return;
       details.addEventListener("toggle", () => {
-        if (details.open) {
-          hiddenInput.value = "true";
-          lob();
-        }
+        if (details.open) hiddenInput.value = "true";
       });
     });
   }
@@ -353,7 +281,6 @@
         window.setTimeout(() => {
           textarea.value = "";
           wrapper.classList.remove("sorgen-loslassen--animiert");
-          lob();
         }, 500);
       });
     });
@@ -370,9 +297,7 @@
         segment.addEventListener("click", () => {
           index = (index + 1) % FARBEN.length;
           segment.setAttribute("fill", FARBEN[index] || "none");
-          const warSchonErledigt = hiddenInput.value === "true";
           hiddenInput.value = "true";
-          if (!warSchonErledigt) lob();
         });
       });
     });
@@ -393,12 +318,10 @@
         segment.addEventListener("click", () => {
           const neu = i + 1;
           const aktuellerLevel = parseInt(hiddenInput.value, 10) || 0;
-          const wurdeGesetzt = aktuellerLevel !== neu;
           // Erneutes Antippen des obersten aktiven Segments leert die Auswahl
           // wieder - so bleibt "keine Angabe" jederzeit erreichbar.
           hiddenInput.value = aktuellerLevel === neu ? "" : String(neu);
           anzeigen(parseInt(hiddenInput.value, 10) || 0);
-          if (wurdeGesetzt) lob();
         });
       });
     });
@@ -413,8 +336,5 @@
     initStaerkenKarte();
     initSorgenLoslassen();
     initMandala();
-    initTextfeldLob();
-    initChipLob();
-    initDankbarkeitsfotoLob();
   });
 })();

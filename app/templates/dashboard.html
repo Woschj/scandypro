@@ -128,6 +128,9 @@
     {% if tagebuch_tage_woche > 0 %}
     <div class="rueckblick-zahl">{{ tagebuch_tage_woche }}</div>
     <div class="rueckblick-label">{{ "Tag ins Tagebuch geschrieben" if tagebuch_tage_woche == 1 else "Tage ins Tagebuch geschrieben" }}</div>
+    <div class="karte-meta" style="margin-top: var(--space-2);">
+      {{ "Schön, dass du dir diese Woche Zeit dafür genommen hast." if tagebuch_tage_woche == 1 else "Schön, dass du dir in dieser Woche mehrmals Zeit dafür genommen hast." }}
+    </div>
     {% else %}
     <div class="rueckblick-emoji">📝</div>
     <div class="rueckblick-label">Magst du heute reinschreiben?</div>

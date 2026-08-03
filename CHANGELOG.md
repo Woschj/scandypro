@@ -391,6 +391,28 @@ frühere Sandbox-Einschränkungen in dieser Datei).
   verschwunden, dort bewusst nicht zusätzlich gewrappt, um die
   Zeilen-Dropdowns (`.zeile-verwalten-body`, `position: absolute`) nicht
   zu riskieren).
+## [0.1.30] - 2026-08-03
+
+Nutzer-Feedback zu 0.1.12.
+
+### Changed
+- **Per-Element-Toasts in "Mein Tag" wieder entfernt** - vom Nutzer als "zu
+  unauffällig" eingestuft; `app/static/js/tagebuch-interaktiv.js` zurück auf
+  den Stand vor 0.1.12 (die gemeinsame Toast-Komponente
+  `app/static/js/toast.js` bleibt bestehen, wird weiterhin von Kanban
+  genutzt).
+- **Dashboard-Kachel "Tage ins Tagebuch geschrieben"** zeigt jetzt einen
+  bestärkenden Satz statt nur der reinen Zahl - das war die eigentlich
+  gewünschte Stelle für positive Verstärkung.
+
+### Planned
+- [VB-018](tasks/ganzheitliche-verbesserungen/VB-018.md): kompletter Plan
+  für ein Rework der Mein-Tag-Minispiele aus 0.1.10/VB-006 - Diagnose: die
+  meisten der 10 neuen Übungstypen sind im Kern Textfelder/Checkboxen mit
+  Label, kein eigenständiges Interaktionserlebnis wie Atemübung/Zeichnung.
+  Löst eine kleine Zahl wiederverwendbarer Interaktions-Primitive vor
+  (Karte umdrehen, Zone mit Halten-Timer auf Körpersilhouette, Waage/
+  Slider, Karten wegwischen, Foto-Rahmen, Wort-Rad). Noch nicht umgesetzt.
 
 ## [0.1.12] - 2026-08-03
 
