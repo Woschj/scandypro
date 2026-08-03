@@ -343,6 +343,27 @@ async def bericht_abgeben(bericht_id: int, current_user: CurrentUser, session: S
     return RedirectResponse(url="/wochenberichte", status_code=303)
 
 
+@router.post("/{bericht_id}/zurueckziehen")
+async def bericht_zurueckziehen(bericht_id: int, current_user: CurrentUser, session: SessionDep):
+    """Macht einen abgegebenen Wochenbericht wieder zum bearbeitbaren
+    Entwurf - die digitale Abgabe ist keine endgültige Festlegung, da
+    Wochenberichte am Ende ohnehin ausgedruckt und unterschrieben werden.
+    Trainer:innen sehen den Bericht ab hier nicht mehr (Sichtbarkeit ist an
+    status=abgegeben gekoppelt, siehe uebersicht() oben)."""
+    bericht = await session.get(Wochenbericht, bericht_id)
+    if bericht is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, bericht.teilnehmer_id, "Kein Zugriff auf diesen Wochenbericht.")
+    if bericht.status != WochenberichtStatus.abgegeben:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nur abgegebene Wochenberichte lassen sich zurückziehen.")
+
+    bericht.status = WochenberichtStatus.entwurf
+    bericht.abgegeben_am = None
+    session.add(bericht)
+    await session.commit()
+    return RedirectResponse(url="/wochenberichte", status_code=303)
+
+
 @router.post("/{bericht_id}/loeschen")
 async def bericht_loeschen(bericht_id: int, current_user: CurrentUser, session: SessionDep):
     bericht = await session.get(Wochenbericht, bericht_id)

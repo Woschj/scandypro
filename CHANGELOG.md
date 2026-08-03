@@ -8,6 +8,17 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.24] - 2026-08-03
+
+### Added
+- **Abgegebene Wochenberichte lassen sich zurückziehen** und wieder
+  bearbeiten (`POST /wochenberichte/{id}/zurueckziehen`) - die digitale
+  Abgabe war bisher endgültig, obwohl Wochenberichte ohnehin ausgedruckt
+  und unterschrieben werden müssen und die digitale Version damit keine
+  verbindliche Festlegung sein muss. Zurückgezogene Berichte werden für
+  die Handlungsfeld-Leitung wieder unsichtbar (Sichtbarkeit bleibt an
+  `status=abgegeben` gekoppelt), bis erneut abgegeben wird.
+
 ## [0.1.23] - 2026-08-03
 
 ### Fixed

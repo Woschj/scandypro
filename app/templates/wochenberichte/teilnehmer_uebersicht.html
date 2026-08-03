@@ -128,7 +128,7 @@
     {% if b.besonderheiten %}<p style="margin-top: var(--space-3);"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
     {% endif %}
 
-    <div style="display:flex; gap: var(--space-2); margin-top: var(--space-3);">
+    <div style="display:flex; gap: var(--space-2); align-items:center; margin-top: var(--space-3); flex-wrap: wrap;">
       <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
       {% if b.status.value == "entwurf" %}
       <form method="post" action="/wochenberichte/{{ b.id }}/abgeben">
@@ -139,6 +139,12 @@
         {% include "partials/csrf_field.html" %}
         <button type="submit" class="link-btn danger">Löschen</button>
       </form>
+      {% else %}
+      <form method="post" action="/wochenberichte/{{ b.id }}/zurueckziehen">
+        {% include "partials/csrf_field.html" %}
+        <button type="submit" class="btn btn-ghost btn-sm">Zurückziehen &amp; bearbeiten</button>
+      </form>
+      <span class="karte-meta">Danach wieder ein Entwurf - deine Handlungsfeld-Leitung sieht ihn nicht mehr, bis du erneut abgibst.</span>
       {% endif %}
     </div>
   </div>
