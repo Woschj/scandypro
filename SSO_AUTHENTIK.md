@@ -75,7 +75,7 @@ Drittanbieter-Skript, das per `curl | bash` läuft:
 ```bash
 # auf dem Proxmox-Host (als root) - Skript-Übersicht/Details:
 # https://community-scripts.github.io/ProxmoxVE/scripts?id=authentik
-bash -c "$(curl -fsSL https://community-scripts.github.io/ProxmoxVE/ct/authentik.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/authentik.sh)"
 ```
 
 Legt einen eigenen LXC-Container an, installiert Authentik nativ und zeigt

@@ -30,8 +30,8 @@
 set -Eeuo pipefail
 
 SCANDYPRO_CT_URL="https://raw.githubusercontent.com/Woschj/scandypro/main/proxmox/ct/scandypro.sh"
-SCANDYLITE_CT_URL="https://raw.githubusercontent.com/Woschj/scandy-lite/main/proxmox/ct/scandy-lite.sh"
-AUTHENTIK_CT_URL="https://community-scripts.github.io/ProxmoxVE/ct/authentik.sh"
+SCANDYLITE_CT_URL="https://raw.githubusercontent.com/Woschj/scandy-lite/master/proxmox/ct/scandy-lite.sh"
+AUTHENTIK_CT_URL="https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/authentik.sh"
 
 if [[ $EUID -ne 0 ]]; then
   echo "FEHLER: Bitte als root auf dem Proxmox-Host ausführen." >&2
