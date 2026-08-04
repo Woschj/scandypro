@@ -16,13 +16,22 @@
 # wurde): versucht nach der Installation automatisch einen OAuth2/OIDC-
 # Provider + Application je gewaehlter App in Authentik anzulegen (per
 # `ak apply_blueprint`, siehe unten) und traegt OIDC_ISSUER/OIDC_CLIENT_ID/
-# OIDC_CLIENT_SECRET direkt in deren .env ein. Das ist NICHT gegen eine
-# echte Authentik-Installation getestet (der genaue Pfad des `ak`/
-# manage.py-Kommandos haengt vom exakten Stand des Community-Skripts ab -
-# wird zur Laufzeit gesucht, nicht hart codiert) - schlaegt dieser
-# Automatisierungsschritt fehl, bricht NUR er ab (Installation selbst ist
-# bereits abgeschlossen), mit Verweis auf die manuellen Schritte in
-# SSO_AUTHENTIK.md.
+# OIDC_CLIENT_SECRET direkt in deren .env ein. Live gegen einen echten
+# Proxmox-Host samt Community-Authentik bis zum funktionierenden SSO-Login
+# durchgetestet (siehe CHANGELOG.md 0.1.32-0.1.36) - schlaegt ein einzelner
+# Automatisierungsschritt trotzdem fehl (z.B. abweichendes Authentik-Layout
+# in einer neueren Version), bricht dank sauberer Fehlerisolierung (siehe
+# provision_authentik_certificate()/wire_app_oidc() unten) NUR dieser
+# Teilschritt ab - App-Installationen und die Abschluss-Zusammenfassung
+# bleiben davon unberuehrt. Manuelle Schritte als Fallback: SSO_AUTHENTIK.md
+# Teil B.
+#
+# WICHTIG - IP-Stabilitaet: die Verdrahtung traegt die zum Installations-
+# zeitpunkt per DHCP vergebenen IP-Adressen fest in Authentiks Redirect-URI
+# und in OIDC_ISSUER der App(s) ein. Aendert sich eine dieser IPs spaeter
+# (Reboot, DHCP-Lease-Ablauf), bricht SSO still, bis das manuell korrigiert
+# wird - fuer alle beteiligten Container feste IPs oder DHCP-Reservierungen
+# einrichten, siehe Abschluss-Hinweis am Ende dieses Skripts.
 #
 # Aufruf auf dem Proxmox-Host (als root):
 #   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Woschj/scandypro/main/proxmox/ct/scandy-stack.sh)"
@@ -89,11 +98,13 @@ fi
 # snapshot_vmids / new_vmid_since: ermittelt die waehrend eines
 # Installer-Laufs neu angelegte Container-ID, ohne dass die einzelnen
 # Skripte ihre VMID selbst zurueckgeben muessten (tun sie nicht - sie sind
-# fuer den eigenstaendigen Aufruf gedacht). Bei "Aktualisieren" statt
-# Neuinstallation bleibt die Menge unveraendert - dann findet der
-# Authentik-Verdrahtungsschritt spaeter keine neue VMID und wird
-# uebersprungen (informative Meldung, kein Fehler).
-snapshot_vmids() { pct list | tail -n +2 | awk '{print $1}' | sort; }
+# fuer den eigenstaendigen Aufruf gedacht). "sort -n" ist hier wichtig: eine
+# rein lexikografische Sortierung wuerde z.B. "9" nach "10" einordnen und
+# damit bei wiederverwendeten (kleineren) VMIDs die falsche als "neu"
+# erkennen. Bei "Aktualisieren" statt Neuinstallation bleibt die Menge
+# unveraendert - dann findet der Authentik-Verdrahtungsschritt spaeter keine
+# neue VMID und wird uebersprungen (informative Meldung, kein Fehler).
+snapshot_vmids() { pct list | tail -n +2 | awk '{print $1}' | sort -n; }
 new_vmid_since() {
   local before="$1" after
   after="$(snapshot_vmids)"
@@ -118,61 +129,35 @@ if [[ "$DO_SCANDYLITE" -eq 1 ]]; then
   [[ -n "$VMID" ]] && APP_VMID[scandylite]="$VMID"
 fi
 
-if [[ "$DO_AUTHENTIK" -eq 1 ]]; then
-  echo ""; echo "=== Authentik installieren (Community-Skript) ==="
-  BEFORE="$(snapshot_vmids)"
-  bash -c "$(curl -fsSL "$AUTHENTIK_CT_URL")"
-  AUTHENTIK_VMID="$(new_vmid_since "$BEFORE")"
+AUTHENTIK_VMID=""
+AUTHENTIK_IP=""
+AK_DIR=""
+AK_PYTHON=""
+AUTHENTIK_CA_LOCAL=""
 
-  if [[ -z "$AUTHENTIK_VMID" ]]; then
-    echo "Konnte die neue Authentik-Container-ID nicht automatisch ermitteln (evtl. Aktualisierung statt Neuinstallation) - automatische OIDC-Verdrahtung wird übersprungen."
-  elif [[ "${#APP_VMID[@]}" -eq 0 ]]; then
-    echo "Keine ScandyPro/Scandy-Lite-Installation in diesem Lauf - keine OIDC-Verdrahtung noetig."
-  else
-    echo ""
-    echo "=== Authentik-OIDC automatisch fuer ${!APP_VMID[*]} einrichten ==="
-    echo "Dieser Schritt ist experimentell (nicht gegen eine echte Authentik-Instanz"
-    echo "getestet) - schlaegt er fehl, ist die Installation selbst trotzdem fertig;"
-    echo "die manuelle Einrichtung steht in SSO_AUTHENTIK.md Teil B."
-
-    AUTHENTIK_IP="$(pct exec "$AUTHENTIK_VMID" -- hostname -I 2>/dev/null | awk '{print $1}' || true)"
-    if [[ -z "$AUTHENTIK_IP" ]]; then
-      echo "Konnte IP von Authentik-Container ${AUTHENTIK_VMID} nicht ermitteln - Automatisierung übersprungen."
-    else
-      # manage.py-Pfad wird gesucht statt hart codiert, da er vom genauen
-      # Stand/Layout des Community-Skripts abhaengt (aktuell: /opt/authentik).
-      # Aufruf explizit ueber den venv-Python (nicht "python manage.py"
-      # direkt), da manage.py's Shebang "#!/usr/bin/env python" nur mit der
-      # PATH-Umgebung des systemd-Dienstes korrekt auf den venv-Interpreter
-      # zeigt, nicht in einem plain "pct exec".
-      MANAGE_PY="$(pct exec "$AUTHENTIK_VMID" -- bash -c 'find / -maxdepth 6 -iname manage.py 2>/dev/null | grep -m1 authentik' || true)"
-      if [[ -z "$MANAGE_PY" ]]; then
-        echo "Konnte manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
-        echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
-      else
-        AK_DIR="$(dirname "$MANAGE_PY")"
-        AK_PYTHON="$(pct exec "$AUTHENTIK_VMID" -- bash -c "command -v '${AK_DIR}/.venv/bin/python' 2>/dev/null || command -v '${AK_DIR}/venv/bin/python' 2>/dev/null" || true)"
-        if [[ -z "$AK_PYTHON" ]]; then
-          echo "Konnte venv-Python neben manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
-          echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
-        else
-        # Authentiks vom Community-Skript generiertes Default-Zertifikat hat
-        # keinen zur Container-IP passenden SAN-Eintrag - jeder TLS-Client
-        # mit echter Zertifikatspruefung (u.a. Pythons httpx/authlib, das
-        # ScandyPro/Scandy-Lite fuer den OIDC-Discovery-Aufruf nutzen) lehnt
-        # es deshalb IMMER ab, unabhaengig vom CA-Vertrauen. Eigenes
-        # Zertifikat mit korrektem SAN erzeugen und als Web-Zertifikat der
-        # Default-Brand setzen (analog zu /etc/ssl/scandypro/scandypro.crt).
-        echo "Erzeuge Authentik-Zertifikat mit korrektem SAN-Eintrag (${AUTHENTIK_IP})..."
-        pct exec "$AUTHENTIK_VMID" -- bash -c "
-          mkdir -p /etc/ssl/authentik
-          openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
-            -keyout /etc/ssl/authentik/authentik.key -out /etc/ssl/authentik/authentik.crt \
-            -subj '/CN=authentik.fritz.box' \
-            -addext 'subjectAltName=DNS:authentik.fritz.box,DNS:localhost,IP:${AUTHENTIK_IP},IP:127.0.0.1' \
-            >/dev/null 2>&1
-        "
-        pct exec "$AUTHENTIK_VMID" -- bash -c "cd '${AK_DIR}' && '${AK_PYTHON}' manage.py shell -c \"
+# provision_authentik_certificate(): erzeugt ein zur Authentik-Container-IP
+# passendes Zertifikat und setzt es als Web-Zertifikat der Default-Brand.
+# Authentiks vom Community-Skript generiertes Default-Zertifikat hat keinen
+# passenden SAN-Eintrag - jeder TLS-Client mit echter Zertifikatspruefung
+# (u.a. Pythons httpx/authlib, das ScandyPro/Scandy-Lite fuer den
+# OIDC-Discovery-Aufruf nutzen) lehnt es deshalb IMMER ab, unabhaengig vom
+# CA-Vertrauen.
+#
+# Als eigene Funktion, per "if provision_authentik_certificate; then"
+# aufgerufen: schlaegt irgendein Schritt darin fehl, bricht dank "set -e"
+# nur die Funktion vorzeitig ab (return-Code != 0) - NICHT das gesamte
+# Skript, sodass die Abschluss-Zusammenfassung trotzdem immer erscheint.
+provision_authentik_certificate() {
+  echo "Erzeuge Authentik-Zertifikat mit korrektem SAN-Eintrag (${AUTHENTIK_IP})..."
+  pct exec "$AUTHENTIK_VMID" -- bash -c "
+    mkdir -p /etc/ssl/authentik
+    openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+      -keyout /etc/ssl/authentik/authentik.key -out /etc/ssl/authentik/authentik.crt \
+      -subj '/CN=authentik.fritz.box' \
+      -addext 'subjectAltName=DNS:authentik.fritz.box,DNS:localhost,IP:${AUTHENTIK_IP},IP:127.0.0.1' \
+      >/dev/null 2>&1
+  "
+  pct exec "$AUTHENTIK_VMID" -- bash -c "cd '${AK_DIR}' && '${AK_PYTHON}' manage.py shell -c \"
 from authentik.crypto.models import CertificateKeyPair
 from authentik.brands.models import Brand
 with open('/etc/ssl/authentik/authentik.crt') as f:
@@ -188,48 +173,66 @@ if brand:
     brand.web_certificate = ckp
     brand.save()
 \"" >/dev/null 2>&1
-        pct exec "$AUTHENTIK_VMID" -- systemctl restart authentik-server
-        sleep 5
-        AUTHENTIK_CA_LOCAL="/tmp/authentik-ca-${AUTHENTIK_VMID}.crt"
-        pct pull "$AUTHENTIK_VMID" /etc/ssl/authentik/authentik.crt "$AUTHENTIK_CA_LOCAL"
+  pct exec "$AUTHENTIK_VMID" -- systemctl restart authentik-server
+  sleep 5
+  AUTHENTIK_CA_LOCAL="/tmp/authentik-ca-${AUTHENTIK_VMID}.crt"
+  pct pull "$AUTHENTIK_VMID" /etc/ssl/authentik/authentik.crt "$AUTHENTIK_CA_LOCAL"
+}
 
-        for app in "${!APP_VMID[@]}"; do
-          app_vmid="${APP_VMID[$app]}"
-          app_ip="$(pct exec "$app_vmid" -- hostname -I 2>/dev/null | awk '{print $1}' || true)"
-          [[ -z "$app_ip" ]] && continue
+# wire_app_oidc <app-key> <app-vmid>: richtet OIDC fuer EINE App ein
+# (Zertifikatsvertrauen + Authentik-Provider/Application + .env-Eintraege +
+# Dienst-Neustart). Eigene Funktion, damit ein Fehlschlag bei einer App
+# (z.B. Scandy-Lite) die bereits erfolgreiche Verdrahtung einer anderen App
+# (z.B. ScandyPro) nicht nachtraeglich verschweigt - jede App wird
+# unabhaengig ueber "wire_app_oidc ... || echo '...fehlgeschlagen'" in der
+# Schleife weiter unten aufgerufen.
+wire_app_oidc() {
+  local app="$1" app_vmid="$2"
+  local app_name app_dir service_name app_ip app_certifi
+  local client_id client_secret redirect_uri slug blueprint_rel blueprint_abs
 
-          case "$app" in
-            scandypro) app_name="ScandyPro"; app_dir="/opt/scandypro"; service_name="scandypro" ;;
-            scandylite) app_name="Scandy-Lite"; app_dir="/opt/scandy-lite"; service_name="scandy-lite" ;;
-          esac
+  app_ip="$(pct exec "$app_vmid" -- hostname -I 2>/dev/null | awk '{print $1}' || true)"
+  if [[ -z "$app_ip" ]]; then
+    echo "Konnte IP von Container ${app_vmid} (${app}) nicht ermitteln."
+    return 1
+  fi
 
-          # Authentik-Zertifikat als vertrauenswuerdig eintragen - NOTWENDIG
-          # an zwei Stellen: im OS-Zertifikatsspeicher (fuer Tools wie curl)
-          # UND im certifi-Bundle des App-venv (Pythons httpx/authlib nutzt
-          # standardmaessig certifi.where(), NICHT den OS-Speicher, auch
-          # wenn ein OS-CA-Import erfolgt ist).
-          pct push "$app_vmid" "$AUTHENTIK_CA_LOCAL" /usr/local/share/ca-certificates/authentik-selfsigned.crt >/dev/null
-          pct exec "$app_vmid" -- update-ca-certificates >/dev/null 2>&1
-          app_certifi="$(pct exec "$app_vmid" -- bash -c "find '${app_dir}/venv' -maxdepth 4 -path '*/certifi/cacert.pem' 2>/dev/null | head -1" || true)"
-          if [[ -n "$app_certifi" ]]; then
-            pct push "$app_vmid" "$AUTHENTIK_CA_LOCAL" /tmp/authentik-ca-for-certifi.crt >/dev/null
-            pct exec "$app_vmid" -- bash -c "cat /tmp/authentik-ca-for-certifi.crt >> '${app_certifi}'"
-          fi
+  case "$app" in
+    scandypro) app_name="ScandyPro"; app_dir="/opt/scandypro"; service_name="scandypro" ;;
+    scandylite) app_name="Scandy-Lite"; app_dir="/opt/scandy-lite"; service_name="scandy-lite" ;;
+    *) echo "Unbekannter App-Key '${app}' - übersprungen."; return 1 ;;
+  esac
 
-          client_id="$(openssl rand -hex 16)"
-          client_secret="$(openssl rand -hex 32)"
-          redirect_uri="https://${app_ip}:8443/auth/oidc/callback"
-          slug="${app}"
+  # Authentik-Zertifikat als vertrauenswuerdig eintragen - NOTWENDIG an zwei
+  # Stellen: im OS-Zertifikatsspeicher (fuer Tools wie curl) UND im
+  # certifi-Bundle des App-venv (Pythons httpx/authlib nutzt standardmaessig
+  # certifi.where(), NICHT den OS-Speicher, auch wenn ein OS-CA-Import
+  # erfolgt ist). Die Datei unter /usr/local/share/ca-certificates/ bleibt
+  # bewusst dauerhaft liegen (nicht nur in /tmp) - scandypro.sh's
+  # Aktualisieren-Pfad haengt sie nach jedem "pip install" erneut an
+  # certifi an, falls ein certifi-Update den manuellen Anhang ueberschrieben
+  # hat (siehe dort).
+  pct push "$app_vmid" "$AUTHENTIK_CA_LOCAL" /usr/local/share/ca-certificates/authentik-selfsigned.crt >/dev/null
+  pct exec "$app_vmid" -- update-ca-certificates >/dev/null 2>&1
+  app_certifi="$(pct exec "$app_vmid" -- bash -c "find '${app_dir}/venv' -maxdepth 4 -path '*/certifi/cacert.pem' 2>/dev/null | head -1" || true)"
+  if [[ -n "$app_certifi" ]]; then
+    pct exec "$app_vmid" -- bash -c "cat /usr/local/share/ca-certificates/authentik-selfsigned.crt >> '${app_certifi}'"
+  fi
 
-          echo "Lege OAuth2-Provider + Application fuer ${app_name} in Authentik an..."
-          # apply_blueprint erwartet einen Pfad RELATIV zu blueprints_dir
-          # (Standard: /opt/authentik/blueprints), kein beliebiger absoluter
-          # Pfad ("Invalid blueprint path") - "local/" ist die uebliche
-          # Authentik-Konvention fuer eigene Blueprints.
-          blueprint_rel="local/${app}-oidc.yaml"
-          blueprint_abs="${AK_DIR}/blueprints/${blueprint_rel}"
-          pct exec "$AUTHENTIK_VMID" -- mkdir -p "${AK_DIR}/blueprints/local"
-          pct exec "$AUTHENTIK_VMID" -- tee "$blueprint_abs" >/dev/null <<EOF
+  client_id="$(openssl rand -hex 16)"
+  client_secret="$(openssl rand -hex 32)"
+  redirect_uri="https://${app_ip}:8443/auth/oidc/callback"
+  slug="${app}"
+
+  echo "Lege OAuth2-Provider + Application fuer ${app_name} in Authentik an..."
+  # apply_blueprint erwartet einen Pfad RELATIV zu blueprints_dir (Standard:
+  # /opt/authentik/blueprints), kein beliebiger absoluter Pfad ("Invalid
+  # blueprint path") - "local/" ist die uebliche Authentik-Konvention fuer
+  # eigene Blueprints.
+  blueprint_rel="local/${app}-oidc.yaml"
+  blueprint_abs="${AK_DIR}/blueprints/${blueprint_rel}"
+  pct exec "$AUTHENTIK_VMID" -- mkdir -p "${AK_DIR}/blueprints/local"
+  pct exec "$AUTHENTIK_VMID" -- tee "$blueprint_abs" >/dev/null <<EOF
 version: 1
 metadata:
   name: ${app}-oidc-autoprovision
@@ -253,7 +256,11 @@ entries:
         - matching_mode: strict
           url: "${redirect_uri}"
           redirect_uri_type: authorization
-      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      # Explicit statt implicit consent, konsistent mit der manuellen
+      # Einrichtung in SSO_AUTHENTIK.md Teil B - Nutzer:innen sehen so beim
+      # ersten SSO-Login bewusst einen Bestaetigungsdialog statt
+      # stillschweigend durchgeleitet zu werden.
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-explicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
       # Ohne property_mappings bleiben email/profile-Claims im ID-Token leer
@@ -272,26 +279,74 @@ entries:
       slug: ${slug}
       provider: !KeyOf ${app}-provider
 EOF
-          pct exec "$AUTHENTIK_VMID" -- chown authentik:authentik "$blueprint_abs" 2>/dev/null || true
-          if pct exec "$AUTHENTIK_VMID" -- bash -c "cd '${AK_DIR}' && '${AK_PYTHON}' manage.py apply_blueprint '$blueprint_rel'" 2>&1; then
-            echo "Provider/Application fuer ${app_name} angelegt. Trage OIDC_*-Werte in ${app}.env ein..."
-            # Port 9443 ist der Standard-HTTPS-Port des community-scripts-
-            # Authentik-Installers (AUTHENTIK_LISTEN__HTTPS) - bei
-            # abweichender Authentik-Installation ggf. anpassen.
-            pct exec "$app_vmid" -- bash -c "
-              sed -i '/^OIDC_ISSUER=/d;/^OIDC_CLIENT_ID=/d;/^OIDC_CLIENT_SECRET=/d' '${app_dir}/.env'
-              cat >> '${app_dir}/.env' <<ENVEOF
+  pct exec "$AUTHENTIK_VMID" -- chown authentik:authentik "$blueprint_abs" 2>/dev/null || true
+
+  if ! pct exec "$AUTHENTIK_VMID" -- bash -c "cd '${AK_DIR}' && '${AK_PYTHON}' manage.py apply_blueprint '$blueprint_rel'" 2>&1; then
+    echo "Blueprint-Anwendung fuer ${app_name} fehlgeschlagen."
+    return 1
+  fi
+
+  echo "Provider/Application fuer ${app_name} angelegt. Trage OIDC_*-Werte in ${app}.env ein..."
+  # Port 9443 ist der Standard-HTTPS-Port des community-scripts-
+  # Authentik-Installers (AUTHENTIK_LISTEN__HTTPS) - bei abweichender
+  # Authentik-Installation ggf. anpassen.
+  pct exec "$app_vmid" -- bash -c "
+    sed -i '/^OIDC_ISSUER=/d;/^OIDC_CLIENT_ID=/d;/^OIDC_CLIENT_SECRET=/d;/^OIDC_PROVIDER_NAME=/d' '${app_dir}/.env'
+    cat >> '${app_dir}/.env' <<ENVEOF
 OIDC_ISSUER=https://${AUTHENTIK_IP}:9443/application/o/${slug}/
 OIDC_CLIENT_ID=${client_id}
 OIDC_CLIENT_SECRET=${client_secret}
+OIDC_PROVIDER_NAME=Authentik
 ENVEOF
-              systemctl restart ${service_name}-https 2>/dev/null || systemctl restart ${service_name} 2>/dev/null || true
-            "
-            echo "${app_name}: OIDC eingerichtet, Dienst neu gestartet."
-          else
-            echo "Blueprint-Anwendung fuer ${app_name} fehlgeschlagen - bitte SSO_AUTHENTIK.md Teil B manuell durchgehen."
-          fi
-        done
+    systemctl restart ${service_name} 2>/dev/null || true
+    systemctl restart ${service_name}-https 2>/dev/null || true
+  "
+  echo "${app_name}: OIDC eingerichtet, Dienste neu gestartet."
+}
+
+if [[ "$DO_AUTHENTIK" -eq 1 ]]; then
+  echo ""; echo "=== Authentik installieren (Community-Skript) ==="
+  BEFORE="$(snapshot_vmids)"
+  bash -c "$(curl -fsSL "$AUTHENTIK_CT_URL")"
+  AUTHENTIK_VMID="$(new_vmid_since "$BEFORE")"
+
+  if [[ -z "$AUTHENTIK_VMID" ]]; then
+    echo "Konnte die neue Authentik-Container-ID nicht automatisch ermitteln (evtl. Aktualisierung statt Neuinstallation) - automatische OIDC-Verdrahtung wird übersprungen."
+  elif [[ "${#APP_VMID[@]}" -eq 0 ]]; then
+    echo "Keine ScandyPro/Scandy-Lite-Installation in diesem Lauf - keine OIDC-Verdrahtung noetig."
+  else
+    echo ""
+    echo "=== Authentik-OIDC automatisch fuer ${!APP_VMID[*]} einrichten ==="
+    echo "Schlaegt ein Teilschritt fehl, ist die Installation selbst trotzdem fertig;"
+    echo "die manuelle Einrichtung steht in SSO_AUTHENTIK.md Teil B."
+
+    AUTHENTIK_IP="$(pct exec "$AUTHENTIK_VMID" -- hostname -I 2>/dev/null | awk '{print $1}' || true)"
+    if [[ -z "$AUTHENTIK_IP" ]]; then
+      echo "Konnte IP von Authentik-Container ${AUTHENTIK_VMID} nicht ermitteln - Automatisierung übersprungen."
+    else
+      # manage.py-Pfad wird gesucht statt hart codiert, da er vom genauen
+      # Stand/Layout des Community-Skripts abhaengt (aktuell: /opt/authentik).
+      # Aufruf explizit ueber den venv-Python (nicht "python manage.py"
+      # direkt), da manage.py's Shebang "#!/usr/bin/env python" nur mit der
+      # PATH-Umgebung des systemd-Dienstes korrekt auf den venv-Interpreter
+      # zeigt, nicht in einem plain "pct exec".
+      MANAGE_PY="$(pct exec "$AUTHENTIK_VMID" -- bash -c 'find / -maxdepth 6 -iname manage.py 2>/dev/null | grep -m1 authentik' || true)"
+      if [[ -z "$MANAGE_PY" ]]; then
+        echo "Konnte manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
+        echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
+      else
+        AK_DIR="$(dirname "$MANAGE_PY")"
+        AK_PYTHON="$(pct exec "$AUTHENTIK_VMID" -- bash -c "command -v '${AK_DIR}/.venv/bin/python' 2>/dev/null || command -v '${AK_DIR}/venv/bin/python' 2>/dev/null" || true)"
+        if [[ -z "$AK_PYTHON" ]]; then
+          echo "Konnte venv-Python neben manage.py in Container ${AUTHENTIK_VMID} nicht finden - automatische OIDC-Verdrahtung übersprungen."
+          echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
+        elif ! provision_authentik_certificate; then
+          echo "Zertifikatserzeugung/-verdrahtung in Authentik fehlgeschlagen - automatische OIDC-Verdrahtung uebersprungen."
+          echo "Bitte SSO_AUTHENTIK.md Teil B fuer die manuelle Einrichtung verwenden."
+        else
+          for app in "${!APP_VMID[@]}"; do
+            wire_app_oidc "$app" "${APP_VMID[$app]}" || echo "OIDC-Verdrahtung für ${app} übersprungen - bitte SSO_AUTHENTIK.md Teil B manuell für diese App durchgehen."
+          done
         fi
       fi
     fi
@@ -303,3 +358,14 @@ echo "=== Fertig ==="
 for app in "${!APP_VMID[@]}"; do
   echo "${app}: Container ${APP_VMID[$app]}"
 done
+if [[ "$DO_AUTHENTIK" -eq 1 ]]; then
+  echo "authentik: Container ${AUTHENTIK_VMID:-siehe oben}"
+fi
+if [[ "${#APP_VMID[@]}" -gt 0 || "$DO_AUTHENTIK" -eq 1 ]]; then
+  echo ""
+  echo "WICHTIG: allen oben installierten Containern feste IP-Adressen geben"
+  echo "(DHCP-Reservierung in der Router-/DHCP-Konfiguration, oder feste IP beim"
+  echo "naechsten 'pct set ... --net0 ...') - bei einer spaeteren IP-Aenderung"
+  echo "(Reboot, Lease-Ablauf) bricht sonst sowohl der direkte App-Zugriff als"
+  echo "auch eine eingerichtete SSO-Verdrahtung still, bis das manuell korrigiert wird."
+fi

@@ -142,6 +142,22 @@ if [[ "$MODE" == "update" ]]; then
     systemctl stop scandypro scandypro-https 2>/dev/null || systemctl stop scandypro
     git reset -q --hard origin/main
     venv/bin/pip install -q -r requirements.txt
+    # Zusaetzlich vertrauenswuerdige CA-Zertifikate (z.B. eine
+    # selbstsignierte Authentik-CA fuer SSO, siehe
+    # proxmox/ct/scandy-stack.sh) landen NICHT nur im OS-Zertifikatsspeicher,
+    # sondern muessen zusaetzlich manuell an das certifi-Bundle im venv
+    # angehaengt werden (Pythons httpx/authlib nutzt certifi.where(), nicht
+    # den OS-Speicher). Ein "pip install" kann certifi dabei aktualisieren
+    # und damit cacert.pem komplett ersetzen, wodurch der Anhang verloren
+    # geht - hier bei jedem Update erneut anhaengen, Quelle ist der
+    # OS-weite CA-Ordner (der bleibt unabhaengig vom venv stabil).
+    APP_CERTIFI="$(find venv -maxdepth 4 -path "*/certifi/cacert.pem" 2>/dev/null | head -1)"
+    if [[ -n "$APP_CERTIFI" ]]; then
+      for ca_file in /usr/local/share/ca-certificates/*.crt; do
+        [[ -e "$ca_file" ]] || continue
+        cat "$ca_file" >> "$APP_CERTIFI"
+      done
+    fi
     set -a
     . /opt/scandypro/.env
     set +a

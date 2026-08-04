@@ -115,10 +115,22 @@ Werden Authentik **und** mindestens eine App zusammen ausgewählt, versucht
 das Skript danach automatisch, einen OAuth2/OIDC-Provider + Application je
 App in Authentik anzulegen und die `OIDC_*`-Werte direkt in deren `.env`
 einzutragen (per `ak apply_blueprint`) - spart die manuellen Schritte aus
-`SSO_AUTHENTIK.md` Teil B. **Experimentell**, da nicht gegen eine echte
-Authentik-Instanz verifiziert: schlägt dieser letzte Schritt fehl, ist die
-Installation selbst trotzdem fertig, nur die SSO-Verknüpfung muss dann
-manuell nach `SSO_AUTHENTIK.md` Teil B nachgeholt werden.
+`SSO_AUTHENTIK.md` Teil B. Live gegen einen echten Proxmox-Host bis zum
+funktionierenden SSO-Login durchgetestet (siehe CHANGELOG.md 0.1.32-0.1.36).
+Schlägt ein einzelner Teilschritt trotzdem fehl (z. B. abweichendes
+Authentik-Layout in einer neueren Version), bricht dank sauberer
+Fehlerisolierung nur dieser Teilschritt ab - Installation und
+Abschluss-Zusammenfassung bleiben unberührt, die SSO-Verknüpfung muss dann
+für die betroffene App manuell nach `SSO_AUTHENTIK.md` Teil B nachgeholt
+werden.
+
+**Wichtig, IP-Stabilität**: die Automatisierung trägt die zum
+Installationszeitpunkt per DHCP vergebenen IP-Adressen fest in Authentiks
+Redirect-URI und in `OIDC_ISSUER` der App(s) ein. Ändert sich eine dieser
+IPs später (Reboot, Lease-Ablauf), bricht SSO still, bis das manuell
+korrigiert wird - allen beteiligten Containern feste IPs oder
+DHCP-Reservierungen geben (das Skript weist am Ende noch einmal darauf
+hin).
 
 Die einzelnen Installer bleiben weiterhin auch direkt aufrufbar (siehe
 oben bzw. Scandy-Lite-README) - `scandy-stack.sh` ist nur die bequeme

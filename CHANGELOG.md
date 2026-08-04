@@ -8,6 +8,59 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.37] - 2026-08-04
+
+Code-Review von `scandy-stack.sh` (unabhängig von den vorherigen Live-Test-
+Fixes) - Robustheits-/Konsistenzlücken gefunden und behoben, die ein
+einzelner erfolgreicher Testlauf nicht zwangsläufig aufdeckt.
+
+### Fixed
+- **Fehlerbehandlung im Authentik-Verdrahtungsblock war lückenhaft** -
+  mehrere riskante Schritte (Zertifikatserzeugung, Django-Shell-Aufruf
+  fürs Brand-Zertifikat, Dienst-Neustart, `pct push`/`pct pull`,
+  `update-ca-certificates`) waren nicht gegen `set -e` abgesichert:
+  schlug einer davon fehl, brach wegen `set -Eeuo pipefail` das gesamte
+  Skript ab, auch die Abschluss-Zusammenfassung mit den Container-IDs
+  wurde dann nie angezeigt - obwohl die App-Installationen selbst längst
+  erfolgreich durchgelaufen waren. `provision_authentik_certificate()`
+  und `wire_app_oidc()` sind jetzt eigene Funktionen, per `if
+  function; then`/`function || ...` aufgerufen (bash wertet das nicht als
+  `errexit`-Abbruch), sodass ein Fehlschlag nur den jeweiligen Teilschritt
+  überspringt statt das ganze Skript zu beenden - und ein Fehlschlag bei
+  einer App (z. B. Scandy-Lite) die bereits erfolgreiche Verdrahtung einer
+  anderen (z. B. ScandyPro) nicht mehr verschweigt.
+- **Zertifikatsvertrauen konnte nach einem Update stillschweigend wieder
+  verschwinden** - die Authentik-CA wurde nur ins `certifi`-Bundle des
+  App-venv angehängt; ein "Aktualisieren"-Lauf (`pip install -r
+  requirements.txt`) kann dabei `certifi` selbst aktualisieren und
+  `cacert.pem` komplett ersetzen, wodurch der Anhang verloren geht und SSO
+  nach einem ganz normalen Update wieder mit dem TLS-Vertrauensfehler aus
+  0.1.34 bricht. `scandypro.sh`'s Aktualisieren-Pfad hängt jetzt bei jedem
+  Update alle CA-Zertifikate aus dem OS-weiten, von `pip` unabhängigen
+  Ordner (`/usr/local/share/ca-certificates/`) erneut an.
+- **`sort` statt `sort -n` bei der VMID-Erkennung** - lexikografische
+  Sortierung könnte bei wiederverwendeten (kleineren) Container-IDs die
+  falsche als "neu erstellt" erkennen; jetzt numerisch sortiert.
+- **Automatisierter Blueprint nutzte `implicit-consent`, die manuelle
+  Anleitung `explicit-consent`** - unbeabsichtigte Abweichung zwischen
+  beiden Wegen. Automatisierung jetzt ebenfalls `explicit-consent`, damit
+  Nutzer:innen beim ersten SSO-Login bewusst einen Bestätigungsdialog
+  sehen statt stillschweigend durchgeleitet zu werden.
+
+### Changed
+- `OIDC_PROVIDER_NAME=Authentik` wird jetzt automatisch mit eingetragen
+  (Login-Button zeigt "Mit Authentik anmelden" statt generisch "Mit SSO
+  anmelden").
+- Nach dem Eintragen der `OIDC_*`-Werte werden jetzt beide Dienste einer
+  App neu gestartet (`${service}` und `${service}-https`), nicht nur der
+  HTTPS-Dienst - beide lesen dieselbe `.env`.
+- README.md "Proxmox-Stack" aktualisiert: veraltete Formulierung
+  "experimentell, nicht gegen eine echte Authentik-Instanz verifiziert"
+  entfernt (war durch die Live-Tests in 0.1.34-0.1.36 überholt), neuer
+  Hinweis zur IP-Stabilität (DHCP-Adressen werden fest in Redirect-URI/
+  `OIDC_ISSUER` eingetragen - feste IPs/DHCP-Reservierungen empfohlen).
+  Skript gibt denselben Hinweis jetzt auch am Ende der Installation aus.
+
 ## [0.1.36] - 2026-08-04
 
 ### Fixed
