@@ -256,6 +256,14 @@ entries:
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      # Ohne property_mappings bleiben email/profile-Claims im ID-Token leer
+      # (live gefunden, 2026-08-04) - beide Apps legen dann einen
+      # Platzhalter-Account an (z.B. "sso-<sub-praefix>") statt Name/E-Mail
+      # zu uebernehmen, obwohl "scope=openid email profile" angefragt wird.
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
   - model: authentik_core.application
     identifiers:
       slug: ${slug}

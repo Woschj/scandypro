@@ -8,6 +8,22 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.36] - 2026-08-04
+
+### Fixed
+- **OAuth2Provider-Blueprint fehlten `property_mappings`** - ohne sie
+  bleiben `email`/`name`-Claims im ID-Token leer, obwohl
+  `scope=openid email profile` angefragt wird. Beide Apps legen bei
+  SSO-Erstlogin dadurch einen Platzhalter-Account an (z.B.
+  `sso-<sub-präfix>` bei Scandy-Lite) statt echten Namen/E-Mail zu
+  übernehmen. `scandy-stack.sh` verknüpft den Provider jetzt mit den
+  Standard-Scope-Mappings (`openid`, `email`, `profile`).
+  **Hinweis:** bereits angelegte Platzhalter-Accounts aktualisieren sich
+  dadurch nicht rückwirkend (Zuordnung läuft über die stabile
+  `external_id`/`sub`, nicht über Name/E-Mail) - Name manuell in der
+  Benutzerverwaltung anpassen oder den Account löschen und neu per SSO
+  anmelden.
+
 ## [0.1.35] - 2026-08-04
 
 Echter Browser-Login-Test (nicht nur curl-Redirect-Check) deckte den
