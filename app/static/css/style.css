@@ -768,6 +768,23 @@ button:not(.btn) {
   border-top: 1px solid var(--line);
 }
 
+/* Klickbare Karten-Liste, z.B. Boards aus Teilnehmer:innen-Perspektive
+   (siehe app/templates/kanban/teilnehmer_boards.html) - derselbe Look wie
+   .rueckblick-stat, nur linksbündig statt zentriert. */
+.link-liste { display: flex; flex-direction: column; gap: var(--space-3); }
+.link-liste-eintrag {
+  display: block;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.link-liste-eintrag:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(20, 32, 29, 0.1); }
+
 /* Bottom-Tab-Bar für echtes Mobile (siehe app/templates/partials/tabbar.html)
    - 1:1 aus dem Schwestermodul Scandy-Lite übernommen. Deckt nur die
    häufigsten Tagesziele ab (siehe tabbar.html); seltenere Ziele (Meine

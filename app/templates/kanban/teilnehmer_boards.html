@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Boards von {{ teilnehmer.name }} – ScandyPro{% endblock %}
+{% block content %}
+<p><a href="/kanban/teilnehmer">&larr; Meine Teilnehmer:innen</a></p>
+<h1>Boards von {{ teilnehmer.name }}</h1>
+<p class="visibility-hint">Alle Kanban-Boards, die {{ teilnehmer.name }} selbst sehen kann - öffentliche
+  Team-Boards über Arbeitsgruppen-, Handlungsfeld- oder individuelle Freigabe, plus das eigene persönliche Board.
+  Reine Ansicht, keine Bearbeitung möglich.</p>
+
+{% if boards %}
+<div class="link-liste">
+{% for board in boards %}
+<a href="/kanban/teilnehmer/{{ teilnehmer.id }}/boards/{{ board.id }}" class="link-liste-eintrag">
+  <div class="karte-titel">{{ board.titel }}</div>
+  <div class="karte-meta">
+    {% if board.typ.value == "person" %}
+    Persönliches Board von {{ teilnehmer.name }}
+    {% elif board.handlungsfeld_id in handlungsfeld_by_id %}
+    Team-Board · {{ handlungsfeld_by_id[board.handlungsfeld_id].name }}
+    {% else %}
+    Team-Board
+    {% endif %}
+  </div>
+</a>
+{% endfor %}
+</div>
+{% else %}
+<p class="empty-state">{{ teilnehmer.name }} hat aktuell keinen Zugriff auf ein Kanban-Board.</p>
+{% endif %}
+{% endblock %}

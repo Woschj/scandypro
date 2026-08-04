@@ -8,6 +8,47 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.38] - 2026-08-04
+
+### Changed
+- **Handlungsfeld-Team: Mitgliederliste getrennt** - "Mitglieder"-Tab zeigte
+  bisher alle Teilnehmer:innen der Abteilung ungetrennt in einer Tabelle
+  (Mitglieder und Nicht-Mitglieder nur am Button-Text "Entfernen"/
+  "Hinzufügen" unterscheidbar). Jetzt zwei getrennte Abschnitte
+  "Mitglieder des Handlungsfelds" und "Weitere Teilnehmer:innen der
+  Abteilung" (mit eigener Suche), jeweils mit Anzahl im Titel.
+- **"Meine Teilnehmer:innen" zeigt nur noch persönlich zugeordnete
+  Teilnehmer:innen** - bisher zusätzlich alle Mitglieder eines geleiteten
+  Handlungsfelds, auch ohne persönliche Zuordnung (`BerufstrainerZuordnung`)
+  - das machte die Liste größer als die tatsächliche persönliche Betreuung.
+  Handlungsfeld-Zugehörigkeit bleibt als Info-Spalte sichtbar, bestimmt
+  aber nicht mehr, wer in der Liste auftaucht.
+
+### Added
+- **Kanban-Board-Ansicht aus Teilnehmer:innen-Perspektive** - der
+  "Kanban-Board"-Link in "Meine Teilnehmer:innen" öffnet jetzt eine Liste
+  aller Boards, die die/der jeweilige Teilnehmer:in selbst sehen kann
+  (öffentliche Team-Boards über Arbeitsgruppen-, Handlungsfeld- oder
+  individuelle Freigabe, plus das eigene Personen-Board) - nicht mehr nur
+  einen Direktsprung zum persönlichen Board. Team-Boards aus
+  Handlungsfeldern, die die/der betrachtende Trainer:in nicht selbst
+  leitet, sind darüber jetzt einsehbar (rein lesend, eigenes Template ohne
+  Formulare) - vorher gar nicht erreichbar. Private Karten des
+  Personen-Boards bleiben weiterhin nach den bestehenden Regeln gefiltert
+  (Sichtbarkeit an die/den tatsächlich betrachtende:n Trainer:in gebunden,
+  nicht an die/den Teilnehmer:in "simuliert").
+  - Neue Routen `GET /kanban/teilnehmer/{teilnehmer_id}/boards` und
+    `GET /kanban/teilnehmer/{teilnehmer_id}/boards/{board_id}`, beide nur
+    für persönlich zugeordnete Berufstrainer:innen.
+  - `GET /kanban/boards/personen/{teilnehmer_id}` (Direktsprung-Route)
+    entfernt, durch die neue Listenansicht ersetzt.
+  - Nebenbei gehärtet: die Freigabe-Verwaltung eines Team-Boards
+    (`board_detail`) prüft jetzt explizit `kann_board_verwalten` statt nur
+    "ist Berufstrainer:in" - bisher indirekt korrekt, weil
+    `require_kanban_access` Team-Boards für Berufstrainer:innen ohnehin nur
+    der Handlungsfeld-Leitung erlaubte, jetzt nicht mehr auf diese
+    Zufälligkeit angewiesen.
+
 ## [0.1.37] - 2026-08-04
 
 Code-Review von `scandy-stack.sh` (unabhängig von den vorherigen Live-Test-

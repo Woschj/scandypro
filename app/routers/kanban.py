@@ -15,6 +15,7 @@ from app.core.access import (
     require_board_verwaltung,
     require_kanban_access,
     require_role,
+    sichtbare_board_ids_fuer_teilnehmer,
     sichtbare_karten_filter,
 )
 from app.core.deletion import (
@@ -130,17 +131,96 @@ async def meine_aufgaben(current_user: CurrentUser, session: SessionDep):
     return RedirectResponse(url=f"/kanban/boards/{board.id}", status_code=303)
 
 
-@router.get("/boards/personen/{teilnehmer_id}")
-async def personen_board_oeffnen(teilnehmer_id: int, current_user: CurrentUser, session: SessionDep):
-    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen öffnen fremde Personen-Boards.")
+async def _require_zustaendiger_trainer_fuer(
+    session: SessionDep, current_user: User, teilnehmer_id: int
+) -> User:
+    """Gemeinsame Zugriffsprüfung für die Teilnehmer:innen-Perspektive auf
+    Kanban-Boards (siehe teilnehmer_boards_liste/board_teilnehmer_ansicht):
+    nur die/der persönlich zugeordnete Berufstrainer:in darf sich ansehen,
+    was eine/ein Teilnehmer:in selbst an Boards sehen kann."""
+    require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen sehen Boards aus Teilnehmer:innen-Perspektive.")
     teilnehmer = await session.get(User, teilnehmer_id)
     if teilnehmer is None or teilnehmer.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     if not await ist_zustaendiger_trainer(session, current_user.id, teilnehmer_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Du bist dieser/diesem Teilnehmer:in nicht zugeordnet.")
+    return teilnehmer
 
-    board = await _hole_oder_erstelle_personenboard(session, teilnehmer_id)
-    return RedirectResponse(url=f"/kanban/boards/{board.id}", status_code=303)
+
+@router.get("/teilnehmer/{teilnehmer_id}/boards", response_class=HTMLResponse)
+async def teilnehmer_boards_liste(
+    request: Request, teilnehmer_id: int, current_user: CurrentUser, session: SessionDep
+):
+    """Alle Kanban-Boards aus der Perspektive einer/eines zugeordneten
+    Teilnehmer:in - alle öffentlichen Team-Boards, die für sie/ihn über
+    Arbeitsgruppe, Handlungsfeld oder individuelle Freigabe sichtbar sind
+    (siehe sichtbare_board_ids_fuer_teilnehmer), plus das eigene
+    Personen-Board. Bewusst NICHT auf die Handlungsfelder beschränkt, die
+    die/der betrachtende Trainer:in selbst leitet - reine Leseansicht, kein
+    Aktionsangebot, das über require_kanban_access ohnehin nicht
+    durchginge."""
+    teilnehmer = await _require_zustaendiger_trainer_fuer(session, current_user, teilnehmer_id)
+    await _hole_oder_erstelle_personenboard(session, teilnehmer_id)
+
+    board_ids = await sichtbare_board_ids_fuer_teilnehmer(session, teilnehmer_id)
+    boards: list[Board] = []
+    if board_ids:
+        boards_result = await session.execute(select(Board).where(Board.id.in_(board_ids)))
+        boards = list(boards_result.scalars().all())
+    boards.sort(key=lambda b: (b.typ != BoardTyp.person, b.titel))
+
+    handlungsfeld_ids = {b.handlungsfeld_id for b in boards if b.handlungsfeld_id is not None}
+    handlungsfeld_by_id: dict[int, Handlungsfeld] = {}
+    if handlungsfeld_ids:
+        hf_result = await session.execute(select(Handlungsfeld).where(Handlungsfeld.id.in_(handlungsfeld_ids)))
+        handlungsfeld_by_id = {h.id: h for h in hf_result.scalars().all()}
+
+    return templates.TemplateResponse(
+        request,
+        "kanban/teilnehmer_boards.html",
+        {
+            "current_user": current_user,
+            "teilnehmer": teilnehmer,
+            "boards": boards,
+            "handlungsfeld_by_id": handlungsfeld_by_id,
+        },
+    )
+
+
+@router.get("/teilnehmer/{teilnehmer_id}/boards/{board_id}", response_class=HTMLResponse)
+async def board_teilnehmer_ansicht(
+    request: Request, teilnehmer_id: int, board_id: int, current_user: CurrentUser, session: SessionDep
+):
+    """Reine Leseansicht eines einzelnen Boards aus der
+    Teilnehmer:innen-Perspektive (siehe teilnehmer_boards_liste) - eigenes,
+    formularloses Template statt kanban/board.html, damit keine Aktionen
+    angeboten werden, die die eigentlichen Mutations-Routen (weiterhin nur
+    für Handlungsfeld-Leitung bzw. Board-Mitglieder, siehe
+    require_kanban_access/require_board_verwaltung) ohnehin ablehnen
+    würden. Die Karten-Sichtbarkeitsfilterung bleibt bewusst an
+    current_user (die/der betrachtende Trainer:in) gebunden, nicht an
+    teilnehmer - private Karten der/des Teilnehmer:in bleiben ihr/ihm auch
+    hier vorbehalten (siehe karte_ist_sichtbar_fuer)."""
+    teilnehmer = await _require_zustaendiger_trainer_fuer(session, current_user, teilnehmer_id)
+
+    board = await session.get(Board, board_id)
+    if board is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    sichtbare_ids = await sichtbare_board_ids_fuer_teilnehmer(session, teilnehmer_id)
+    if board_id not in sichtbare_ids:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Dieses Board ist für diese/diesen Teilnehmer:in nicht sichtbar.")
+
+    kontext = await _board_kontext(session, current_user, board)
+
+    return templates.TemplateResponse(
+        request,
+        "kanban/board_teilnehmer_ansicht.html",
+        {
+            "current_user": current_user,
+            "teilnehmer": teilnehmer,
+            "k": kontext,
+        },
+    )
 
 
 @router.post("/boards")
@@ -258,7 +338,13 @@ async def board_detail(request: Request, board_id: int, current_user: CurrentUse
     kontext = await _board_kontext(session, current_user, board)
 
     freigaben_kontext = None
-    if board.typ == BoardTyp.team and current_user.role == RoleEnum.berufstrainer:
+    # Freigabe-Verwaltung ist Board-Verwaltung (nicht nur "irgendeine
+    # berufstrainende Person auf einem Team-Board") - bisher implizit über
+    # require_kanban_access korrekt (das ließ auf Team-Boards für
+    # Berufstrainer:innen ohnehin nur die Handlungsfeld-Leitung durch),
+    # jetzt explizit über kann_board_verwalten geprüft, um nicht auf diese
+    # Zufälligkeit angewiesen zu sein.
+    if board.typ == BoardTyp.team and await kann_board_verwalten(session, current_user, board):
         alle_freigaben_result = await session.execute(select(BoardFreigabe).where(BoardFreigabe.board_id == board_id))
         alle_freigaben = list(alle_freigaben_result.scalars().all())
 
@@ -458,11 +544,21 @@ async def freigabe_entfernen(board_id: int, freigabe_id: int, current_user: Curr
 
 @router.get("/teilnehmer", response_class=HTMLResponse)
 async def meine_teilnehmer(request: Request, current_user: CurrentUser, session: SessionDep):
-    """Gebündelte Übersicht "Meine Teilnehmer:innen" für Berufstrainer:innen -
-    fasst zwei bisher getrennte, nur schwer auffindbare Sichten zusammen
-    (Handlungsfeld-Mitglieder aus /kanban/gruppen, persönliche Zuordnung aus
-    dem Dashboard) zu einer einzigen, durchsuchbaren Tabelle."""
+    """"Meine Teilnehmer:innen" für Berufstrainer:innen - bewusst NUR
+    persönlich zugeordnete Teilnehmer:innen (BerufstrainerZuordnung), nicht
+    alle Mitglieder eines geleiteten Handlungsfelds: ein Handlungsfeld kann
+    deutlich mehr Mitglieder haben, als diese/dieser Trainer:in tatsächlich
+    persönlich betreut (siehe app/routers/admin.py:trainer_zuordnungen_uebersicht
+    für die organisatorische Zuordnung selbst) - eine ungefilterte Liste war
+    dadurch irreführend. Die Handlungsfeld-Zugehörigkeit bleibt trotzdem als
+    Info-Spalte sichtbar, bestimmt aber nicht mehr, wer in der Liste
+    auftaucht."""
     require_role(current_user, RoleEnum.berufstrainer, "Nur Berufstrainer:innen haben eine Teilnehmer:innen-Übersicht.")
+
+    zuordnung_result = await session.execute(
+        select(BerufstrainerZuordnung).where(BerufstrainerZuordnung.berufstrainer_id == current_user.id)
+    )
+    persoenlich_zugeordnet_ids = {z.teilnehmer_id for z in zuordnung_result.scalars().all()}
 
     geleitete_ids = await geleitete_handlungsfeld_ids(session, current_user.id)
     handlungsfeld_by_id: dict[int, Handlungsfeld] = {}
@@ -471,26 +567,23 @@ async def meine_teilnehmer(request: Request, current_user: CurrentUser, session:
         handlungsfeld_by_id = {h.id: h for h in hf_result.scalars().all()}
 
     hf_mitglied_handlungsfelder: dict[int, list[str]] = {}
-    if geleitete_ids:
+    if geleitete_ids and persoenlich_zugeordnet_ids:
         hf_mitglieder_result = await session.execute(
-            select(HandlungsfeldMitglied).where(HandlungsfeldMitglied.handlungsfeld_id.in_(geleitete_ids))
+            select(HandlungsfeldMitglied).where(
+                HandlungsfeldMitglied.handlungsfeld_id.in_(geleitete_ids),
+                HandlungsfeldMitglied.teilnehmer_id.in_(persoenlich_zugeordnet_ids),
+            )
         )
         for m in hf_mitglieder_result.scalars().all():
             hf_mitglied_handlungsfelder.setdefault(m.teilnehmer_id, []).append(
                 handlungsfeld_by_id[m.handlungsfeld_id].name
             )
 
-    zuordnung_result = await session.execute(
-        select(BerufstrainerZuordnung).where(BerufstrainerZuordnung.berufstrainer_id == current_user.id)
-    )
-    persoenlich_zugeordnet_ids = {z.teilnehmer_id for z in zuordnung_result.scalars().all()}
-
-    alle_ids = set(hf_mitglied_handlungsfelder) | persoenlich_zugeordnet_ids
     teilnehmer_liste: list[User] = []
     abteilung_by_id: dict[int, Abteilung] = {}
-    if alle_ids:
+    if persoenlich_zugeordnet_ids:
         teilnehmer_result = await session.execute(
-            select(User).where(User.id.in_(alle_ids)).order_by(User.name)
+            select(User).where(User.id.in_(persoenlich_zugeordnet_ids)).order_by(User.name)
         )
         teilnehmer_liste = list(teilnehmer_result.scalars().all())
         abteilungs_ids = {t.abteilung_id for t in teilnehmer_liste if t.abteilung_id is not None}
@@ -502,11 +595,11 @@ async def meine_teilnehmer(request: Request, current_user: CurrentUser, session:
 
     heute = date.today()
     bewerbung_freigabe_ids: set[int] = set()
-    if alle_ids:
+    if persoenlich_zugeordnet_ids:
         freigaben_result = await session.execute(
             select(BewerbungsFreigabe).where(
                 BewerbungsFreigabe.empfaenger_id == current_user.id,
-                BewerbungsFreigabe.teilnehmer_id.in_(alle_ids),
+                BewerbungsFreigabe.teilnehmer_id.in_(persoenlich_zugeordnet_ids),
                 BewerbungsFreigabe.widerrufen_am.is_(None),
             )
         )

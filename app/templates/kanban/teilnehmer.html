@@ -3,9 +3,10 @@
 {% block content %}
 <p><a href="/kanban">&larr; Projekte</a></p>
 <h1>Meine Teilnehmer:innen</h1>
-<p class="visibility-hint">Alle Teilnehmer:innen, die entweder zu einem von dir geleiteten Handlungsfeld gehören
-  oder dir persönlich zugeordnet sind. Bewerbungs- und Wochenbericht-Zugriff bleiben unabhängig davon an die
-  jeweilige Freigabe bzw. Arbeitsgruppen-Zugehörigkeit gebunden.</p>
+<p class="visibility-hint">Alle Teilnehmer:innen, die dir persönlich zugeordnet sind. Bewerbungs- und
+  Wochenbericht-Zugriff bleiben unabhängig davon an die jeweilige Freigabe bzw. Arbeitsgruppen-Zugehörigkeit
+  gebunden; "Kanban-Board" zeigt alle Boards, die die/der jeweilige Teilnehmer:in selbst sehen kann - auch aus
+  Handlungsfeldern, die du nicht selbst leitest.</p>
 
 {% if teilnehmer_liste %}
 <div class="field" style="max-width: 320px;">
@@ -19,7 +20,6 @@
       <th data-sort>Name</th>
       <th data-sort>Abteilung</th>
       <th>Handlungsfeld(er)</th>
-      <th>Persönlich zugeordnet</th>
       <th></th>
     </tr>
   </thead>
@@ -35,17 +35,8 @@
       <span class="empty-state">–</span>
       {% endif %}
     </td>
-    <td>
-      {% if t.id in persoenlich_zugeordnet_ids %}
-      <span class="chip chip-success">ja</span>
-      {% else %}
-      <span class="chip chip-neutral">nein</span>
-      {% endif %}
-    </td>
     <td style="white-space: nowrap;">
-      {% if t.id in persoenlich_zugeordnet_ids %}
-      <a href="/kanban/boards/personen/{{ t.id }}" class="btn btn-ghost btn-sm">Kanban-Board</a>
-      {% endif %}
+      <a href="/kanban/teilnehmer/{{ t.id }}/boards" class="btn btn-ghost btn-sm">Kanban-Board</a>
       {% if t.id in wochenbericht_sichtbar_ids %}
       <a href="/wochenberichte?teilnehmer_id={{ t.id }}" class="btn btn-ghost btn-sm">Wochenberichte</a>
       {% endif %}
@@ -59,7 +50,6 @@
 </table>
 </div>
 {% else %}
-<p class="empty-state">Dir sind aktuell weder Handlungsfeld-Mitglieder noch persönlich zugeordnete
-  Teilnehmer:innen zugewiesen.</p>
+<p class="empty-state">Dir sind aktuell keine Teilnehmer:innen persönlich zugeordnet.</p>
 {% endif %}
 {% endblock %}

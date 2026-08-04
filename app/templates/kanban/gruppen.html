@@ -46,31 +46,25 @@
 
   <div class="seiten-tabs-panels">
     <div x-show="tab === 'mitglieder'" x-cloak>
+      {% set mitglieder = abteilungs_teilnehmer | selectattr("id", "in", hf_mitglied_teilnehmer_ids) | list %}
+      {% set nicht_mitglieder = abteilungs_teilnehmer | rejectattr("id", "in", hf_mitglied_teilnehmer_ids) | list %}
       <div class="card">
-        <h3>Mitglieder des Handlungsfelds</h3>
+        <h3>Mitglieder des Handlungsfelds ({{ mitglieder | length }})</h3>
         <p class="karte-meta">Nur Mitglieder eines Handlungsfelds können in eine Arbeitsgruppe aufgenommen oder
           persönlich mit Projekt-Aufgaben bedacht werden.</p>
-        {% if abteilungs_teilnehmer %}
+        {% if mitglieder %}
         <div class="table-scroll">
         <table>
           <thead><tr><th>Teilnehmer:in</th><th></th></tr></thead>
           <tbody>
-          {% for t in abteilungs_teilnehmer %}
+          {% for t in mitglieder %}
             <tr>
               <td>{{ t.name }}</td>
               <td style="text-align: right;">
-                {% if t.id in hf_mitglied_teilnehmer_ids %}
                 <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder/{{ hf_mitglied_id_by_teilnehmer[t.id] }}/entfernen">
                   {% include "partials/csrf_field.html" %}
                   <button type="submit" class="link-btn danger">Entfernen</button>
                 </form>
-                {% else %}
-                <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder">
-                  {% include "partials/csrf_field.html" %}
-                  <input type="hidden" name="teilnehmer_id" value="{{ t.id }}">
-                  <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
-                </form>
-                {% endif %}
               </td>
             </tr>
           {% endfor %}
@@ -78,7 +72,39 @@
         </table>
         </div>
         {% else %}
-        <p class="empty-state">Keine Teilnehmer:innen in der Abteilung dieses Handlungsfelds.</p>
+        <p class="empty-state">Noch keine Mitglieder in diesem Handlungsfeld - unten aus der Abteilung hinzufügen.</p>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h3>Weitere Teilnehmer:innen der Abteilung ({{ nicht_mitglieder | length }})</h3>
+        <p class="karte-meta">Noch nicht Mitglied dieses Handlungsfelds.</p>
+        {% if nicht_mitglieder %}
+        <div class="field" style="max-width: 320px;">
+          <label for="nicht-mitglieder-suche">Suchen</label>
+          <input type="search" id="nicht-mitglieder-suche" data-table-filter="nicht-mitglieder-tabelle" placeholder="Name …">
+        </div>
+        <div class="table-scroll">
+        <table id="nicht-mitglieder-tabelle">
+          <thead><tr><th data-sort>Teilnehmer:in</th><th></th></tr></thead>
+          <tbody>
+          {% for t in nicht_mitglieder %}
+            <tr>
+              <td>{{ t.name }}</td>
+              <td style="text-align: right;">
+                <form method="post" action="/kanban/handlungsfelder/{{ ausgewaehltes_handlungsfeld_id }}/mitglieder">
+                  {% include "partials/csrf_field.html" %}
+                  <input type="hidden" name="teilnehmer_id" value="{{ t.id }}">
+                  <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="empty-state">Alle Teilnehmer:innen der Abteilung sind bereits Mitglied.</p>
         {% endif %}
       </div>
     </div>

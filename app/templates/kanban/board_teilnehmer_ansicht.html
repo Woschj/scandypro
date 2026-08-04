@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ k.board.titel }} – ScandyPro{% endblock %}
+{% block content %}
+<p><a href="/kanban/teilnehmer/{{ teilnehmer.id }}/boards">&larr; Boards von {{ teilnehmer.name }}</a></p>
+{% if k.handlungsfeld %}<span class="chip chip-brand">{{ k.handlungsfeld.name }}</span>{% endif %}
+<h1>{{ k.board.titel }}</h1>
+<p class="visibility-hint">Nur-Lese-Ansicht aus der Perspektive von {{ teilnehmer.name }} - so sieht diese Person
+  das Board. Bearbeiten ist hier bewusst nicht möglich.</p>
+
+<div class="board-columns-wrap">
+  <div class="board-columns">
+  {% for spalte in k.spalten %}
+  {% set karten = k.karten_by_spalte.get(spalte.id, []) %}
+  <div class="board-column {% if spalte.ist_system_erledigt %}board-column--erledigt{% endif %}">
+    <div class="board-column-head">
+      <h3>{{ spalte.name }}{% if spalte.ist_system_erledigt %} <span title="Abgeschlossene Karten">✓</span>{% endif %}</h3>
+      <span class="spalte-count">{{ karten | length }}</span>
+    </div>
+    <div class="karten-liste">
+    {% for karte in karten %}
+      {% set zuweisungen = k.zuweisungen_by_karte.get(karte.id, []) %}
+      {% set unteraufgaben = k.unteraufgaben_by_karte.get(karte.id, []) %}
+      {% set erledigte_unteraufgaben = unteraufgaben | selectattr("erledigt") | list %}
+      {% set ist_faellig_ueberfaellig = karte.faelligkeit and karte.faelligkeit < k.heute %}
+      <details class="karte {% if karte.sichtbarkeit.value == 'privat' %}karte-privat{% endif %}">
+        <summary>
+          <div class="karte-titel">{{ karte.titel }}</div>
+
+          {% if karte.faelligkeit or karte.sichtbarkeit.value == "privat" %}
+          <div class="karte-badges">
+            {% if karte.faelligkeit %}
+            <span class="karte-badge {% if ist_faellig_ueberfaellig %}karte-badge--faellig{% endif %}">
+              📅 {{ karte.faelligkeit.strftime("%d.%m.") }}{% if ist_faellig_ueberfaellig %} · überfällig{% endif %}
+            </span>
+            {% endif %}
+            {% if karte.sichtbarkeit.value == "privat" %}
+            <span class="karte-badge karte-badge--privat">🔒 Nur für {{ teilnehmer.name }}</span>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          {% if unteraufgaben %}
+          <div class="karte-fortschritt">{{ erledigte_unteraufgaben | length }}/{{ unteraufgaben | length }} Unteraufgaben erledigt</div>
+          <div class="fortschritt-leiste">
+            <div class="fortschritt-leiste-fuellung" style="width: {{ (erledigte_unteraufgaben | length / unteraufgaben | length * 100) | round | int }}%;"></div>
+          </div>
+          {% endif %}
+
+          {% if zuweisungen %}
+          <div class="avatar-row">
+            {% for z in zuweisungen %}
+            {% set person = k.anzeige_personen.get(z.teilnehmer_id) %}
+            <span class="avatar avatar-{{ z.teilnehmer_id % 5 }}" title="{{ person.name if person else '?' }}" aria-label="{{ person.name if person else '?' }}">{{ (person.name | initialen) if person else "?" }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </summary>
+
+        <div class="karte-body">
+          {% if karte.beschreibung %}<p>{{ karte.beschreibung }}</p>{% endif %}
+          {% if unteraufgaben %}
+          <div class="eyebrow" style="margin-top: var(--space-3);">Unteraufgaben</div>
+          {% for u in unteraufgaben %}
+          <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}">
+            <span aria-hidden="true">{{ "✓" if u.erledigt else "○" }}</span>
+            <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
+            {% if u.zugewiesen_an and u.zugewiesen_an in k.anzeige_personen %}
+            <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.anzeige_personen[u.zugewiesen_an].name }}">{{ k.anzeige_personen[u.zugewiesen_an].name | initialen }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% endif %}
+        </div>
+      </details>
+    {% else %}
+    <p class="empty-state">Keine Karten.</p>
+    {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+</div>
+{% endblock %}
