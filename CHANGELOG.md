@@ -8,6 +8,29 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.35] - 2026-08-04
+
+Echter Browser-Login-Test (nicht nur curl-Redirect-Check) deckte den
+letzten Blocker auf: Klick auf "Mit SSO anmelden" scheiterte bei ScandyPro
+mit Internal Server Error, bei Scandy-Lite mit "SSO-Anmeldung
+fehlgeschlagen".
+
+### Fixed
+- **OAuth2Provider-Blueprint fehlte `grant_types`** - ohne dieses Feld
+  bleibt es in der installierten Authentik-Version leer, wodurch Authentik
+  *jede* Autorisierungsanfrage mit `Invalid grant_type for provider` /
+  `The request is otherwise malformed` ablehnt (Authentiks eigenes
+  Server-Log zeigte die genaue Ursache, das Frontend nur den generischen
+  Fehler). `scandy-stack.sh` setzt jetzt `grant_types: [authorization_code,
+  refresh_token]` im Blueprint; `SSO_AUTHENTIK.md` ergänzt um den Hinweis
+  für die manuelle UI-Einrichtung.
+- Live end-to-end verifiziert: der SSO-Link landet bei ScandyPro und
+  Scandy-Lite jetzt korrekt auf Authentiks echter Login-Seite (Status 200),
+  nicht mehr auf einer Fehlerseite.
+- Nebenbei behoben: `scandypro-https.service` lief nach einer manuellen
+  Debug-Session nicht mehr über systemd (war nur auf 127.0.0.1 gebunden,
+  von außen nicht erreichbar) - sauber neu gestartet.
+
 ## [0.1.34] - 2026-08-03
 
 SSO gegen den echten Testaufbau aus 0.1.33 bis zum funktionierenden

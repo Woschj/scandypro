@@ -95,6 +95,15 @@ kann direkt zu Teil B springen.
   Bei Authentik hinter einer echten Domain mit gültigem Let's-Encrypt-Zertifikat
   entfallen beide Schritte komplett - das ist der empfohlene Weg für echten
   Produktivbetrieb.
+- **Der OAuth2-Provider braucht ein explizites `grant_types`-Feld** - live
+  gefunden (2026-08-04): ohne Angabe bleibt es in dieser Authentik-Version
+  leer, wodurch JEDE Autorisierungsanfrage mit `Invalid grant_type for
+  provider` / `The request is otherwise malformed` abgelehnt wird (der
+  Redirect zu Authentik sieht dabei täuschend normal aus - der Fehler zeigt
+  sich erst nach dem Login-Versuch). `scandy-stack.sh` setzt
+  `grant_types: [authorization_code, refresh_token]` deshalb jetzt immer mit.
+  Bei manueller Einrichtung über die Authentik-UI: im Provider unter
+  "Grant Types" mindestens "Authorization Code" aktivieren.
 
 ---
 

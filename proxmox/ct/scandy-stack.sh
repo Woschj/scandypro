@@ -243,6 +243,12 @@ entries:
       client_type: confidential
       client_id: ${client_id}
       client_secret: ${client_secret}
+      # Ohne explizite grant_types bleibt das Feld leer und Authentik lehnt
+      # JEDE Autorisierungsanfrage mit "Invalid grant_type for provider" ab
+      # (live gefunden, 2026-08-04) - kein Default in dieser Authentik-Version.
+      grant_types:
+        - authorization_code
+        - refresh_token
       redirect_uris:
         - matching_mode: strict
           url: "${redirect_uri}"
