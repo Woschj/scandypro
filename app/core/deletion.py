@@ -29,10 +29,14 @@ async def loesche_alle_wohlbefinden_daten(session: AsyncSession, teilnehmer_id: 
         select(TagebuchEintrag).where(TagebuchEintrag.teilnehmer_id == teilnehmer_id)
     )
     for eintrag in eintraege_result.scalars().all():
-        if eintrag.zeichnung_pfad:
-            datei_loeschen(eintrag.zeichnung_pfad)
-        if eintrag.dankbarkeitsfoto_pfad:
-            datei_loeschen(eintrag.dankbarkeitsfoto_pfad)
+        for pfad in (
+            eintrag.zeichnung_pfad,
+            eintrag.dankbarkeitsfoto_pfad,
+            eintrag.morgen_uebung_datei_pfad,
+            eintrag.abend_uebung_datei_pfad,
+        ):
+            if pfad:
+                datei_loeschen(pfad)
         await session.delete(eintrag)
 
     freigaben_result = await session.execute(

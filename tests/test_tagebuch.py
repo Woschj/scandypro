@@ -341,3 +341,139 @@ async def test_zeichnung_download_nur_fuer_owner(client, seed_data, session_make
     await login(client, "andere-zeichnung@test.local", "anderespasswort123")
     resp = await client.get(f"/wohlbefinden/zeichnung/{eintrag_id}")
     assert resp.status_code == 403
+
+
+def test_uebungspools_haben_je_zehn_typen():
+    """Nutzer-Ziel: 2 Übungen pro Tag x 5 Werktage = 10 pro Woche, mit je 10
+    Einträgen pro Pool also keine Wiederholung in zwei Arbeitswochen."""
+    from app.core.tagesuebungen import ABEND_POOL, MORGEN_POOL
+
+    assert len(MORGEN_POOL) == 10
+    assert len(ABEND_POOL) == 10
+    assert len({u["slug"] for u in MORGEN_POOL}) == 10
+    assert len({u["slug"] for u in ABEND_POOL}) == 10
+
+
+def test_rotation_ohne_wiederholung_in_zwei_arbeitswochen():
+    from datetime import timedelta
+
+    from app.core.tagesuebungen import (
+        _werktag_nummer,
+        abenduebung_des_tages,
+        morgenuebung_des_tages,
+    )
+
+    for teilnehmer_id in (1, 2, 7, 42):
+        # Auf einem Block-Anfang starten - dort gilt die Garantie.
+        tag = date(2026, 1, 1)
+        while tag.isoweekday() > 5 or _werktag_nummer(tag) % 10 != 0:
+            tag += timedelta(days=1)
+
+        werktage = []
+        while len(werktage) < 10:
+            if tag.isoweekday() <= 5:
+                werktage.append(tag)
+            tag += timedelta(days=1)
+
+        assert len({morgenuebung_des_tages(teilnehmer_id, t) for t in werktage}) == 10
+        assert len({abenduebung_des_tages(teilnehmer_id, t) for t in werktage}) == 10
+
+
+def test_wochenende_setzt_freitags_uebung_fort():
+    """Wochenenden verbrauchen bewusst keinen Rotationsplatz - sonst wäre das
+    Ziel "keine Wiederholung in zwei Wochen" mit 10 Einträgen bei 14
+    Kalendertagen rechnerisch unmöglich."""
+    from app.core.tagesuebungen import abenduebung_des_tages, morgenuebung_des_tages
+
+    freitag, samstag, sonntag = date(2026, 8, 7), date(2026, 8, 8), date(2026, 8, 9)
+    assert morgenuebung_des_tages(3, freitag) == morgenuebung_des_tages(3, samstag)
+    assert morgenuebung_des_tages(3, freitag) == morgenuebung_des_tages(3, sonntag)
+    assert abenduebung_des_tages(3, freitag) == abenduebung_des_tages(3, sonntag)
+
+
+async def test_generische_uebungsfelder_werden_gespeichert(client, seed_data, session_maker):
+    """Neue Übungstypen nutzen die generischen *_uebung_*-Felder statt je
+    eigener Spalten (siehe app/models/wohlbefinden.py)."""
+    from app.models.wohlbefinden import TagebuchEintrag
+
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+
+    resp = await client.post(
+        "/wohlbefinden/morgen",
+        data={
+            "csrf_token": token,
+            "datum": heute,
+            "morgen_uebung_frage": "Wie möchtest du heute durch den Tag gehen?",
+            "morgen_uebung_ergebnis": "Ruhig und freundlich.",
+            "morgen_uebung_erledigt": "true",
+        },
+    )
+    assert resp.status_code == 303
+
+    resp = await client.post(
+        "/wohlbefinden/abend",
+        data={
+            "csrf_token": token,
+            "datum": heute,
+            "abend_uebung_frage": "Was hat dich heute zum Lächeln gebracht?",
+            "abend_uebung_ergebnis": "Ein Anruf.",
+            "abend_uebung_erledigt": "true",
+        },
+    )
+    assert resp.status_code == 303
+
+    async with session_maker() as session:
+        from sqlmodel import select
+
+        result = await session.execute(
+            select(TagebuchEintrag).where(TagebuchEintrag.teilnehmer_id == seed_data["teilnehmer_id"])
+        )
+        eintrag = result.scalar_one()
+        assert eintrag.morgen_uebung_ergebnis == "Ruhig und freundlich."
+        assert eintrag.morgen_uebung_erledigt_am is not None
+        assert eintrag.abend_uebung_ergebnis == "Ein Anruf."
+        assert eintrag.abend_uebung_erledigt_am is not None
+
+    seite = await client.get("/wohlbefinden")
+    assert "Ruhig und freundlich." in seite.text
+    assert "Ein Anruf." in seite.text
+
+
+async def test_uebungsdatei_nur_fuer_owner(client, seed_data, session_maker):
+    """Ownership-Check für die generische Übungs-Datei (Motivations-Foto)."""
+    from app.core.security import hash_password
+    from app.models.user import RoleEnum, User
+    from app.models.wohlbefinden import TagebuchEintrag
+
+    await login(client, seed_data["teilnehmer_email"], seed_data["teilnehmer_passwort"])
+    token = await _csrf_token(client)
+    heute = date.today().isoformat()
+    await client.post(
+        "/wohlbefinden/morgen",
+        data={"csrf_token": token, "datum": heute},
+        files={"morgen_uebung_datei": ("foto.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+    )
+
+    async with session_maker() as session:
+        from sqlmodel import select
+
+        result = await session.execute(
+            select(TagebuchEintrag).where(TagebuchEintrag.teilnehmer_id == seed_data["teilnehmer_id"])
+        )
+        eintrag_id = result.scalar_one().id
+
+        andere = User(
+            name="Andere Person",
+            email="andere-uebungsdatei@test.local",
+            password_hash=hash_password("anderespasswort123"),
+            role=RoleEnum.teilnehmer,
+        )
+        session.add(andere)
+        await session.commit()
+
+    await client.post("/logout", data={"csrf_token": token})
+    await login(client, "andere-uebungsdatei@test.local", "anderespasswort123")
+    resp = await client.get(f"/wohlbefinden/uebungsdatei/{eintrag_id}/morgen")
+    assert resp.status_code == 403

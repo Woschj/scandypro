@@ -62,6 +62,19 @@ class TagebuchEintrag(SQLModel, table=True):
     # wird. "atemuebung" nutzt weiterhin die Felder oben, alle anderen Typen
     # ihr jeweils eigenes schmales Ergebnis-Feld unten.
     morgen_uebung_typ: str | None = None
+    # Generische Ergebnisfelder für alle ab VB-019 ergänzten Übungstypen
+    # (siehe app/core/tagesuebungen.py). Bewusst NICHT je Typ eine eigene
+    # Spalte wie bei den älteren Typen darunter: der Pool wächst weiter, und
+    # jede neue Übung hätte sonst eine Migration + drei Spalten zur Folge.
+    # `_frage` hält den tatsächlich gezeigten Prompt (analog
+    # morgen_impuls_frage), `_ergebnis` die optionale Freitextantwort,
+    # `_datei_pfad` einen verschlüsselt abgelegten Upload (siehe
+    # app/core/uploads.py). Welcher Typ die Felder belegt, steht in
+    # morgen_uebung_typ.
+    morgen_uebung_erledigt_am: datetime | None = None
+    morgen_uebung_frage: str | None = None
+    morgen_uebung_ergebnis: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    morgen_uebung_datei_pfad: str | None = None
     koerperscan_erledigt_am: datetime | None = None
     grounding_erledigt_am: datetime | None = None
     wort_des_tages: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
@@ -88,6 +101,11 @@ class TagebuchEintrag(SQLModel, table=True):
     # morgen_uebung_typ oben. "zeichnung" nutzt weiterhin zeichnung_pfad,
     # alle anderen Typen ihr jeweils eigenes Feld unten.
     abend_uebung_typ: str | None = None
+    # Generische Ergebnisfelder, siehe morgen_uebung_* oben.
+    abend_uebung_erledigt_am: datetime | None = None
+    abend_uebung_frage: str | None = None
+    abend_uebung_ergebnis: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
+    abend_uebung_datei_pfad: str | None = None
     mandala_erledigt_am: datetime | None = None
     ruhe_ort_sehen: str | None = Field(default=None, sa_column=Column(VerschluesselterText))
     ruhe_ort_hoeren: str | None = Field(default=None, sa_column=Column(VerschluesselterText))

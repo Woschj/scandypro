@@ -186,11 +186,14 @@
    * Halten-Timer"). Visuell verortet statt als Liste, damit ein
    * Körper-Scan sich auch wie einer anfühlt.
    */
-  function initKoerperscan() {
+  function initZonenUebungen() {
     document.querySelectorAll("[data-koerperscan]").forEach((wrapper) => {
       const zonen = [...wrapper.querySelectorAll("[data-koerperscan-zone]")];
       const hinweis = wrapper.querySelector("[data-koerperscan-hinweis]");
-      const hiddenInput = wrapper.querySelector('input[name="koerperscan_erledigt"]');
+      // Feldname steht am Wrapper, damit dasselbe Widget fuer Koerper-Scan,
+      // Klarheits-Kompass und Kerzen genutzt werden kann.
+      const feldName = wrapper.dataset.zonenFeld || "koerperscan_erledigt";
+      const hiddenInput = wrapper.querySelector(`input[name="${feldName}"]`);
       if (!hiddenInput || !zonen.length) return;
 
       let index = 0;
@@ -256,7 +259,8 @@
    */
   function initWortRad() {
     document.querySelectorAll("[data-wort-rad]").forEach((wrapper) => {
-      const hiddenInput = wrapper.querySelector('input[name="wort_des_tages"]');
+      const feldName = wrapper.dataset.wortFeld || "wort_des_tages";
+      const hiddenInput = wrapper.querySelector(`input[name="${feldName}"]`);
       const chips = [...wrapper.querySelectorAll("[data-wort-chip]")];
       if (!hiddenInput) return;
       function markiere() {
@@ -421,7 +425,8 @@
   function initMandalaCanvas() {
     document.querySelectorAll("[data-mandala]").forEach((wrapper) => {
       const canvas = wrapper.querySelector("canvas");
-      const hiddenInput = wrapper.querySelector('input[name="mandala_erledigt"]');
+      const feldName = wrapper.dataset.malFeld || "mandala_erledigt";
+      const hiddenInput = wrapper.querySelector(`input[name="${feldName}"]`);
       const farbButtons = [...wrapper.querySelectorAll("[data-mandala-farbe]")];
       if (!canvas || !hiddenInput) return;
       const ctx = canvas.getContext("2d");
@@ -517,7 +522,7 @@
     initPunkteUebungen();
     initZeichenfelder();
     initEnergieBatterien();
-    initKoerperscan();
+    initZonenUebungen();
     initWortRad();
     initFlipKarten();
     initWischKarten();

@@ -59,7 +59,9 @@
     <h3 style="margin:0; flex:1;">Morgens</h3>
     {% if tag.morgen_erledigt %}<span class="chip chip-success">erledigt</span>{% endif %}
   </div>
-  <form method="post" action="/wohlbefinden/morgen">
+  {# multipart nötig, weil der Übungstyp "Motivations-Foto" ein Datei-Feld
+     enthält (siehe app/routers/wohlbefinden.py:morgen_speichern). #}
+  <form method="post" action="/wohlbefinden/morgen" enctype="multipart/form-data">
     {% include "partials/csrf_field.html" %}
     <input type="hidden" name="datum" value="{{ tag.datum }}">
     <input type="hidden" name="morgen_impuls_frage" value="{{ tag.morgen_impuls_frage }}">
@@ -67,7 +69,7 @@
     <div class="field">
       {% if tag.morgen_uebung_typ == "koerperscan" %}
       <label class="eyebrow">Kurz ankommen — Körper-Scan</label>
-      <div class="koerperscan" data-koerperscan>
+      <div class="koerperscan" data-koerperscan data-zonen-feld="koerperscan_erledigt">
         <svg viewBox="0 0 120 220" class="koerperscan-svg">
           <circle data-koerperscan-zone data-halten="{{ tag.koerperscan_zonen[0].halten_sekunden }}" data-hinweis="{{ tag.koerperscan_zonen[0].hinweis }}" cx="60" cy="26" r="20"/>
           <rect data-koerperscan-zone data-halten="{{ tag.koerperscan_zonen[1].halten_sekunden }}" data-hinweis="{{ tag.koerperscan_zonen[1].hinweis }}" x="20" y="50" width="80" height="26" rx="12"/>
@@ -110,12 +112,93 @@
       {% elif tag.morgen_uebung_typ == "wort_des_tages" %}
       <label class="eyebrow">Kurz ankommen — Ein Wort für heute</label>
       <p class="karte-meta">Welches Wort passt gerade zu dir? Es muss nicht erklärt werden.</p>
-      <div class="wort-rad" data-wort-rad>
+      <div class="wort-rad" data-wort-rad data-wort-feld="wort_des_tages">
         {% for wort in wort_optionen %}
         <button type="button" class="wort-rad-wort" data-wort-chip="{{ wort }}">{{ wort }}</button>
         {% endfor %}
         <input type="hidden" name="wort_des_tages" value="{{ tag.wort_des_tages }}">
       </div>
+
+      {% elif tag.morgen_uebung_typ == "absichts_karte" %}
+      <label class="eyebrow">Kurz ankommen — Absichts-Karte</label>
+      <div class="flip-karte {% if tag.morgen_uebung_erledigt %}flip-karte--offen{% endif %}" data-flip-karte data-flip-erledigt-feld="morgen_uebung_erledigt">
+        <div class="flip-karte-innen">
+          <div class="flip-karte-vorne">
+            <span class="flip-karte-symbol">✧</span>
+            <span class="flip-karte-titel">Absichts-Karte</span>
+            <span class="flip-karte-hinweis">Tippen zum Umdrehen</span>
+          </div>
+          <div class="flip-karte-hinten">
+            <p>{{ tag.morgen_uebung_frage }}</p>
+            <textarea name="morgen_uebung_ergebnis" rows="2" placeholder="Magst du kurz antworten? (optional)">{{ tag.morgen_uebung_ergebnis }}</textarea>
+          </div>
+        </div>
+        <input type="hidden" name="morgen_uebung_frage" value="{{ tag.morgen_uebung_frage }}">
+        <input type="hidden" name="morgen_uebung_erledigt" value="{{ 'true' if tag.morgen_uebung_erledigt else '' }}">
+      </div>
+
+      {% elif tag.morgen_uebung_typ == "tagesmotto" %}
+      <label class="eyebrow">Kurz ankommen — Tagesmotto</label>
+      <p class="karte-meta">Welcher Satz darf dich heute begleiten? Du musst dich an nichts halten.</p>
+      <div class="wort-rad" data-wort-rad data-wort-feld="morgen_uebung_ergebnis">
+        {% for motto in tagesmotto_optionen %}
+        <button type="button" class="wort-rad-wort" data-wort-chip="{{ motto }}">{{ motto }}</button>
+        {% endfor %}
+        <input type="hidden" name="morgen_uebung_ergebnis" value="{{ tag.morgen_uebung_ergebnis }}">
+      </div>
+
+      {% elif tag.morgen_uebung_typ == "klarheits_kompass" %}
+      <label class="eyebrow">Kurz ankommen — Klarheits-Kompass</label>
+      <div class="koerperscan" data-koerperscan data-zonen-feld="morgen_uebung_erledigt">
+        <svg viewBox="0 0 220 220" class="koerperscan-svg">
+          <circle cx="110" cy="110" r="96" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+          <circle data-koerperscan-zone data-halten="{{ tag.kompass_zonen[0].halten_sekunden }}" data-hinweis="{{ tag.kompass_zonen[0].hinweis }}" cx="110" cy="42" r="30"/>
+          <text x="110" y="47" text-anchor="middle" class="atemuebung-label">Kopf</text>
+          <circle data-koerperscan-zone data-halten="{{ tag.kompass_zonen[1].halten_sekunden }}" data-hinweis="{{ tag.kompass_zonen[1].hinweis }}" cx="178" cy="110" r="30"/>
+          <text x="178" y="115" text-anchor="middle" class="atemuebung-label">Herz</text>
+          <circle data-koerperscan-zone data-halten="{{ tag.kompass_zonen[2].halten_sekunden }}" data-hinweis="{{ tag.kompass_zonen[2].hinweis }}" cx="110" cy="178" r="30"/>
+          <text x="110" y="183" text-anchor="middle" class="atemuebung-label">Bauch</text>
+          <circle data-koerperscan-zone data-halten="{{ tag.kompass_zonen[3].halten_sekunden }}" data-hinweis="{{ tag.kompass_zonen[3].hinweis }}" cx="42" cy="110" r="30"/>
+          <text x="42" y="115" text-anchor="middle" class="atemuebung-label">Hände</text>
+        </svg>
+        <p class="karte-meta" data-koerperscan-hinweis>{{ tag.kompass_zonen[0].hinweis }}</p>
+        <input type="hidden" name="morgen_uebung_erledigt" value="{{ 'true' if tag.morgen_uebung_erledigt else '' }}">
+      </div>
+
+      {% elif tag.morgen_uebung_typ == "gestern_loslassen" %}
+      <label class="eyebrow">Kurz ankommen — Gestern loslassen</label>
+      {% if tag.morgen_uebung_erledigt %}
+      <p class="karte-meta">Schon gemacht - danke fürs Loslassen.</p>
+      <input type="hidden" name="morgen_uebung_erledigt" value="true">
+      {% else %}
+      <p class="karte-meta">Was hängt von gestern noch nach? Schreib es auf und wisch die Karte weg - es wird nirgends gespeichert.</p>
+      <div class="wisch-karten-stapel" data-wisch-stapel style="min-height: 150px;">
+        <div class="wisch-karte" data-wisch-karte style="z-index: 1;">
+          <div class="wisch-karte-eyebrow eyebrow">Wegwischen zum Loslassen</div>
+          <textarea rows="3" placeholder="Was von gestern beschäftigt dich noch?"></textarea>
+          <button type="button" class="btn btn-ghost btn-sm" data-wisch-button style="margin-top: var(--space-2);">Loslassen</button>
+        </div>
+        <input type="hidden" name="morgen_uebung_erledigt" data-wisch-erledigt value="">
+        <p class="wisch-karten-fertig" data-wisch-fertig>Losgelassen - der Tag darf neu anfangen.</p>
+      </div>
+      {% endif %}
+
+      {% elif tag.morgen_uebung_typ == "motivationsfoto" %}
+      <label class="eyebrow">Kurz ankommen — Motivations-Foto</label>
+      <p class="karte-meta">Ein Bild von etwas, das dich heute antreibt - ganz für dich.</p>
+      <div class="foto-rahmen" data-foto-rahmen>
+        {% if tag.hat_morgen_uebung_datei %}
+        <img class="foto-rahmen-bild" data-foto-rahmen-bild src="/wohlbefinden/uebungsdatei/{{ tag.eintrag_id }}/morgen" alt="Dein Motivations-Foto">
+        {% else %}
+        <img class="foto-rahmen-bild" data-foto-rahmen-bild alt="" style="display:none;">
+        <div class="foto-rahmen-leer" data-foto-rahmen-leer>📷</div>
+        {% endif %}
+        <div class="foto-rahmen-unterschrift">Was mich heute antreibt</div>
+        <input type="file" name="morgen_uebung_datei" accept="image/png,image/jpeg">
+      </div>
+      {% if tag.hat_morgen_uebung_datei %}
+      <label class="tagebuch-chip" style="margin-top: var(--space-2);"><input type="checkbox" name="morgen_uebung_datei_entfernen" value="true"> Foto entfernen</label>
+      {% endif %}
 
       {% elif tag.morgen_uebung_typ == "staerken_karte" %}
       <label class="eyebrow">Kurz ankommen — Stärken-Karte</label>
@@ -204,7 +287,7 @@
     <div class="field">
       {% if tag.abend_uebung_typ == "mandala" %}
       <label>Magst du ein ruhiges Muster ausmalen? (optional)</label>
-      <div class="mandala-canvas-wrap" data-mandala>
+      <div class="mandala-canvas-wrap" data-mandala data-mal-feld="mandala_erledigt">
         <svg viewBox="0 0 240 240" class="mandala-guide" aria-hidden="true">
           <circle cx="120" cy="120" r="30" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
           <circle cx="120" cy="120" r="65" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
@@ -312,6 +395,63 @@
         </div>
       </div>
 
+      {% elif tag.abend_uebung_typ == "sternenhimmel" %}
+      <label class="eyebrow">Sternenhimmel ausmalen</label>
+      <div class="mandala-canvas-wrap mandala-canvas-wrap--nacht" data-mandala data-mal-feld="abend_uebung_erledigt">
+        <svg viewBox="0 0 240 240" class="mandala-guide" aria-hidden="true">
+          <path d="M120 18 l7 21 22 0 -18 13 7 21 -18 -13 -18 13 7 -21 -18 -13 22 0 z" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+          <path d="M56 92 l5 15 16 0 -13 9 5 15 -13 -9 -13 9 5 -15 -13 -9 16 0 z" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+          <path d="M184 92 l5 15 16 0 -13 9 5 15 -13 -9 -13 9 5 -15 -13 -9 16 0 z" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+          <path d="M120 138 l6 18 19 0 -15 11 6 18 -16 -11 -15 11 6 -18 -15 -11 19 0 z" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+          <circle cx="40" cy="196" r="7" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+          <circle cx="200" cy="196" r="7" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+          <circle cx="120" cy="212" r="10" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+          <path d="M20 60 q40 -14 80 0" fill="none" stroke="var(--ink-soft)" stroke-width="1.2"/>
+          <path d="M140 60 q40 -14 80 0" fill="none" stroke="var(--ink-soft)" stroke-width="1.2"/>
+        </svg>
+        <canvas width="320" height="320"></canvas>
+      </div>
+      <div class="mandala-palette">
+        {% for farbe in ["var(--mandala-5)", "var(--mandala-4)", "var(--mandala-1)", "var(--mandala-2)", "var(--mandala-3)"] %}
+        <button type="button" class="mandala-farbe" data-mandala-farbe="{{ farbe }}" style="background: {{ farbe }};" aria-label="Farbe wählen"></button>
+        {% endfor %}
+      </div>
+      <p class="karte-meta" style="text-align:center;">Mal die Sterne aus, so wie du magst - ein ruhiger Abschluss für den Tag.</p>
+      <input type="hidden" name="abend_uebung_erledigt" value="{{ 'true' if tag.abend_uebung_erledigt else '' }}">
+
+      {% elif tag.abend_uebung_typ == "abend_karte" %}
+      <label class="eyebrow">Abend-Karte</label>
+      <div class="flip-karte {% if tag.abend_uebung_erledigt %}flip-karte--offen{% endif %}" data-flip-karte data-flip-erledigt-feld="abend_uebung_erledigt">
+        <div class="flip-karte-innen">
+          <div class="flip-karte-vorne">
+            <span class="flip-karte-symbol">☾</span>
+            <span class="flip-karte-titel">Abend-Karte</span>
+            <span class="flip-karte-hinweis">Tippen zum Umdrehen</span>
+          </div>
+          <div class="flip-karte-hinten">
+            <p>{{ tag.abend_uebung_frage }}</p>
+            <textarea name="abend_uebung_ergebnis" rows="2" placeholder="Magst du kurz antworten? (optional)">{{ tag.abend_uebung_ergebnis }}</textarea>
+          </div>
+        </div>
+        <input type="hidden" name="abend_uebung_frage" value="{{ tag.abend_uebung_frage }}">
+        <input type="hidden" name="abend_uebung_erledigt" value="{{ 'true' if tag.abend_uebung_erledigt else '' }}">
+      </div>
+
+      {% elif tag.abend_uebung_typ == "kerzen" %}
+      <label class="eyebrow">Kerzen anzünden</label>
+      <div class="koerperscan" data-koerperscan data-zonen-feld="abend_uebung_erledigt">
+        <svg viewBox="0 0 220 160" class="koerperscan-svg">
+          {% for x in [50, 110, 170] %}
+          {% set zone = tag.kerzen_zonen[loop.index0] %}
+          <rect x="{{ x - 14 }}" y="70" width="28" height="72" rx="6" fill="var(--bg)" stroke="var(--line-strong)" stroke-width="2"/>
+          <line x1="{{ x }}" y1="70" x2="{{ x }}" y2="58" stroke="var(--line-strong)" stroke-width="2"/>
+          <ellipse data-koerperscan-zone data-halten="{{ zone.halten_sekunden }}" data-hinweis="{{ zone.hinweis }}" cx="{{ x }}" cy="42" rx="13" ry="19"/>
+          {% endfor %}
+        </svg>
+        <p class="karte-meta" data-koerperscan-hinweis>{{ tag.kerzen_zonen[0].hinweis }}</p>
+        <input type="hidden" name="abend_uebung_erledigt" value="{{ 'true' if tag.abend_uebung_erledigt else '' }}">
+      </div>
+
       {% else %}
       <label>Magst du malen, was dich heute gefreut hat? (optional)</label>
       <div class="zeichenfeld-canvas-wrap" data-zeichenfeld>
@@ -386,6 +526,14 @@
       <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.staerken_karte_frage }}</div>
       <p>{{ eintrag.staerken_karte_antwort }}</p>
       {% endif %}
+      {% if eintrag.morgen_uebung_ergebnis %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.morgen_uebung_frage or "Morgens" }}</div>
+      <p>{{ eintrag.morgen_uebung_ergebnis }}</p>
+      {% endif %}
+      {% if eintrag.hat_morgen_uebung_datei %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Motivations-Foto</div>
+      <img style="margin-top: var(--space-2); max-width: 320px; border-radius: var(--radius);" src="/wohlbefinden/uebungsdatei/{{ eintrag.eintrag_id }}/morgen" alt="Dein Motivations-Foto vom {{ eintrag.label }}">
+      {% endif %}
       {% if eintrag.highlights | select | list %}
       <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
       <ul style="margin: var(--space-2) 0 var(--space-4);">
@@ -420,6 +568,14 @@
       {% if eintrag.mini_ziel_text %}
       <div class="eyebrow" style="margin-top: var(--space-3);">Mini-Ziel des Tages</div>
       <p>{{ eintrag.mini_ziel_text }} {% if eintrag.mini_ziel_geschafft %}<span class="chip chip-success">hat geklappt</span>{% endif %}</p>
+      {% endif %}
+      {% if eintrag.abend_uebung_ergebnis %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.abend_uebung_frage or "Abends" }}</div>
+      <p>{{ eintrag.abend_uebung_ergebnis }}</p>
+      {% endif %}
+      {% if eintrag.hat_abend_uebung_datei %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Abend-Foto</div>
+      <img style="margin-top: var(--space-2); max-width: 320px; border-radius: var(--radius);" src="/wohlbefinden/uebungsdatei/{{ eintrag.eintrag_id }}/abend" alt="Dein Abend-Foto vom {{ eintrag.label }}">
       {% endif %}
       {% if eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
       <div class="tagebuch-chip-liste" style="margin-top: var(--space-3);">

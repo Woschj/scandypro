@@ -8,6 +8,42 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.40] - 2026-08-04
+
+### Added
+- **Übungspools auf je 10 Typen erweitert (20 insgesamt)** - Ziel: zwei
+  Übungen pro Tag (morgens + abends) x fünf Werktage = zehn pro Woche,
+  damit sich in **zwei Arbeitswochen keine Übung wiederholt**.
+  Neu morgens: **Absichts-Karte** (Karte umdrehen), **Tagesmotto**
+  (Wort-Rad mit ganzen Sätzen), **Klarheits-Kompass** (Kopf/Herz/Bauch/
+  Hände als Zonen mit Halten-Timer), **Gestern loslassen** (Wisch-Karte,
+  wird nirgends gespeichert), **Motivations-Foto** (Foto-Rahmen).
+  Neu abends: **Sternenhimmel ausmalen** (Leinwand mit Sterne-Vorlage auf
+  Nachtblau), **Abend-Karte** (Karte umdrehen), **Kerzen anzünden**
+  (drei Kerzen als Zonen mit Halten-Timer).
+  Alle acht bauen auf den bestehenden Primitiven aus VB-018 auf - kein
+  neues Interaktionsmuster, nur neue Inhalte/Grafiken.
+
+### Changed
+- **Rotation garantiert jetzt tatsächlich zwei wiederholungsfreie Wochen.**
+  Bisher wurde pro Kalenderwoche neu gemischt, sodass Woche 2 dieselben
+  Übungen wie Woche 1 ziehen konnte. Neu läuft die Rotation in Blöcken von
+  zehn *Werktagen* (`app/core/tagesuebungen.py:_rotations_index`);
+  Wochenenden verbrauchen bewusst keinen Rotationsplatz, sondern zeigen
+  weiter die Freitags-Übung - sonst wäre das Ziel bei 14 Kalendertagen und
+  10 Pool-Einträgen rechnerisch unmöglich. Per Test über viele
+  Teilnehmer:innen und Zeiträume abgesichert.
+- **Generische Ergebnisfelder statt einer Spalte pro Übungstyp.** Die acht
+  neuen Typen teilen sich `morgen_uebung_*`/`abend_uebung_*`
+  (erledigt_am/frage/ergebnis/datei_pfad, Migration `c4d5e6f7a8b9`) -
+  ohne dieses Schema wären 11 weitere Spalten nötig gewesen. Die drei
+  wiederverwendbaren JS-Widgets (Zonen, Wort-Rad, Mal-Leinwand) lesen
+  ihren Feldnamen jetzt aus einem `data-`Attribut, statt ihn fest zu
+  verdrahten.
+- Neue Übungs-Uploads sind in beiden Löschpfaden berücksichtigt
+  (Tag löschen + kompletter Konto-Hard-Delete), damit keine verwaisten
+  verschlüsselten Dateien zurückbleiben.
+
 ## [0.1.39] - 2026-08-04
 
 ### Changed

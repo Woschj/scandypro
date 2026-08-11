@@ -14,8 +14,13 @@ from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
 from app.core.tagesuebungen import (
+    TAGESMOTTO_OPTIONEN,
     WORT_DES_TAGES_OPTIONEN,
+    abend_karte_des_tages,
     abenduebung_des_tages,
+    absichts_karte_des_tages,
+    kerzen_zonen,
+    klarheits_kompass_zonen,
     koerperscan_zonen,
     morgenuebung_des_tages,
     staerken_karte_des_tages,
@@ -57,6 +62,29 @@ async def _zeichnung_speichern(teilnehmer_id: int, daten_url: str) -> str:
     return speicherpfad
 
 
+async def _uebungs_datei_aktualisieren(
+    teilnehmer_id: int,
+    bisheriger_pfad: str | None,
+    upload: UploadFile | None,
+    entfernen: bool,
+) -> str | None:
+    """Gemeinsame Upload-/Entfernen-Logik für die generischen Übungs-Dateien
+    (Motivations-Foto morgens, weitere Foto-Übungen abends). Löscht eine
+    ersetzte oder entfernte Datei immer auch von der Platte, damit keine
+    verwaisten, verschlüsselten Uploads liegen bleiben (siehe CLAUDE.md §10
+    Löschkonzept). Gibt den neuen Pfad zurück (oder None)."""
+    if entfernen:
+        if bisheriger_pfad:
+            datei_loeschen(bisheriger_pfad)
+        return None
+    if upload is not None and upload.filename:
+        if bisheriger_pfad:
+            datei_loeschen(bisheriger_pfad)
+        _, speicherpfad, _ = await datei_speichern(upload, f"tagebuch/{teilnehmer_id}")
+        return speicherpfad
+    return bisheriger_pfad
+
+
 def _tag_label(d: date) -> str:
     return f"{WOCHENTAG_NAMEN[d.weekday()]}, {d.strftime('%d.%m.%Y')}"
 
@@ -93,6 +121,10 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
             "morgen_erledigt": False,
             "energie_level": None,
             "morgen_uebung_typ": None,
+            "morgen_uebung_erledigt": False,
+            "morgen_uebung_frage": None,
+            "morgen_uebung_ergebnis": "",
+            "hat_morgen_uebung_datei": False,
             "atemuebung_name": None,
             "atemuebung_erledigt": False,
             "koerperscan_erledigt": False,
@@ -106,6 +138,10 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
             "abend_impuls_antwort": "",
             "abend_erledigt": False,
             "abend_uebung_typ": None,
+            "abend_uebung_erledigt": False,
+            "abend_uebung_frage": None,
+            "abend_uebung_ergebnis": "",
+            "hat_abend_uebung_datei": False,
             "hat_zeichnung": False,
             "mandala_erledigt": False,
             "ruhe_ort_sehen": "",
@@ -131,6 +167,10 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
         "morgen_erledigt": eintrag.morgen_ausgefuellt_am is not None,
         "energie_level": eintrag.energie_level,
         "morgen_uebung_typ": eintrag.morgen_uebung_typ,
+        "morgen_uebung_erledigt": eintrag.morgen_uebung_erledigt_am is not None,
+        "morgen_uebung_frage": eintrag.morgen_uebung_frage,
+        "morgen_uebung_ergebnis": eintrag.morgen_uebung_ergebnis or "",
+        "hat_morgen_uebung_datei": eintrag.morgen_uebung_datei_pfad is not None,
         "atemuebung_name": eintrag.atemuebung_name,
         "atemuebung_erledigt": eintrag.atemuebung_erledigt_am is not None,
         "koerperscan_erledigt": eintrag.koerperscan_erledigt_am is not None,
@@ -144,6 +184,10 @@ def _eintrag_anzeige(eintrag: TagebuchEintrag | None, datum: date) -> dict:
         "abend_impuls_antwort": eintrag.abend_impuls_antwort or "",
         "abend_erledigt": eintrag.abend_ausgefuellt_am is not None,
         "abend_uebung_typ": eintrag.abend_uebung_typ,
+        "abend_uebung_erledigt": eintrag.abend_uebung_erledigt_am is not None,
+        "abend_uebung_frage": eintrag.abend_uebung_frage,
+        "abend_uebung_ergebnis": eintrag.abend_uebung_ergebnis or "",
+        "hat_abend_uebung_datei": eintrag.abend_uebung_datei_pfad is not None,
         "hat_zeichnung": eintrag.zeichnung_pfad is not None,
         "mandala_erledigt": eintrag.mandala_erledigt_am is not None,
         "ruhe_ort_sehen": eintrag.ruhe_ort_sehen or "",
@@ -171,6 +215,12 @@ def _hat_inhalt(anzeige: dict) -> bool:
         or anzeige["grounding_erledigt"]
         or anzeige["wort_des_tages"]
         or anzeige["staerken_karte_erledigt"]
+        or anzeige["morgen_uebung_erledigt"]
+        or anzeige["morgen_uebung_ergebnis"]
+        or anzeige["hat_morgen_uebung_datei"]
+        or anzeige["abend_uebung_erledigt"]
+        or anzeige["abend_uebung_ergebnis"]
+        or anzeige["hat_abend_uebung_datei"]
         or any(anzeige["highlights"])
         or anzeige["abend_impuls_antwort"]
         or anzeige["hat_zeichnung"]
@@ -249,9 +299,18 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
     if anzeige["staerken_karte_frage"] is None:
         anzeige["staerken_karte_frage"] = staerken_karte_des_tages(current_user.id, ausgewaehlter_tag)
     anzeige["koerperscan_zonen"] = koerperscan_zonen()
+    anzeige["kompass_zonen"] = klarheits_kompass_zonen()
 
     if anzeige["abend_uebung_typ"] is None:
         anzeige["abend_uebung_typ"] = abenduebung_des_tages(current_user.id, ausgewaehlter_tag)
+    anzeige["kerzen_zonen"] = kerzen_zonen()
+
+    # Prompt der generischen Übungstypen: gespeicherte Frage hat Vorrang
+    # (bleibt bei erneutem Aufruf stabil), sonst die des Tages.
+    if anzeige["morgen_uebung_frage"] is None and anzeige["morgen_uebung_typ"] == "absichts_karte":
+        anzeige["morgen_uebung_frage"] = absichts_karte_des_tages(current_user.id, ausgewaehlter_tag)
+    if anzeige["abend_uebung_frage"] is None and anzeige["abend_uebung_typ"] == "abend_karte":
+        anzeige["abend_uebung_frage"] = abend_karte_des_tages(current_user.id, ausgewaehlter_tag)
 
     verlauf = await _verlauf(session, current_user.id, heute)
 
@@ -329,6 +388,7 @@ async def uebersicht(request: Request, current_user: CurrentUser, session: Sessi
             "psm_kontakt": psm_kontakt,
             "andere_psm": andere_psm,
             "wort_optionen": WORT_DES_TAGES_OPTIONEN,
+            "tagesmotto_optionen": TAGESMOTTO_OPTIONEN,
             "anfrage_offen": anfrage_offen,
             "offene_anfrage_id": offene_anfrage_id,
         },
@@ -594,6 +654,11 @@ async def morgen_speichern(
     staerken_karte_frage: str = Form(""),
     staerken_karte_antwort: str = Form(""),
     staerken_karte_erledigt: str = Form(""),
+    morgen_uebung_frage: str = Form(""),
+    morgen_uebung_ergebnis: str = Form(""),
+    morgen_uebung_erledigt: str = Form(""),
+    morgen_uebung_datei: UploadFile | None = File(None),
+    morgen_uebung_datei_entfernen: str = Form(""),
 ):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
@@ -626,6 +691,19 @@ async def morgen_speichern(
         eintrag.staerken_karte_antwort = staerken_karte_antwort
     if staerken_karte_erledigt and eintrag.staerken_karte_erledigt_am is None:
         eintrag.staerken_karte_erledigt_am = datetime.utcnow()
+
+    if morgen_uebung_frage:
+        eintrag.morgen_uebung_frage = morgen_uebung_frage
+    if morgen_uebung_ergebnis:
+        eintrag.morgen_uebung_ergebnis = morgen_uebung_ergebnis
+    if morgen_uebung_erledigt and eintrag.morgen_uebung_erledigt_am is None:
+        eintrag.morgen_uebung_erledigt_am = datetime.utcnow()
+    eintrag.morgen_uebung_datei_pfad = await _uebungs_datei_aktualisieren(
+        current_user.id,
+        eintrag.morgen_uebung_datei_pfad,
+        morgen_uebung_datei,
+        bool(morgen_uebung_datei_entfernen),
+    )
 
     eintrag.morgen_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
@@ -660,6 +738,11 @@ async def abend_speichern(
     dankbarkeitsfoto_entfernen: str = Form(""),
     mini_ziel_text: str = Form(""),
     mini_ziel_geschafft: str = Form(""),
+    abend_uebung_frage: str = Form(""),
+    abend_uebung_ergebnis: str = Form(""),
+    abend_uebung_erledigt: str = Form(""),
+    abend_uebung_datei: UploadFile | None = File(None),
+    abend_uebung_datei_entfernen: str = Form(""),
 ):
     if current_user.role != RoleEnum.teilnehmer:
         raise HTTPException(status.HTTP_403_FORBIDDEN)
@@ -712,6 +795,19 @@ async def abend_speichern(
         eintrag.mini_ziel_text = mini_ziel_text
     eintrag.mini_ziel_geschafft = bool(mini_ziel_geschafft)
 
+    if abend_uebung_frage:
+        eintrag.abend_uebung_frage = abend_uebung_frage
+    if abend_uebung_ergebnis:
+        eintrag.abend_uebung_ergebnis = abend_uebung_ergebnis
+    if abend_uebung_erledigt and eintrag.abend_uebung_erledigt_am is None:
+        eintrag.abend_uebung_erledigt_am = datetime.utcnow()
+    eintrag.abend_uebung_datei_pfad = await _uebungs_datei_aktualisieren(
+        current_user.id,
+        eintrag.abend_uebung_datei_pfad,
+        abend_uebung_datei,
+        bool(abend_uebung_datei_entfernen),
+    )
+
     eintrag.abend_ausgefuellt_am = datetime.utcnow()
     session.add(eintrag)
     await session.commit()
@@ -742,16 +838,42 @@ async def dankbarkeitsfoto_anzeigen(eintrag_id: int, current_user: CurrentUser, 
     return Response(content=inhalt, media_type=media_type)
 
 
+@router.get("/uebungsdatei/{eintrag_id}/{tageszeit}")
+async def uebungsdatei_anzeigen(
+    eintrag_id: int, tageszeit: str, current_user: CurrentUser, session: SessionDep
+):
+    """Liefert die zu einer generischen Übung hochgeladene Datei (z.B.
+    Motivations-Foto) - wie zeichnung_anzeigen nur für die/den Owner."""
+    if tageszeit not in ("morgen", "abend"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    eintrag = await session.get(TagebuchEintrag, eintrag_id)
+    if eintrag is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diese Datei.")
+
+    pfad = eintrag.morgen_uebung_datei_pfad if tageszeit == "morgen" else eintrag.abend_uebung_datei_pfad
+    if not pfad:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    inhalt = await datei_lesen_entschluesselt(pfad)
+    media_type = "image/png" if Path(pfad).suffix.lower() == ".png" else "image/jpeg"
+    return Response(content=inhalt, media_type=media_type)
+
+
 @router.post("/tag/loeschen")
 async def tag_loeschen(current_user: CurrentUser, session: SessionDep, datum: str = Form(...)):
     tag_datum = date.fromisoformat(datum)
     eintrag = await _hole_eintrag(session, current_user.id, tag_datum)
     if eintrag is not None:
         require_owner(current_user, eintrag.teilnehmer_id, "Kein Zugriff auf diesen Eintrag.")
-        if eintrag.zeichnung_pfad:
-            datei_loeschen(eintrag.zeichnung_pfad)
-        if eintrag.dankbarkeitsfoto_pfad:
-            datei_loeschen(eintrag.dankbarkeitsfoto_pfad)
+        for pfad in (
+            eintrag.zeichnung_pfad,
+            eintrag.dankbarkeitsfoto_pfad,
+            eintrag.morgen_uebung_datei_pfad,
+            eintrag.abend_uebung_datei_pfad,
+        ):
+            if pfad:
+                datei_loeschen(pfad)
         await session.delete(eintrag)
         await session.commit()
     return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)

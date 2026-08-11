@@ -564,6 +564,10 @@ button:not(.btn) {
 .mandala-canvas-wrap { position: relative; max-width: 260px; margin: 0 auto; border-radius: var(--radius); overflow: hidden; background: var(--bg-raised); border: 1px dashed var(--line-strong); }
 .mandala-canvas-wrap svg.mandala-guide { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.55; }
 .mandala-canvas-wrap canvas { position: relative; display: block; width: 100%; aspect-ratio: 1; touch-action: none; cursor: crosshair; }
+/* Sternenhimmel: dieselbe Leinwand, nur mit ruhigem Nachtblau als Grund -
+   die Sterne-Umrisse (mandala-guide) heben sich darauf deutlicher ab. */
+.mandala-canvas-wrap--nacht { background: #1c2740; }
+.mandala-canvas-wrap--nacht svg.mandala-guide { opacity: 0.85; }
 .mandala-palette { display: flex; justify-content: center; gap: var(--space-2); margin-top: var(--space-3); }
 .mandala-farbe { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line-strong); cursor: pointer; padding: 0; }
 .mandala-farbe.mandala-farbe--aktiv { border-color: var(--ink); box-shadow: 0 0 0 2px var(--bg-raised), 0 0 0 4px var(--accent); }
