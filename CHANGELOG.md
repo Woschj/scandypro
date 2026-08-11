@@ -8,6 +8,28 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.41] - 2026-08-04
+
+### Fixed
+- **PSM-Ansicht zeigte freigegebene Tage unvollständig.** Die in 0.1.40
+  ergänzten Übungstypen speichern ihre Antworten in den generischen
+  `*_uebung_ergebnis`-Feldern - `wohlbefinden/teilnehmer_ansicht.html`
+  rendert diese aber nicht mit, sodass ein bewusst freigegebener Tag bei
+  der psychosozialen Mitarbeit ohne die Antwort zu Absichts-Karte,
+  Tagesmotto oder Abend-Karte ankam. Beide Ergebnisfelder und ein Hinweis
+  auf hinterlegte Fotos ergänzt.
+- Totes Formularfeld `grounding_erledigt_signal` aus dem Erdungs-Template
+  entfernt (wurde vom Router nie gelesen; die Erdung wertet die fünf
+  `grounding_N`-Felder aus).
+
+### Added
+- `tasks/codebase-audit/README.md`: vollständiges Codebase-Audit mit zehn
+  priorisierten Befunden (CA-001 bis CA-010) und Umsetzungsreihenfolge.
+  Kernbefunde: zentrale Zugriffsschicht `access.py` und die
+  Hard-Delete-Pfade sind ungetestet, Audit-Logs fehlen bei
+  Wochenbericht-Zugriff und Datenexport. **Keine** Autorisierungslücke
+  gefunden (alle 103 Routen geprüft).
+
 ## [0.1.40] - 2026-08-04
 
 ### Added

@@ -38,6 +38,10 @@
       <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.staerken_karte_frage }}</div>
       <p>{{ eintrag.staerken_karte_antwort }}</p>
       {% endif %}
+      {% if eintrag.morgen_uebung_ergebnis %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.morgen_uebung_frage or "Morgens" }}</div>
+      <p>{{ eintrag.morgen_uebung_ergebnis }}</p>
+      {% endif %}
       {% if eintrag.highlights | select | list %}
       <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
       <ul style="margin: var(--space-2) 0 var(--space-4);">
@@ -65,9 +69,14 @@
       <div class="eyebrow" style="margin-top: var(--space-3);">Mini-Ziel des Tages</div>
       <p>{{ eintrag.mini_ziel_text }} {% if eintrag.mini_ziel_geschafft %}<span class="chip chip-success">hat geklappt</span>{% endif %}</p>
       {% endif %}
-      {% if eintrag.hat_zeichnung or eintrag.hat_dankbarkeitsfoto or eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
+      {% if eintrag.abend_uebung_ergebnis %}
+      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.abend_uebung_frage or "Abends" }}</div>
+      <p>{{ eintrag.abend_uebung_ergebnis }}</p>
+      {% endif %}
+      {% if eintrag.hat_zeichnung or eintrag.hat_dankbarkeitsfoto or eintrag.hat_morgen_uebung_datei or eintrag.hat_abend_uebung_datei or eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
       <div class="tagebuch-chip-liste" style="margin-top: var(--space-3);">
         {% if eintrag.hat_zeichnung %}<span class="chip chip-neutral">Hat eine Zeichnung angefertigt</span>{% endif %}
+        {% if eintrag.hat_morgen_uebung_datei or eintrag.hat_abend_uebung_datei %}<span class="chip chip-neutral">Hat ein Foto hinterlegt</span>{% endif %}
         {% if eintrag.hat_dankbarkeitsfoto %}<span class="chip chip-neutral">Hat ein Foto festgehalten</span>{% endif %}
         {% if eintrag.check_pause_gemacht %}<span class="chip chip-neutral">Pause gemacht</span>{% endif %}
         {% if eintrag.check_jemandem_geholfen %}<span class="chip chip-neutral">Jemandem geholfen</span>{% endif %}
