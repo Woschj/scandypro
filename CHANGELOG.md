@@ -8,6 +8,44 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.39] - 2026-08-04
+
+### Changed
+- **VB-018 umgesetzt: komplettes Rework der Mein-Tag-Minispiele.** Die
+  10 Übungstypen aus VB-006 waren größtenteils Formularfelder mit
+  thematischem Label statt eigenständiger Interaktionen (Nutzer:
+  "aktuell eine Katastrophe"). Ersetzt durch eine kleine Zahl polierter,
+  wiederverwendbarer Interaktions-Primitive:
+  - **Körper-Scan**: schematische Körpersilhouette (SVG) statt
+    Button-Liste - Regionen leuchten beim Antippen auf, mit Halten-Timer.
+  - **Ausmal-Mandala**: echtes Canvas-Übermalen eines Mandala-Führungs-
+    musters (5-Farben-Palette) statt 7 anklickbarer Kreissegmente.
+  - **Stärken-Karte, Ruhe-Ort-Visualisierung, Mini-Ziel des Tages**: neues
+    Primitiv "Karte umdrehen" (echte CSS-3D-Flip-Animation) statt
+    `<details>`-Akkordeon bzw. nackter Textfelder.
+  - **Gedanken-Waage**: sichtbares Zwei-Schalen-Element, das sich neigt,
+    sobald beide Seiten Text enthalten - macht die Metapher tatsächlich
+    sichtbar statt nur im Namen.
+  - **Sorgen loslassen, 5-4-3-2-1-Erdung**: neues Primitiv "Karte
+    wegwischen" mit echter Pointer-Drag-Wischgeste (plus Tastatur-/
+    Klick-Alternative); Erdung besteht jetzt aus 5 nacheinander
+    erscheinenden Karten (ein Sinn pro Karte) statt 5 Checkboxen.
+  - **Ein Wort für heute**: "Wort-Rad" - das gewählte Wort hebt sich
+    sichtbar hervor statt einer starren Button-Wolke.
+  - **Dankbarkeits-Foto-Moment**: Polaroid-Rahmen-Optik mit sofortiger
+    Bildvorschau nach Auswahl statt eines nackten Datei-Inputs.
+  - Atemübung und Zeichnung (bereits gute Primitive) unverändert.
+  - Bestehendes Datenmodell (VB-006) unverändert - nur die
+    Präsentationsschicht wurde ausgetauscht.
+  - Funktional per Browser-JS gegen alle 8 überarbeiteten Übungstypen
+    verifiziert (Karte-Flip, Waage-Neigung, Wort-Auswahl, 5er-Wisch-
+    Stapel mit korrekten Einzelfeldern, Sorgen-Karte-Leerung).
+
+### Fixed
+- Ungenutzten `date`-Import in `app/main.py` entfernt (ruff F401).
+- Veraltete Testassertion auf "Schnellzugriff" entfernt (Dashboard-
+  Struktur hat sich seither geändert, Test war nicht mehr aussagekräftig).
+
 ## [0.1.38] - 2026-08-04
 
 ### Changed

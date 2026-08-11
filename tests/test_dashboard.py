@@ -38,4 +38,3 @@ async def test_dashboard_zeigt_stimmung_und_bewerbungen(client, seed_data, sessi
     assert resp.status_code == 200
     assert "Deine Woche im Rückblick" in resp.text
     assert "Laufende Bewerbung" in resp.text
-    assert "Schnellzugriff" in resp.text

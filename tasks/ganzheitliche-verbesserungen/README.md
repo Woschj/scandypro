@@ -36,7 +36,7 @@ Templates) – UI-001 gilt als erledigt.
 | [VB-015](VB-015.md) | Demo-Logins hart codiert unabhängig von `SEED_DEMO_DATA` | Low | alle | ✅ behoben |
 | [VB-016](VB-016.md) | Kaskadierendes Löschen im Kanban dupliziert statt zentral | Low | – | ✅ behoben |
 | [VB-017](VB-017.md) | Bewerbungs-/Wochenbericht-Formulare stark dupliziert | Low | – | ✅ behoben (Wochenbericht) |
-| [VB-018](VB-018.md) | **Komplettes Rework der Mein-Tag-Minispiele** (Nutzer: "aktuell eine Katastrophe") | High | T | 📋 Plan steht, Umsetzung offen |
+| [VB-018](VB-018.md) | **Komplettes Rework der Mein-Tag-Minispiele** (Nutzer: "aktuell eine Katastrophe") | High | T | ✅ behoben |
 
 Legende Rollen: T = Teilnehmer, BT = Berufstrainer, PSM = Psychosoziale
 Mitarbeit, A = Einrichtungs-Admin.

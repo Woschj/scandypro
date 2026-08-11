@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
