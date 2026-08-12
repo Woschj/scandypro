@@ -8,6 +8,70 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.42] - 2026-08-12
+
+### Security
+- **Deaktivierte Accounts behielten Zugriff auf das Dashboard.**
+  `get_current_user_optional` prüfte im Gegensatz zu `get_current_user`
+  das `aktiv`-Flag nicht - und ausgerechnet die Startseite nutzt diese
+  Variante. Ein zwischenzeitlich deaktivierter Account sah damit weiterhin
+  Kontaktdaten, "Was steht an" inklusive Kartentiteln und den
+  Wochenrückblick; die Kontosperre aus VB-012 war nur halb wirksam.
+  Gefunden durch die neuen Berechtigungstests.
+
+### Added
+- **Berechtigungstests für `app/core/access.py`** (24 Tests, CA-001):
+  vollständige Organisationsstruktur als Fixture, dann je Zugriffspfad
+  Negativ- und Positivfall - Zuordnung ohne Freigabe und Freigabe ohne
+  Zuordnung blocken beide, Widerruf und Ablauf greifen sofort,
+  Einzelfreigaben zeigen wirklich nur das eine Element, private
+  Kanban-Karten bleiben auch dem zuständigen Trainer verborgen.
+- **Löschtests für `app/core/deletion.py`** (7 Tests, CA-003): prüfen
+  nicht nur DB-Zeilen, sondern dass keine verschlüsselte Datei auf der
+  Platte zurückbleibt - auch beim Ersetzen eines Uploads und beim Löschen
+  eines einzelnen Tages.
+- **Audit-Logs für Wochenbericht-Zugriff und Datenexport** (CA-002).
+  CLAUDE.md §4 verlangt die Protokollierung jedes Zugriffs auf sensible
+  Daten; es gab bisher nur zwei `protokolliere()`-Aufrufe im gesamten
+  Code. Migration `d5e6f7a8b9c1`.
+- **Rate-Limiting auf dem Passwortwechsel** (CA-008) - er prüft das
+  aktuelle Passwort und war damit genauso bruteforcebar wie der Login.
+
+### Changed
+- **Verlauf-Rendering als gemeinsames Partial** (CA-006):
+  `wohlbefinden/_verlauf_eintrag.html` mit `ist_owner`-Flag statt zweier
+  von Hand synchron gehaltener Blöcke. `teilnehmer_ansicht.html`:
+  95 → 27 Zeilen.
+- **211 Deprecation-Warnungen pro Testlauf auf 0** (CA-007): `jetzt()`
+  aus `app/core/zeit.py` ersetzt das deprecated `datetime.utcnow()` an 48
+  Stellen (bewusst UTC-naiv, passend zu den `sa.DateTime()`-Spalten - ein
+  Wechsel auf zeitzonenbewusste Werte hätte Vergleiche zerbrochen). Die
+  `session.execute()`-Warnung ist dagegen keine echte Deprecation, sondern
+  SQLModels Werbung für die eigene `exec()`-API, und wird begründet
+  gefiltert statt in 166 riskanten Einzelumbauten beseitigt.
+- **`seed_demo_data` 228 → 37 Zeilen** und **`dashboard` 179 → 40 Zeilen**
+  (CA-009), aufgeteilt in Helfer je Domäne bzw. je Rolle. Der Seed-Lauf
+  wurde gegen eine echte SQLite-DB verifiziert: identische Datenmengen in
+  allen 13 Tabellen.
+- `ruff check .` ist erstmals vollständig grün (CA-010).
+
+### Removed
+- **Toter Code** (CA-004): `heatmap.js` wurde an jede
+  Teilnehmer:innen-Seite ausgeliefert, obwohl die Mood-Heatmap seit dem
+  Tagebuch-Umbau nicht mehr existiert. Dazu 145 Zeilen toter CSS aus der
+  entfernten Stimmungs-Skala. `style.css`: 1482 → 1337 Zeilen.
+
+### Hinweis zu CA-005
+Der Audit-Befund "zwei parallele Speicherschemata vereinheitlichen" wurde
+bei der Umsetzung **als falsch erkannt und zurückgezogen**: Ruhe-Ort
+(drei Texte), Gedanken-Waage (zwei Texte) und Mini-Ziel (Text + Bool)
+passen nicht in ein einzelnes Ergebnisfeld. Sie hineinzuzwingen hieße,
+mehrere Werte als JSON in ein verschlüsseltes Feld zu kodieren - schlechter
+lesbar und ohne die feldweise Verschlüsselungs-Granularität aus
+CLAUDE.md §3. Stattdessen als Konvention festgehalten: neue Typen mit
+*einer* Antwort nutzen das generische Schema, mehrteilige bekommen eigene
+Spalten. Details in `tasks/codebase-audit/README.md`.
+
 ## [0.1.41] - 2026-08-04
 
 ### Fixed

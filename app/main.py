@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -107,183 +107,218 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     )
 
 
-@app.get("/")
-async def dashboard(request: Request, session: SessionDep):
-    current_user = await get_current_user_optional(request, session)
-    if current_user is None:
-        return RedirectResponse(url="/login", status_code=303)
+async def _dashboard_teilnehmer(session: SessionDep, current_user: User, was_steht_an: list[dict]) -> dict:
+    """Dashboard-Kontext fuer Teilnehmer:innen: Kontaktpersonen, Wochen-
+    Rueckblick und die konkreten Ankuepfungspunkte darunter.
 
-    psm_kontakt = None
-    trainer_kontakt = None
-    schritte_diese_woche: int | None = None
-    tagebuch_tage_woche: int | None = None
-    bewerbungen_uebersicht: dict | None = None
-    was_steht_an: list[dict] = []
-    letzte_kanban_aktivitaet: dict | None = None
-    letztes_tagebuch_wort: str | None = None
-    letzte_aktive_bewerbung: str | None = None
-    neu_geteilt: list[dict] = []
-    offene_unterstuetzungsanfragen: list[dict] = []
+    Alle Rueckblick-Werte sind bewusst reine Zaehlwerte plus ein positiv
+    formulierter Anknuepfungspunkt - nie Quoten oder Bewertungen (CLAUDE.md
+    Abschnitt 24/25)."""
+    kontext: dict = {}
 
-    if current_user.role in (RoleEnum.teilnehmer, RoleEnum.berufstrainer):
-        was_steht_an = await faellige_karten(session, current_user)
+    zuordnung = (
+        await session.execute(select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id))
+    ).scalar_one_or_none()
+    kontext["psm_kontakt"] = await session.get(User, zuordnung.psm_id) if zuordnung else None
 
-    if current_user.role == RoleEnum.teilnehmer:
-        result = await session.execute(select(PsmZuordnung).where(PsmZuordnung.teilnehmer_id == current_user.id))
-        zuordnung = result.scalar_one_or_none()
-        if zuordnung is not None:
-            psm_kontakt = await session.get(User, zuordnung.psm_id)
-
-        trainer_result = await session.execute(
+    trainer_zuordnung = (
+        await session.execute(
             select(BerufstrainerZuordnung).where(BerufstrainerZuordnung.teilnehmer_id == current_user.id)
         )
-        trainer_zuordnung = trainer_result.scalar_one_or_none()
-        if trainer_zuordnung is not None:
-            trainer_kontakt = await session.get(User, trainer_zuordnung.berufstrainer_id)
+    ).scalar_one_or_none()
+    kontext["trainer_kontakt"] = (
+        await session.get(User, trainer_zuordnung.berufstrainer_id) if trainer_zuordnung else None
+    )
 
-        schritte_diese_woche = await woechentliche_schritte(session, current_user.id)
-        tagebuch_tage_woche = await woechentliche_tagebuch_tage(session, current_user.id)
-
-        # Sanfter Bewerbungs-Überblick fürs Dashboard (siehe CLAUDE.md Abschnitt
-        # 25 "positive Verstärkung") - bewusst nur Zählwerte, keine Rücklauf-
-        # quote/Bewertung; "aktiv" schließt Entwürfe aus, die noch keine
-        # eigene Handlung der Person waren.
-        aktive_result = await session.execute(
-            select(Bewerbung.id).where(
-                Bewerbung.teilnehmer_id == current_user.id, Bewerbung.status != BewerbungStatus.entwurf
-            )
-        )
-        anzahl_aktiv = len(list(aktive_result.scalars().all()))
-        wartend_result = await session.execute(
-            select(Bewerbung.id).where(
-                Bewerbung.teilnehmer_id == current_user.id,
-                Bewerbung.status.in_([BewerbungStatus.versendet, BewerbungStatus.rueckmeldung_offen]),
-            )
-        )
-        anzahl_wartend = len(list(wartend_result.scalars().all()))
-        if anzahl_aktiv > 0:
-            bewerbungen_uebersicht = {"aktiv": anzahl_aktiv, "wartend": anzahl_wartend}
-            letzte_bewerbung_result = await session.execute(
-                select(Bewerbung.firma)
-                .where(Bewerbung.teilnehmer_id == current_user.id, Bewerbung.status != BewerbungStatus.entwurf)
-                .order_by(Bewerbung.erstellt_am.desc())
-                .limit(1)
-            )
-            letzte_aktive_bewerbung = letzte_bewerbung_result.scalar_one_or_none()
-
-        # Persönliche Anknüpfungspunkte für die Rückblick-Kacheln (siehe
-        # dashboard.html) - zeigen konkret, was zuletzt/als Nächstes ansteht,
-        # statt nur abstrakter Zahlen; bewusst nur positiv formuliert, nie als
-        # Mahnung (CLAUDE.md §24).
-        if schritte_diese_woche:
-            seit = jetzt() - timedelta(days=7)
-            letzte_bewegung_result = await session.execute(
-                select(Karte.titel, Board.id, Board.titel)
-                .select_from(KartenBewegung)
-                .join(Karte, Karte.id == KartenBewegung.karte_id)
-                .join(Spalte, Spalte.id == Karte.spalte_id)
-                .join(Board, Board.id == Spalte.board_id)
-                .where(KartenBewegung.bewegt_von_id == current_user.id, KartenBewegung.bewegt_am >= seit)
-                .order_by(KartenBewegung.bewegt_am.desc())
-                .limit(1)
-            )
-            treffer = letzte_bewegung_result.first()
-            if treffer is not None:
-                karten_titel, board_id, board_titel = treffer
-                letzte_kanban_aktivitaet = {
-                    "titel": karten_titel,
-                    "link": f"/kanban/boards/{board_id}",
-                    "kontext": board_titel,
-                }
-        elif was_steht_an:
-            letzte_kanban_aktivitaet = was_steht_an[0]
-
-        letztes_wort_result = await session.execute(
+    schritte = await woechentliche_schritte(session, current_user.id)
+    kontext["schritte_diese_woche"] = schritte
+    kontext["tagebuch_tage_woche"] = await woechentliche_tagebuch_tage(session, current_user.id)
+    kontext.update(await _bewerbungs_rueckblick(session, current_user.id))
+    kontext["letzte_kanban_aktivitaet"] = await _letzte_kanban_aktivitaet(
+        session, current_user.id, schritte, was_steht_an
+    )
+    kontext["letztes_tagebuch_wort"] = (
+        await session.execute(
             select(TagebuchEintrag.wort_des_tages)
             .where(TagebuchEintrag.teilnehmer_id == current_user.id, TagebuchEintrag.wort_des_tages.is_not(None))
             .order_by(TagebuchEintrag.datum.desc())
             .limit(1)
         )
-        letztes_tagebuch_wort = letztes_wort_result.scalar_one_or_none()
+    ).scalar_one_or_none()
+    return kontext
 
-    # "Neu geteilt" fürs Dashboard von Berufstrainer:in/PSM: bewusst nur ein
-    # schmaler Hinweis (letzte 14 Tage, jederzeit widerrufbare Freigabe),
-    # kein separates Postfach/Ungelesen-System - passend zu CLAUDE.md
-    # Abschnitt 24 "keine automatischen Eskalationen".
-    stichtag_neu = jetzt() - timedelta(days=14)
-    if current_user.role == RoleEnum.berufstrainer:
-        freigaben_result = await session.execute(
+
+async def _bewerbungs_rueckblick(session: SessionDep, teilnehmer_id: int) -> dict:
+    """Sanfter Bewerbungs-Ueberblick: bewusst nur Zaehlwerte, keine Ruecklauf-
+    quote/Bewertung; "aktiv" schliesst Entwuerfe aus, die noch keine eigene
+    Handlung der Person waren."""
+    aktive = (
+        await session.execute(
+            select(Bewerbung.id).where(
+                Bewerbung.teilnehmer_id == teilnehmer_id, Bewerbung.status != BewerbungStatus.entwurf
+            )
+        )
+    ).scalars().all()
+    if not aktive:
+        return {"bewerbungen_uebersicht": None, "letzte_aktive_bewerbung": None}
+
+    wartend = (
+        await session.execute(
+            select(Bewerbung.id).where(
+                Bewerbung.teilnehmer_id == teilnehmer_id,
+                Bewerbung.status.in_([BewerbungStatus.versendet, BewerbungStatus.rueckmeldung_offen]),
+            )
+        )
+    ).scalars().all()
+    letzte = (
+        await session.execute(
+            select(Bewerbung.firma)
+            .where(Bewerbung.teilnehmer_id == teilnehmer_id, Bewerbung.status != BewerbungStatus.entwurf)
+            .order_by(Bewerbung.erstellt_am.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    return {
+        "bewerbungen_uebersicht": {"aktiv": len(list(aktive)), "wartend": len(list(wartend))},
+        "letzte_aktive_bewerbung": letzte,
+    }
+
+
+async def _letzte_kanban_aktivitaet(
+    session: SessionDep, teilnehmer_id: int, schritte: int, was_steht_an: list[dict]
+) -> dict | None:
+    """Konkreter Anknuepfungspunkt unter der Schritte-Kachel: zuletzt bewegte
+    Karte, oder - wenn diese Woche noch nichts bewegt wurde - das naechste
+    Anstehende als Vorschlag statt einer Mahnung."""
+    if not schritte:
+        return was_steht_an[0] if was_steht_an else None
+
+    treffer = (
+        await session.execute(
+            select(Karte.titel, Board.id, Board.titel)
+            .select_from(KartenBewegung)
+            .join(Karte, Karte.id == KartenBewegung.karte_id)
+            .join(Spalte, Spalte.id == Karte.spalte_id)
+            .join(Board, Board.id == Spalte.board_id)
+            .where(
+                KartenBewegung.bewegt_von_id == teilnehmer_id,
+                KartenBewegung.bewegt_am >= jetzt() - timedelta(days=7),
+            )
+            .order_by(KartenBewegung.bewegt_am.desc())
+            .limit(1)
+        )
+    ).first()
+    if treffer is None:
+        return None
+    karten_titel, board_id, board_titel = treffer
+    return {"titel": karten_titel, "link": f"/kanban/boards/{board_id}", "kontext": board_titel}
+
+
+async def _neu_geteilt_fuer_trainer(session: SessionDep, trainer_id: int, stichtag: datetime) -> list[dict]:
+    freigaben = (
+        await session.execute(
             select(BewerbungsFreigabe)
             .where(
-                BewerbungsFreigabe.empfaenger_id == current_user.id,
+                BewerbungsFreigabe.empfaenger_id == trainer_id,
                 BewerbungsFreigabe.widerrufen_am.is_(None),
-                BewerbungsFreigabe.erstellt_am >= stichtag_neu,
+                BewerbungsFreigabe.erstellt_am >= stichtag,
             )
             .order_by(BewerbungsFreigabe.erstellt_am.desc())
         )
-        for freigabe in freigaben_result.scalars().all():
-            teilnehmer = await session.get(User, freigabe.teilnehmer_id)
-            neu_geteilt.append(
-                {
-                    "teilnehmer": teilnehmer,
-                    "text": "hat dir Bewerbungsdaten freigegeben",
-                    "erstellt_am": freigabe.erstellt_am,
-                    "link": f"/bewerbungen/teilnehmer/{freigabe.teilnehmer_id}",
-                }
-            )
-    elif current_user.role == RoleEnum.psychosoziale_mitarbeit:
-        freigaben_result = await session.execute(
+    ).scalars().all()
+    return [
+        {
+            "teilnehmer": await session.get(User, freigabe.teilnehmer_id),
+            "text": "hat dir Bewerbungsdaten freigegeben",
+            "erstellt_am": freigabe.erstellt_am,
+            "link": f"/bewerbungen/teilnehmer/{freigabe.teilnehmer_id}",
+        }
+        for freigabe in freigaben
+    ]
+
+
+async def _neu_geteilt_fuer_psm(session: SessionDep, psm_id: int, stichtag: datetime) -> list[dict]:
+    freigaben = (
+        await session.execute(
             select(WohlbefindenFreigabe)
             .where(
-                WohlbefindenFreigabe.empfaenger_id == current_user.id,
+                WohlbefindenFreigabe.empfaenger_id == psm_id,
                 WohlbefindenFreigabe.widerrufen_am.is_(None),
-                WohlbefindenFreigabe.erstellt_am >= stichtag_neu,
+                WohlbefindenFreigabe.erstellt_am >= stichtag,
             )
             .order_by(WohlbefindenFreigabe.erstellt_am.desc())
         )
-        for freigabe in freigaben_result.scalars().all():
-            teilnehmer = await session.get(User, freigabe.teilnehmer_id)
-            text = (
+    ).scalars().all()
+    return [
+        {
+            "teilnehmer": await session.get(User, freigabe.teilnehmer_id),
+            "text": (
                 "hat dir einen einzelnen Tag freigegeben"
                 if freigabe.umfang.value == "einzeln"
                 else "hat dir 'Mein Tag' freigegeben"
-            )
-            neu_geteilt.append(
-                {
-                    "teilnehmer": teilnehmer,
-                    "text": text,
-                    "erstellt_am": freigabe.erstellt_am,
-                    "link": f"/wohlbefinden/teilnehmer/{freigabe.teilnehmer_id}",
-                }
-            )
+            ),
+            "erstellt_am": freigabe.erstellt_am,
+            "link": f"/wohlbefinden/teilnehmer/{freigabe.teilnehmer_id}",
+        }
+        for freigabe in freigaben
+    ]
 
-        anfragen_result = await session.execute(
+
+async def _offene_anfragen_fuer_psm(session: SessionDep, psm_id: int) -> list[dict]:
+    anfragen = (
+        await session.execute(
             select(Unterstuetzungsanfrage)
             .where(
-                Unterstuetzungsanfrage.empfaenger_id == current_user.id,
+                Unterstuetzungsanfrage.empfaenger_id == psm_id,
                 Unterstuetzungsanfrage.gesehen_am.is_(None),
             )
             .order_by(Unterstuetzungsanfrage.erstellt_am.desc())
         )
-        for anfrage in anfragen_result.scalars().all():
-            teilnehmer = await session.get(User, anfrage.teilnehmer_id)
-            offene_unterstuetzungsanfragen.append({"anfrage": anfrage, "teilnehmer": teilnehmer})
+    ).scalars().all()
+    return [
+        {"anfrage": anfrage, "teilnehmer": await session.get(User, anfrage.teilnehmer_id)}
+        for anfrage in anfragen
+    ]
 
-    return templates.TemplateResponse(
-        request,
-        "dashboard.html",
-        {
-            "current_user": current_user,
-            "psm_kontakt": psm_kontakt,
-            "trainer_kontakt": trainer_kontakt,
-            "schritte_diese_woche": schritte_diese_woche,
-            "tagebuch_tage_woche": tagebuch_tage_woche,
-            "bewerbungen_uebersicht": bewerbungen_uebersicht,
-            "letzte_kanban_aktivitaet": letzte_kanban_aktivitaet,
-            "letztes_tagebuch_wort": letztes_tagebuch_wort,
-            "letzte_aktive_bewerbung": letzte_aktive_bewerbung,
-            "was_steht_an": was_steht_an,
-            "neu_geteilt": neu_geteilt,
-            "offene_unterstuetzungsanfragen": offene_unterstuetzungsanfragen,
-        },
-    )
+
+@app.get("/")
+async def dashboard(request: Request, session: SessionDep):
+    """Rollenabhaengige Startseite - die eigentliche Datenbeschaffung liegt in
+    den _dashboard_*/_neu_geteilt_*-Helfern darueber, damit hier nur die
+    Rollenverzweigung selbst steht."""
+    current_user = await get_current_user_optional(request, session)
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    kontext: dict = {
+        "current_user": current_user,
+        "psm_kontakt": None,
+        "trainer_kontakt": None,
+        "schritte_diese_woche": None,
+        "tagebuch_tage_woche": None,
+        "bewerbungen_uebersicht": None,
+        "letzte_kanban_aktivitaet": None,
+        "letztes_tagebuch_wort": None,
+        "letzte_aktive_bewerbung": None,
+        "was_steht_an": [],
+        "neu_geteilt": [],
+        "offene_unterstuetzungsanfragen": [],
+    }
+
+    if current_user.role in (RoleEnum.teilnehmer, RoleEnum.berufstrainer):
+        kontext["was_steht_an"] = await faellige_karten(session, current_user)
+
+    # "Neu geteilt" ist bewusst nur ein schmaler Hinweis auf die letzten 14
+    # Tage, kein Postfach/Ungelesen-System - siehe CLAUDE.md Abschnitt 24
+    # "keine automatischen Eskalationen".
+    stichtag_neu = jetzt() - timedelta(days=14)
+
+    if current_user.role == RoleEnum.teilnehmer:
+        kontext.update(await _dashboard_teilnehmer(session, current_user, kontext["was_steht_an"]))
+    elif current_user.role == RoleEnum.berufstrainer:
+        kontext["neu_geteilt"] = await _neu_geteilt_fuer_trainer(session, current_user.id, stichtag_neu)
+    elif current_user.role == RoleEnum.psychosoziale_mitarbeit:
+        kontext["neu_geteilt"] = await _neu_geteilt_fuer_psm(session, current_user.id, stichtag_neu)
+        kontext["offene_unterstuetzungsanfragen"] = await _offene_anfragen_fuer_psm(session, current_user.id)
+
+    return templates.TemplateResponse(request, "dashboard.html", kontext)

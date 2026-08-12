@@ -34,18 +34,25 @@ sauber befunden:
 
 ## Befunde nach Priorität
 
-| ID | Titel | Schwere | Aufwand |
+| ID | Titel | Schwere | Status |
 |---|---|---|---|
-| [CA-001](#ca-001) | Zentrale Zugriffsschicht `access.py` ohne einen einzigen Test | **Hoch** | L |
-| [CA-002](#ca-002) | Audit-Log fehlt bei Wochenbericht-Zugriff und Datenexport | **Hoch** | S |
-| [CA-003](#ca-003) | Hard-Delete-Pfade (`deletion.py`) ungetestet | **Hoch** | M |
-| [CA-004](#ca-004) | Toter Code: `heatmap.js` + ~30 CSS-Klassen der entfernten Skala | Mittel | S |
-| [CA-005](#ca-005) | `TagebuchEintrag`: zwei parallele Speicherschemata, 49 Spalten | Mittel | L |
-| [CA-006](#ca-006) | Verlauf-Rendering doppelt gepflegt (driftete bereits auseinander) | Mittel | M |
-| [CA-007](#ca-007) | 211 Deprecation-Warnungen pro Testlauf verdecken echte Warnungen | Mittel | M |
-| [CA-008](#ca-008) | Rate-Limiting nur beim Login | Niedrig | S |
-| [CA-009](#ca-009) | 28 Funktionen > 40 Zeilen, 6 Dateien > 500 Zeilen | Niedrig | L |
-| [CA-010](#ca-010) | `ruff`-Verstoß in bereits angewendeter Initial-Migration | Niedrig | XS |
+| [CA-001](#ca-001) | Zentrale Zugriffsschicht `access.py` ohne einen einzigen Test | **Hoch** | ✅ behoben (24 Tests) |
+| [CA-002](#ca-002) | Audit-Log fehlt bei Wochenbericht-Zugriff und Datenexport | **Hoch** | ✅ behoben |
+| [CA-003](#ca-003) | Hard-Delete-Pfade (`deletion.py`) ungetestet | **Hoch** | ✅ behoben (7 Tests) |
+| [CA-004](#ca-004) | Toter Code: `heatmap.js` + ~30 CSS-Klassen der entfernten Skala | Mittel | ✅ behoben |
+| [CA-005](#ca-005) | `TagebuchEintrag`: zwei parallele Speicherschemata, 49 Spalten | Mittel | ⚠️ **Befund korrigiert – bewusst nicht umgesetzt** |
+| [CA-006](#ca-006) | Verlauf-Rendering doppelt gepflegt (driftete bereits auseinander) | Mittel | ✅ behoben |
+| [CA-007](#ca-007) | 211 Deprecation-Warnungen pro Testlauf verdecken echte Warnungen | Mittel | ✅ behoben (0 Warnungen) |
+| [CA-008](#ca-008) | Rate-Limiting nur beim Login | Niedrig | ✅ behoben |
+| [CA-009](#ca-009) | 28 Funktionen > 40 Zeilen, 6 Dateien > 500 Zeilen | Niedrig | 🟡 teilweise (die zwei schlimmsten) |
+| [CA-010](#ca-010) | `ruff`-Verstoß in bereits angewendeter Initial-Migration | Niedrig | ✅ behoben |
+
+**Zusätzlich bei der Umsetzung gefunden** (beides in den jeweiligen Commits
+behoben): `get_current_user_optional` prüfte `aktiv` nicht – ausgerechnet
+das Dashboard nutzt diese Variante, ein deaktivierter Account behielt damit
+vollen Zugriff auf die Startseite. Und die PSM-Ansicht zeigte die
+Antworten der neuen Übungstypen nicht, ein freigegebener Tag kam
+unvollständig an.
 
 ---
 
@@ -158,10 +165,37 @@ Das neue Schema ist der Grund, warum die Pool-Verdopplung ohne elf
 weitere Spalten auskam. Solange beide nebeneinander bestehen, ist aber
 bei jeder Änderung unklar, welches gilt.
 
-**Empfehlung (bewusst als eigener, sorgfältiger Schritt):** Alte Typen auf
-das generische Schema migrieren (Daten-Migration nötig, produktive Daten
-vorhanden!), danach 20+ Spalten entfernen. Erst angehen, wenn CA-001/003
-stehen – ohne Tests wäre diese Migration zu riskant.
+### ⚠️ Korrektur dieses Befunds (bei der Umsetzung)
+
+Die ursprüngliche Empfehlung – „alte Typen auf das generische Schema
+migrieren, danach 20+ Spalten entfernen" – **war falsch und wird bewusst
+nicht umgesetzt.** Beim Prüfen der tatsächlichen Datenformen zeigte sich:
+
+| Übungstyp | Form des Ergebnisses | passt ins generische Schema? |
+|---|---|---|
+| Körper-Scan, Erdung, Mandala, Sorgen loslassen | nur `erledigt_am` | ja |
+| Wort des Tages, Stärken-Karte | ein Text (+ Frage) | ja |
+| Zeichnung, Dankbarkeits-Foto | eine Datei | ja |
+| **Ruhe-Ort** | **drei** Texte (sehen/hören/spüren) | **nein** |
+| **Gedanken-Waage** | **zwei** Texte (belastend/ausgewogen) | **nein** |
+| **Mini-Ziel** | ein Text **+ ein Bool** | **nein** |
+
+Drei der elf Typen passen nicht in ein einzelnes `ergebnis`-Feld. Sie
+hineinzuzwingen hieße, mehrere Werte als JSON in ein verschlüsseltes Feld
+zu kodieren – das macht die Daten **schwerer** lesbar statt leichter und
+gibt die feldweise Verschlüsselungs-Granularität auf, die CLAUDE.md §3
+gerade fordert.
+
+Dazu kommt: es gibt produktive Daten, die Migration wäre also nicht
+folgenlos, und der Gewinn wäre rein interne Aufgeräumtheit ohne jeden
+Effekt für Nutzer:innen.
+
+**Stattdessen als Konvention festgehalten:** Neue Übungstypen mit *einer*
+Antwort nutzen das generische Schema (`morgen_uebung_*`/`abend_uebung_*`)
+und brauchen dann gar keine Migration mehr – so sind die acht in 0.1.40
+ergänzten Typen bereits gebaut. Typen mit mehrteiligem Ergebnis bekommen
+weiterhin eigene, sprechende Spalten. Die 49 Spalten sind damit kein
+Wildwuchs, sondern zwei bewusst unterschiedene Fälle.
 
 ---
 
@@ -253,6 +287,33 @@ muss. Löst sich weitgehend mit CA-005 auf.
 Abschnitte je Domäne, `dashboard` in rollenweise Helfer, `style.css` in
 Basis/Komponenten/Module.
 
+### Stand nach der Umsetzung (teilweise)
+
+Die beiden mit Abstand schlimmsten Fälle sind aufgeteilt:
+
+- **`seed_demo_data` 228 → 37 Zeilen**, aufgeteilt in fünf Helfer je
+  Domäne (`_lege_organisation_an`, `_lege_team_karten_an`,
+  `_lege_persoenliches_board_an`, `_lege_wochenbericht_an`,
+  `_lege_tagebuch_an`). Verifiziert durch einen echten Seed-Lauf gegen
+  eine SQLite-DB: identische Datenmengen in allen 13 Tabellen.
+- **`dashboard` 179 → 40 Zeilen**, aufgeteilt in sechs Helfer; die Route
+  selbst enthält jetzt nur noch die Rollenverzweigung.
+- **`style.css` 1482 → 1337 Zeilen** (über CA-004).
+
+Bewusst *nicht* weiter zerlegt: drei der neuen Seed-Helfer liegen mit
+42–63 Zeilen noch über der Richtlinie, bestehen aber fast vollständig aus
+deklarativen Datenlisten (`karten_plan`, `demo_tagebuch`) ohne
+Verzweigungen. Sie weiter aufzuteilen würde die Lesbarkeit verschlechtern,
+nicht verbessern – die Richtlinie zielt auf schwer nachvollziehbare
+Logik, nicht auf Datenliteral-Länge.
+
+Offen bleiben die großen Router (`wohlbefinden.py` 879,
+`kanban.py` 843, `bewerbungen.py` 653 Zeilen) und einzelne lange
+Route-Funktionen darin. Die sind jetzt durch das Testnetz aus CA-001/003
+abgesichert und können bei der nächsten inhaltlichen Berührung Stück für
+Stück mitgezogen werden – ein Umbau „nur wegen der Zeilenzahl" hätte
+Risiko ohne Gegenwert.
+
 ---
 
 ### CA-010 – `ruff`-Verstoß in Initial-Migration {#ca-010}
@@ -268,14 +329,41 @@ neue Funde nicht untergehen.
 
 ---
 
-## Vorgeschlagene Reihenfolge
+## Ergebnis (abgearbeitet 2026-08-12)
 
-1. **CA-002** (Audit-Logs) – klein, direkt compliance-relevant.
-2. **CA-004** (toter Code) + **CA-010** – schnelle, risikofreie Aufräumung.
-3. **CA-001** + **CA-003** (Tests für Zugriff & Löschung) – die eigentliche
-   Absicherung; danach ist alles Weitere gefahrlos.
-4. **CA-006** (Verlauf-Partial) – beseitigt eine bereits eingetretene
-   Fehlerquelle.
-5. **CA-007** (Deprecations) – macht die Testausgabe wieder aussagekräftig.
-6. **CA-005** (Schema-Vereinheitlichung) – erst mit Testnetz.
-7. **CA-008**, **CA-009** – laufend, bei Berührung der jeweiligen Stellen.
+Neun der zehn Befunde sind umgesetzt, einer (CA-005) nach genauerer
+Prüfung bewusst verworfen und der Befund selbst korrigiert.
+
+| Kennzahl | vorher | nachher |
+|---|---|---|
+| Tests | 32 | **63** |
+| davon Berechtigungs-/Löschtests | 0 | **31** |
+| Deprecation-Warnungen pro Lauf | 211 | **0** |
+| `ruff check .` | 1 Fund | **sauber** |
+| längste Funktion | 228 Zeilen | **121 Zeilen** |
+| `style.css` | 1482 Zeilen | 1337 Zeilen |
+| ausgelieferter toter JS-Code | 30 Zeilen | 0 |
+
+Zwei echte Fehler wurden erst durch die neuen Tests bzw. beim Umbau
+sichtbar – beide behoben:
+
+1. **Deaktivierte Accounts behielten Dashboard-Zugriff.**
+   `get_current_user_optional` prüfte `aktiv` nicht, und ausgerechnet die
+   Startseite nutzt diese Variante. Die Kontosperre aus VB-012 war damit
+   nur halb wirksam.
+2. **Freigegebene Tagebuch-Tage kamen unvollständig bei der PSM an** –
+   die Antworten der acht neuen Übungstypen fehlten in deren Ansicht.
+
+## Was als Nächstes sinnvoll wäre
+
+Nichts davon ist dringend – die Liste dient als Anknüpfungspunkt:
+
+- **Testabdeckung weiter ausbauen:** `admin.py` (19 Routen) und
+  `bewerbungen.py` (18 Routen) haben weiterhin keine eigenen Testdateien.
+  Die Zugriffsschicht darunter ist jetzt abgesichert, die Routen selbst
+  noch nicht.
+- **Große Router entflechten** (CA-009, siehe dort) – beiläufig bei der
+  nächsten inhaltlichen Änderung, nicht als Selbstzweck.
+- **`_eintrag_anzeige`** (98 Zeilen, 46 Schlüssel) ist die letzte Stelle,
+  an der ein neues Tagebuch-Feld an drei Orten nachgezogen werden muss.
+  Ließe sich datengetrieben aus einer Feldliste erzeugen.

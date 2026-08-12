@@ -70,35 +70,9 @@ async def seed_admin(session: AsyncSession, email: str, password: str) -> None:
     await session.commit()
     logger.warning("Admin-Account '%s' angelegt.", email)
 
-
-async def seed_demo_data(session: AsyncSession) -> None:
-    existing = await session.execute(select(User))
-    if existing.first() is not None:
-        return
-
-    logger.warning("SEED_DEMO_DATA aktiv: lege Demo-Daten an (Passwort: %s)", DEMO_PASSWORD)
-
-    abteilung_by_name: dict[str, Abteilung] = {}
-    for name in ABTEILUNGEN:
-        abteilung = Abteilung(name=name)
-        session.add(abteilung)
-        abteilung_by_name[name] = abteilung
-    await session.flush()
-
-    users: dict[str, User] = {}
-    for name, email, role, abteilung_name in DEMO_USERS:
-        abteilung_id = abteilung_by_name[abteilung_name].id if abteilung_name else None
-        user = User(
-            name=name,
-            email=email,
-            password_hash=hash_password(DEMO_PASSWORD),
-            role=role,
-            abteilung_id=abteilung_id,
-        )
-        session.add(user)
-        users[email] = user
-    await session.flush()
-
+async def _lege_organisation_an(session: AsyncSession, abteilung_by_name: dict, users: dict) -> dict:
+    """Handlungsfeld mit Leitung, Teilnehmergruppe, gemeinsames Team-Board
+    samt Standardspalten - die Struktur, in der die Demo-Karten haengen."""
     medien = abteilung_by_name["Medien & Digital"]
     trainer = users["trainer@demo.local"]
 
@@ -133,7 +107,12 @@ async def seed_demo_data(session: AsyncSession) -> None:
         session.add(spalte)
         spalten.append(spalte)
     await session.flush()
+    return {"handlungsfeld": handlungsfeld, "gruppe": gruppe, "board": board, "spalten": spalten}
 
+
+async def _lege_team_karten_an(session: AsyncSession, users: dict, spalten: list, trainer) -> None:
+    """Beispielkarten auf dem gemeinsamen Team-Board, verteilt ueber alle
+    vier Standardspalten inkl. Zuweisungen und Unteraufgaben."""
     heute = jetzt().date()
     tanja = users["teilnehmer@demo.local"]
     klaus = users["teilnehmer2@demo.local"]
@@ -195,6 +174,15 @@ async def seed_demo_data(session: AsyncSession) -> None:
         for i, (ua_titel, ua_erledigt) in enumerate(unteraufgaben):
             session.add(Unteraufgabe(karte_id=karte.id, titel=ua_titel, erledigt=ua_erledigt, reihenfolge=i))
 
+
+async def _lege_persoenliches_board_an(session: AsyncSession, users: dict, trainer, heute) -> None:
+    """Persoenliche Aufgabenliste einer Teilnehmer:in - zeigt den
+    Sichtbarkeits-Unterschied zwischen privater und Team-Karte. Legt
+    ausserdem die PSM-/Berufstrainer-Zuordnungen an, damit die
+    Freigabe-Dialoge in der Demo eine Gegenstelle haben."""
+    tanja = users["teilnehmer@demo.local"]
+    klaus = users["teilnehmer2@demo.local"]
+
     persoenliches_board = Board(
         titel="Meine Aufgaben",
         typ=BoardTyp.person,
@@ -241,6 +229,8 @@ async def seed_demo_data(session: AsyncSession) -> None:
     session.add(PsmZuordnung(psm_id=users["psycho@demo.local"].id, teilnehmer_id=tanja.id))
     session.add(BerufstrainerZuordnung(berufstrainer_id=trainer.id, teilnehmer_id=klaus.id))
 
+
+async def _lege_wochenbericht_an(session: AsyncSession, users: dict) -> None:
     letzte_kw = jetzt() - timedelta(days=7)
     demo_tage = leere_tage()
     demo_tage["montag"] = {"start": "08:00", "ende": "16:00", "taetigkeiten": "Drehbuch mit dem Team abgestimmt."}
@@ -258,6 +248,10 @@ async def seed_demo_data(session: AsyncSession) -> None:
         )
     )
 
+
+async def _lege_tagebuch_an(session: AsyncSession, tanja, heute) -> None:
+    """Sieben Tage 5-Minuten-Tagebuch - genug, damit Verlauf und
+    Wochenrueckblick auf dem Dashboard etwas anzuzeigen haben."""
     demo_tagebuch = [
         (6, ["Sonnenschein am Morgen", "Ein guter Kaffee", "Ruhige Busfahrt"], None, ["Drehbuch-Idee gefunden"], None),
         (5, ["Ein nettes Gespräch", "Mein Lieblingslied im Radio", "Pünktlich angekommen"], None, ["Konzept steht"], None),
@@ -297,5 +291,43 @@ async def seed_demo_data(session: AsyncSession) -> None:
                 abend_ausgefuellt_am=jetzt() if abend_antwort else None,
             )
         )
+
+
+
+async def seed_demo_data(session: AsyncSession) -> None:
+    existing = await session.execute(select(User))
+    if existing.first() is not None:
+        return
+
+    logger.warning("SEED_DEMO_DATA aktiv: lege Demo-Daten an (Passwort: %s)", DEMO_PASSWORD)
+
+    abteilung_by_name: dict[str, Abteilung] = {}
+    for name in ABTEILUNGEN:
+        abteilung = Abteilung(name=name)
+        session.add(abteilung)
+        abteilung_by_name[name] = abteilung
+    await session.flush()
+
+    users: dict[str, User] = {}
+    for name, email, role, abteilung_name in DEMO_USERS:
+        abteilung_id = abteilung_by_name[abteilung_name].id if abteilung_name else None
+        user = User(
+            name=name,
+            email=email,
+            password_hash=hash_password(DEMO_PASSWORD),
+            role=role,
+            abteilung_id=abteilung_id,
+        )
+        session.add(user)
+        users[email] = user
+    await session.flush()
+    strukturen = await _lege_organisation_an(session, abteilung_by_name, users)
+    trainer = users["trainer@demo.local"]
+    heute = jetzt().date()
+
+    await _lege_team_karten_an(session, users, strukturen["spalten"], trainer)
+    await _lege_persoenliches_board_an(session, users, trainer, heute)
+    await _lege_wochenbericht_an(session, users)
+    await _lege_tagebuch_an(session, users["teilnehmer@demo.local"], heute)
 
     await session.commit()
