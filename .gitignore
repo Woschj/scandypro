@@ -9,3 +9,10 @@ venv/
 caddy_data/
 caddy_config/
 .claude/
+
+# Backup-Archive (siehe scripts/backup.sh, docs/BACKUP.md). Enthalten
+# personenbezogene Daten und dürfen unter keinen Umständen ins Repo -
+# das Standard-BACKUP_DIR liegt aus Bequemlichkeit im Projektverzeichnis.
+backups/
+*.tar.gz.enc
+uploads/

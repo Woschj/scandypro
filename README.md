@@ -222,6 +222,40 @@ docker compose down          # Container stoppen, Daten bleiben (Volume)
 docker compose down -v       # Container stoppen UND Datenbank löschen
 ```
 
+## Backup
+
+**Vor dem Einsatz mit echten Teilnehmerdaten einrichten.** Vollständige
+Anleitung inkl. Restore-Probe: [docs/BACKUP.md](docs/BACKUP.md).
+
+```bash
+echo "BACKUP_PASSPHRASE=$(openssl rand -base64 48)" >> .env
+./scripts/backup.sh
+```
+
+Sichert Datenbank (`pg_dump`) und Uploads in **ein** verschlüsseltes Archiv
+und rotiert alte Stände (7 täglich / 4 wöchentlich / 6 monatlich). Erkennt
+Docker-Compose- und LXC-Installation automatisch. Ohne
+`BACKUP_PASSPHRASE` bricht das Skript bewusst ab – der Dump enthält neben
+den verschlüsselten Art.-9-Feldern auch Klartext-Stammdaten und
+Passwort-Hashes.
+
+Täglich per Cron:
+
+```cron
+15 3 * * *  cd /opt/scandypro && ./scripts/backup.sh >> /var/log/scandypro-backup.log 2>&1
+```
+
+Zurückspielen (ersetzt Datenbank und Uploads vollständig):
+
+```bash
+./scripts/restore.sh --pruefen backups/scandypro-<zeitstempel>.tar.gz.enc   # nur prüfen
+./scripts/restore.sh backups/scandypro-<zeitstempel>.tar.gz.enc            # echt
+```
+
+`BACKUP_PASSPHRASE` **und** `FIELD_ENCRYPTION_KEY` gehören getrennt vom
+Backup aufbewahrt – ohne beide zusammen ist ein Archiv nicht
+wiederherstellbar.
+
 ## Datenschutz-Bausteine (v0.1)
 
 - **Verschlüsselung**: Wohlbefinden-Kommentare, Bewerbungsnotizen und alle
@@ -261,14 +295,11 @@ Produktivbetrieb.
 
 Die wichtigsten Punkte in Kürze:
 
-- **Kein Backup** (PR-001) – Datenbank und Uploads liegen ausschließlich in
-  Docker-Volumes, ohne Dump, Wiederherstellungs-Prozedur oder Restore-Test.
-  Das einzige Risiko auf der Liste, bei dem hinterher nichts mehr zu retten
-  ist – deshalb zuerst angehen.
-- **Migrationen ohne echten Postgres-Testlauf** (PR-002) – die Kette wird
-  seit 0.1.43 statisch geprüft (`tests/test_migrationen.py`), aber nie
-  tatsächlich ausgeführt. Die beiden jüngsten Migrationen sind noch nie
-  gegen PostgreSQL gelaufen.
+- **Kein automatisierter Migrationstest** (PR-002) – die Kette wird seit
+  0.1.43 statisch geprüft (`tests/test_migrationen.py`) und ist inzwischen
+  einmal real gegen PostgreSQL 16 gelaufen, aber es gibt weiterhin keinen
+  wiederholbaren `upgrade head`-Test. Neue Migrationen fallen damit wieder
+  erst beim Deploy auf.
 - **Virenscan/Content-Prüfung** von Uploads (PR-003) – es gibt Endungs-,
   Größen- und Magic-Byte-Prüfung (`app/core/uploads.py`), aber keinen Scan
   auf Schadinhalte.

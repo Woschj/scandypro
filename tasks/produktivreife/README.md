@@ -18,7 +18,7 @@ die Betriebs- und Compliance-Sicht.
 
 | ID | Titel | Schwere | Aufwand | Status |
 |---|---|---|---|---|
-| [PR-001](#pr-001) | Kein Backup – Totalverlust-Risiko | **Kritisch** | M | offen |
+| [PR-001](#pr-001) | Kein Backup – Totalverlust-Risiko | **Kritisch** | M | ✅ behoben (Restore geprobt) |
 | [PR-002](#pr-002) | Migrationen laufen in keinem Test | **Hoch** | M | 🟡 teilweise |
 | [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | offen |
 | [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | offen |
@@ -52,7 +52,31 @@ Ordnung:
 
 ## PR-001 – Kein Backup {#pr-001}
 
-**Schwere: Kritisch · Aufwand: M · Das hier zuerst.**
+**Schwere: Kritisch · Aufwand: M · Status: behoben (0.1.44)**
+
+> ✅ **Umgesetzt.** `scripts/backup.sh` und `scripts/restore.sh`,
+> dokumentiert in [`docs/BACKUP.md`](../../docs/BACKUP.md). Beide
+> Betriebsarten (Docker Compose und die direkte Proxmox-LXC-Installation)
+> werden automatisch erkannt.
+>
+> Das Archiv wird mit `openssl enc -aes-256-cbc -pbkdf2` verschlüsselt;
+> ohne gesetzte `BACKUP_PASSPHRASE` bricht das Skript ab, statt still einen
+> ungeschützten Dump abzulegen. Rotation: 7 täglich / 4 wöchentlich /
+> 6 monatlich, getrennt gezählt, Wochen- und Monatsstände als Hardlink.
+>
+> **Der Restore wurde tatsächlich geprobt**, nicht nur geschrieben:
+> Ausgangszustand festgehalten → Backup → eine Testmarke in die DB
+> geschrieben, die im Backup nicht enthalten war → Restore → alle
+> Zeilenzahlen wieder identisch (145 Nutzende, 282 Karten, 8174
+> Tagebucheinträge, 378 Bewerbungen), Testmarke verschwunden, und – der
+> eigentlich wichtige Teil – die Fernet-verschlüsselten Felder ließen sich
+> danach korrekt entschlüsseln. Der Ablauf steht als Checkliste in
+> `docs/BACKUP.md` und sollte nach jeder Schema-Änderung wiederholt werden.
+>
+> Offen bleibt organisatorisch: Auslagerung des `BACKUP_DIR` vom Host weg
+> und eine Benachrichtigung bei stillem Ausfall (hängt an PR-007).
+
+Ursprünglicher Befund:
 
 Es existiert **kein Backup-Mechanismus**. Datenbank und Uploads liegen in
 Docker-Volumes (`scandypro_db_data`, `scandypro_uploads`), es gibt keinen
@@ -104,12 +128,25 @@ lokales Postgres verfügbar, und die Kette lässt sich nicht auf SQLite
 ausführen (ältere Migrationen nutzen ungeschütztes Postgres-SQL, z.B.
 `ALTER TABLE ... ALTER COLUMN ... TYPE ... USING` in `a1b2c3d4e5f6`).
 
-> ⚠️ **Konkret offen:** Die beiden Migrationen aus 0.1.40/0.1.41
-> (`c4d5e6f7a8b9`, `d5e6f7a8b9c1`) sind **noch nie gegen PostgreSQL
-> gelaufen**. `d5e6f7a8b9c1` nutzt `ALTER TYPE ... ADD VALUE` mit explizitem
-> `COMMIT` – das ist genau die Sorte Statement, die auf SQLite nicht und auf
-> älteren Postgres-Versionen nur außerhalb einer Transaktion funktioniert.
-> **Vor dem nächsten Deploy gegen eine Kopie der Produktions-DB testen.**
+> ✅ **Erledigt (0.1.44):** Die beiden Migrationen aus 0.1.40/0.1.41
+> (`c4d5e6f7a8b9`, `d5e6f7a8b9c1`) sind inzwischen **gegen PostgreSQL 16
+> gelaufen** – beim Rebuild in der Docker-Umgebung, sauber durch:
+>
+> ```
+> Running upgrade f1a2b3c4d5e6 -> c4d5e6f7a8b9, tagebucheintrag: generische Uebungs-Ergebnisfelder
+> Running upgrade c4d5e6f7a8b9 -> d5e6f7a8b9c1, auditaktion/auditzieltyp: Wochenbericht-Zugriff und Datenexport
+> ```
+>
+> Das befürchtete Problem mit `ALTER TYPE ... ADD VALUE` und explizitem
+> `COMMIT` ist auf Postgres 16 nicht aufgetreten. Zusätzlich abgesichert:
+> der Restore-Probelauf aus PR-001 spielt einen `pg_dump` zurück und lässt
+> die App danach `alembic upgrade head` fahren – damit ist auch der Pfad
+> „altes Backup, neuerer Code" einmal real durchlaufen.
+
+> ⚠️ **Weiterhin offen:** Es gibt nach wie vor keinen *automatisierten*
+> Migrationstest gegen PostgreSQL. Die Absicherung oben ist ein manueller
+> Durchlauf, kein wiederholbarer Test – neue Migrationen fallen genauso
+> wieder erst beim Deploy auf.
 
 **Vorschlag:** Postgres-Container in der Testumgebung (oder CI), ein
 Smoke-Test `upgrade head` → `downgrade base` → `upgrade head`, plus ein
@@ -260,10 +297,10 @@ geprüft werden.
 
 ## Empfohlene Reihenfolge
 
-1. **PR-001 (Backup)** – überschaubarer Aufwand, deckt das einzige Risiko
-   ab, bei dem hinterher nichts mehr zu retten ist.
-2. **PR-002 (Migration gegen Postgres testen)** – speziell die zwei noch
-   nie gelaufenen Migrationen, bevor das nächste Update deployt wird.
+1. ~~**PR-001 (Backup)**~~ – ✅ erledigt in 0.1.44, Restore geprobt.
+2. ~~**PR-002 (die zwei nie gelaufenen Migrationen)**~~ – ✅ gegen
+   PostgreSQL 16 durchgelaufen. Ein *automatisierter* Migrationstest fehlt
+   weiterhin.
 3. **PR-008 (DSGVO-Papierlage)** – läuft organisatorisch parallel und hat
    Vorlauf; ohne das darf ohnehin nicht produktiv gestartet werden.
 4. **PR-003 (Virenscan)** – vor dem ersten echten Bewerbungs-Upload.
@@ -271,3 +308,6 @@ geprüft werden.
    verwalten.
 6. **PR-004, PR-005, PR-007, PR-009** – geplant nachziehen, kein
    Startblocker, aber keiner davon sollte dauerhaft offen bleiben.
+
+Damit ist der kritischste Punkt der Liste geschlossen. Der verbleibende
+echte Startblocker ist **PR-008** (organisatorisch, kein Code).

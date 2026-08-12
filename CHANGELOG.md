@@ -8,6 +8,58 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.44] - 2026-08-12
+
+### Added
+- **Backup und Wiederherstellung** (`scripts/backup.sh`,
+  `scripts/restore.sh`, `docs/BACKUP.md`) – PR-001, der kritischste Punkt
+  der Produktivreife-Liste. Bis hierher existierte **kein** Backup:
+  Datenbank und Uploads lagen ausschließlich in Docker-Volumes, ohne Dump,
+  ohne Prozedur, ohne Restore-Test.
+  Ein Lauf erzeugt genau ein verschlüsseltes Archiv aus `pg_dump` und
+  Uploads; Docker-Compose- und LXC-Installation werden automatisch
+  erkannt. Verschlüsselt wird mit `openssl enc -aes-256-cbc -pbkdf2` –
+  ohne gesetzte `BACKUP_PASSPHRASE` bricht das Skript ab, statt still
+  einen ungeschützten Dump abzulegen. Das ist kein Selbstzweck: der Dump
+  enthält neben den Fernet-verschlüsselten Art.-9-Feldern auch
+  Klartext-Stammdaten und die Passwort-Hashes.
+  Rotation 7 täglich / 4 wöchentlich / 6 monatlich, getrennt gezählt,
+  damit ein stiller Ausfall nicht binnen Stunden alle Generationen
+  wegrotiert.
+- **Restore-Probe tatsächlich durchgeführt**, nicht nur dokumentiert:
+  Backup → Testmarke in die DB geschrieben, die im Archiv nicht enthalten
+  war → Restore → alle Zeilenzahlen wieder identisch, Testmarke
+  verschwunden, und die verschlüsselten Felder ließen sich anschließend
+  korrekt entschlüsseln. Letzteres ist der Punkt, an dem ein „erfolgreiches"
+  Restore sonst gerne scheitert (falscher `FIELD_ENCRYPTION_KEY`).
+  Ablauf als Checkliste in `docs/BACKUP.md`.
+
+### Changed
+- **UI-013:** 118 duplizierte Inline-Styles durch eine kleine, geschlossene
+  Menge Abstands-/Layout-Utilities ersetzt (`.abstand-oben-*`,
+  `.abstand-unten-*`, `.fuellt-rest`, `.rechtsbuendig`). Bewusst kein
+  Vollsortiment – die Skala bleibt bei den `--space-*`-Stufen.
+- **UI-019:** Kontraste erstmals gerechnet statt geschätzt. Das helle Theme
+  war durchgehend sauber; im dunklen fielen drei Klein-Text-Kombinationen
+  durch (`.chip-brand` 1,42:1 mangels Dark-Override, `--brand` als Text
+  2,99:1, `--danger` als Text 3,12:1). Ursache jeweils dieselbe:
+  `--brand`/`--danger` sind auf weißen Text als *Button-Hintergrund*
+  optimiert. Neue Tokens `--brand-text`, `--danger-text`, `--chip-brand-bg`
+  statt die Buttonfarben zu verbiegen; alle Kombinationen jetzt ≥ 5,71:1.
+- `tasks/uiux-audit/README.md` hat eine Status-Spalte bekommen. 19 der 22
+  Punkte waren längst umgesetzt, nur nirgends festgehalten – das hatte
+  bereits zu der Fehlannahme geführt, dort stünde noch alles offen.
+- `.gitignore`: `backups/`, `*.tar.gz.enc` und `uploads/` ergänzt. Das
+  Standard-`BACKUP_DIR` liegt aus Bequemlichkeit im Projektverzeichnis,
+  und personenbezogene Archive dürfen unter keinen Umständen ins Repo.
+
+### Fixed
+- **PR-002 teilweise:** Die beiden Migrationen aus 0.1.40/0.1.41
+  (`c4d5e6f7a8b9`, `d5e6f7a8b9c1`) waren als „noch nie gegen PostgreSQL
+  gelaufen" markiert – insbesondere wegen `ALTER TYPE ... ADD VALUE` mit
+  explizitem `COMMIT`. Beide sind jetzt gegen PostgreSQL 16 durchgelaufen,
+  ohne Befund. Ein *automatisierter* Migrationstest fehlt weiterhin.
+
 ## [0.1.43] - 2026-08-12
 
 ### Added
