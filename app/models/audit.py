@@ -36,7 +36,13 @@ class AuditLogEintrag(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     zeitpunkt: datetime = Field(default_factory=jetzt)
-    akteur_id: int = Field(foreign_key="user.id", index=True)
+    # Bewusst ohne Foreign-Key-Constraint - genau wie ziel_teilnehmer_id und
+    # aus demselben Grund: nach einer Konto-Löschung soll der Eintrag als
+    # pseudonymisierter Nachweis bestehen bleiben (CLAUDE.md §9,
+    # "pseudonymisierte Löschung"), statt per Kaskade zu verschwinden. Die
+    # Zugriffe einer Person bleiben untereinander korrelierbar, ohne dass es
+    # die Person noch gibt.
+    akteur_id: int = Field(index=True)
     aktion: AuditAktion
     zieltyp: AuditZieltyp
     ziel_teilnehmer_id: int = Field(index=True)

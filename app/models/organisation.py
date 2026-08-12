@@ -54,7 +54,12 @@ class Teilnehmergruppe(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
     handlungsfeld_id: int = Field(foreign_key="handlungsfeld.id", index=True)
-    erstellt_von: int = Field(foreign_key="user.id")
+    # Nullbar, damit ein Konto vollständig gelöscht werden kann (Art. 17
+    # DSGVO, siehe app/core/deletion.py:loesche_konto_vollstaendig). Der
+    # Inhalt bleibt bestehen und wird als "Gelöschte:r Nutzer:in" angezeigt -
+    # auf Team-Boards arbeiten andere Menschen weiter, deren Karten nicht
+    # verschwinden dürfen, nur weil eine Person das Haus verlässt.
+    erstellt_von: int | None = Field(default=None, foreign_key="user.id")
     erstellt_am: datetime = Field(default_factory=jetzt)
 
 

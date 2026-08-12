@@ -157,6 +157,39 @@ Idealfall mit Benachrichtigung an den Teilnehmer.
   Dokumentation relevant) können nach Soft-Delete-Muster wie in Scandy-Lite
   behandelt werden – Ausnahme ist bewusst nur für diesen Bereich zulässig.
 
+### 5.1 Umsetzung der vollständigen Konto-Löschung
+
+Umgesetzt in `app/core/deletion.py:loesche_konto_vollstaendig`, ausgelöst
+über die Benutzerverwaltung (`/admin/benutzer`). Die Löschung unterscheidet
+drei Arten von Personenbezug:
+
+| Art des Bezugs | Behandlung |
+|---|---|
+| **Eigene Inhalte** – Tagebuch inkl. Fotos, Bewerbungen inkl. Unterlagen, Wochenberichte, persönliches Kanban-Board | gelöscht, inklusive der Dateien im Storage |
+| **Zugehörigkeiten** – Kartenzuweisungen, Gruppen-/Handlungsfeld-Mitgliedschaften, PSM-/Trainer-Zuordnungen, erteilte und erhaltene Freigaben | Zeilen entfernt |
+| **Urheberschaft an Team-Inhalten** – wer eine Karte/ein Board angelegt oder eine Karte bewegt hat | auf NULL gesetzt, der Inhalt bleibt |
+| **Audit-Log** | bleibt vollständig erhalten |
+
+**Warum Team-Karten bestehen bleiben:** Auf Team-Boards arbeiten mehrere
+Menschen gemeinsam. Eine Kaskaden-Löschung würde fremde Arbeitsergebnisse
+vernichten, nur weil eine Person die Einrichtung verlässt. Stattdessen
+bleibt die Karte stehen und erscheint **ohne Zuständige** – die Leitung des
+Handlungsfelds entscheidet dann, ob sie neu vergeben oder entfernt wird.
+Die Verwaltung erhält nach der Löschung eine Meldung, wie viele Karten das
+betrifft.
+
+**Warum das Audit-Log bleibt:** Abschnitt 4.3 und CLAUDE.md §9 verlangen
+*pseudonymisierte* Löschung, nicht das Verschwinden des Nachweises.
+`akteur_id` und `ziel_teilnehmer_id` tragen deshalb keinen Fremdschlüssel;
+der Eintrag belegt weiterhin, dass ein Zugriff stattgefunden hat, ohne dass
+die Person noch existiert. Inhalte standen dort ohnehin nie.
+
+**Grenze:** Backups, die vor der Löschung entstanden sind, enthalten die
+Daten weiterhin. Sie laufen über die Aufbewahrungsfrist aus (Standard:
+6 Monatsstände, siehe [BACKUP.md](BACKUP.md)) – diese Frist ist damit
+zugleich die maximale Zeit, bis eine Löschung auch dort durchgeschlagen
+ist, und muss der Einrichtung bekannt sein.
+
 ---
 
 ## 6. Datenübertragbarkeit (Art. 20 DSGVO)

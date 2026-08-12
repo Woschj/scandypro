@@ -99,4 +99,34 @@
     <button type="submit" class="btn btn-ghost">Passwort zurücksetzen</button>
   </form>
 </div>
+
+{% if benutzer.id != current_user.id %}
+<div class="card abstand-oben-6" style="max-width: 480px;">
+  <h3>Konto endgültig löschen</h3>
+  <p class="karte-meta">Erfüllt ein Löschverlangen nach Art. 17 DSGVO. Der Vorgang lässt sich
+    nicht rückgängig machen.</p>
+
+  <p class="karte-meta"><strong>Gelöscht werden:</strong> Einträge zu „Mein Tag“ inkl. Fotos,
+    alle Bewerbungsdaten und hochgeladenen Unterlagen, Wochenberichte, die persönliche
+    Aufgabenliste, sämtliche Zuordnungen und Freigaben sowie der Zugang selbst.</p>
+
+  <p class="karte-meta"><strong>Erhalten bleiben:</strong> Karten auf Team-Boards – dort
+    arbeiten andere weiter. Sie erscheinen danach <em>ohne Zuständige</em>, damit die
+    Leitung sie neu zuweisen oder entfernen kann. Audit-Log-Einträge bleiben als
+    pseudonymisierter Nachweis bestehen (nur Metadaten, keine Inhalte).</p>
+
+  <form method="post" action="/admin/benutzer/{{ benutzer.id }}/loeschen">
+    {% include "partials/csrf_field.html" %}
+    <div class="field">
+      <label for="bestaetigung-konto">Zur Bestätigung „KONTO LÖSCHEN“ eintippen</label>
+      <input type="text" id="bestaetigung-konto" name="bestaetigung"
+             placeholder="KONTO LÖSCHEN" autocomplete="off" required>
+    </div>
+    <button type="submit" class="btn btn-danger"
+            data-confirm="Konto von {{ benutzer.name }} endgültig löschen? Das lässt sich nicht rückgängig machen.">
+      Konto endgültig löschen
+    </button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}

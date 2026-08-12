@@ -315,10 +315,13 @@ Schema-Änderung einmal durchlaufen werden.
   `/freigaben`.
 - **Hard-Delete**: Teilnehmer:innen können unter `/freigaben` alle eigenen
   Wohlbefinden- bzw. Bewerbungsdaten (inkl. Dateien und Freigaben)
-  unwiderruflich löschen (`app/core/deletion.py`). Der Zugang (Login)
-  bleibt bestehen - eine vollständige Konto-/Account-Löschung ist Teil der
-  geplanten zentralen Benutzerverwaltung (siehe unten), da Kanban-Karten
-  aktuell `ersteller_id` ohne Kaskade referenzieren.
+  unwiderruflich löschen (`app/core/deletion.py`).
+- **Vollständige Konto-Löschung** (Art. 17 DSGVO): Die Verwaltung löscht
+  unter `/admin/benutzer` ein Konto samt aller eigenen Inhalte, Zuordnungen
+  und Freigaben. Karten auf **Team-Boards bleiben bewusst bestehen** – dort
+  arbeiten andere weiter; sie erscheinen danach ohne Zuständige, damit die
+  Leitung sie neu vergeben oder entfernen kann. Audit-Log-Einträge bleiben
+  als pseudonymisierter Nachweis erhalten.
 - **Alembic-Migrationen** ersetzen das frühere `create_all`
   (`alembic/versions/`, `app/core/database.py`).
 
@@ -354,14 +357,14 @@ Die wichtigsten Punkte in Kürze:
   Drift-Abgleich, Rundlauf), er wird ohne gesetztes `TEST_POSTGRES_URL`
   aber übersprungen. Vor einem Release bewusst mit laufender Datenbank
   ausführen – siehe Modul-Docstring.
-- **Vollständige Konto-Löschung** (PR-005) – aktuell nur Inhaltsdaten
-  löschbar, siehe oben.
 - **Kein Monitoring** (PR-007) – ein stiller Ausfall, auch des Backups,
   fällt erst auf, wenn jemand anruft.
 - **DSGVO-Dokumentation und rechtliche Prüfung** (PR-008) – organisatorisch,
   aber echter Blocker bei Art.-9-Daten.
-- **2FA für Betreuer-/Admin-Rollen** (PR-009) – Entscheidung offen; über
-  Authentik erzwingbar, ohne in ScandyPro selbst etwas zu bauen.
+- **Kein 2FA** (PR-009, bewusst entschieden) – ein zweiter Faktor würde
+  Teilnehmer:innen ein privates Gerät abverlangen. Wer 2FA für Beschäftigte
+  will, erzwingt sie im Identity-Provider (siehe SSO_AUTHENTIK.md), nicht in
+  ScandyPro.
 - Eigene Tests für `bewerbungen.py`, `wochenberichte.py` und `oidc.py`
   fehlen weiterhin (PR-006 ist nur für `admin.py` erledigt).
 

@@ -22,11 +22,11 @@ die Betriebs- und Compliance-Sicht.
 | [PR-002](#pr-002) | Migrationen laufen in keinem Test | **Hoch** | M | ✅ behoben (2 Fehler gefunden) |
 | [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | ✅ behoben (opt-in, fail closed) |
 | [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | ✅ behoben (live geprobt) |
-| [PR-005](#pr-005) | Kontolöschung unvollständig (Art. 17) | Mittel | L | offen |
+| [PR-005](#pr-005) | Kontolöschung unvollständig (Art. 17) | Mittel | L | ✅ behoben (live geprobt) |
 | [PR-006](#pr-006) | Router ohne eigene Tests | Mittel | M | ✅ behoben (48 Tests) |
 | [PR-007](#pr-007) | Kein Monitoring, keine Redundanz | Niedrig | M | offen |
 | [PR-008](#pr-008) | DSGVO-Dokumentation und rechtliche Prüfung | **Blocker** | – | organisatorisch |
-| [PR-009](#pr-009) | 2FA für Betreuer-/Admin-Rollen ungeklärt | Offen | M | Entscheidung nötig |
+| [PR-009](#pr-009) | 2FA für Betreuer-/Admin-Rollen | Offen | M | ⚪ entschieden: nicht umsetzen |
 
 ---
 
@@ -291,7 +291,37 @@ Vorgang statt zu einem Notfall.
 
 ## PR-005 – Kontolöschung unvollständig (Art. 17 DSGVO) {#pr-005}
 
-**Schwere: Mittel · Aufwand: L · siehe auch VB-004**
+**Schwere: Mittel · Aufwand: L · Status: behoben (0.1.45)**
+
+> ✅ **Umgesetzt.** `app/core/deletion.py:loesche_konto_vollstaendig`, in der
+> Benutzerverwaltung erreichbar (Bestätigungswort „KONTO LÖSCHEN“).
+> Migration `e6f7a8b9c1d2` macht die dafür nötigen Spalten nullbar.
+>
+> **Die Produktentscheidung** (vom Auftraggeber): Karten auf Team-Boards
+> bleiben bestehen, damit die Berufstrainer:innen sie manuell löschen oder
+> neu zuweisen können. Daraus folgt eine Dreiteilung, die den ganzen Kern
+> ausmacht:
+>
+> | Art des Bezugs | Behandlung | Begründung |
+> |---|---|---|
+> | Eigene Inhalte (Tagebuch, Bewerbungen, Wochenberichte, persönliches Board) | gelöscht | gehören ausschließlich dieser Person |
+> | Zugehörigkeiten (Kartenzuweisungen, Mitgliedschaften, PSM-/Trainer-Zuordnungen) | Zeilen entfernt | eine Zuweisung an jemanden, den es nicht mehr gibt, hat keine Bedeutung – und die Karte fällt dadurch als unzugewiesen auf, was genau das Signal für die Leitung ist |
+> | Urheberschaft auf Team-Inhalten (Karte/Board angelegt, Karte bewegt) | auf NULL gesetzt, Inhalt bleibt | auf Team-Boards arbeiten andere weiter |
+> | Audit-Log | bleibt vollständig | CLAUDE.md §9: pseudonymisierte Löschung, nicht Verschwinden – `akteur_id` hat dafür keinen Fremdschlüssel mehr |
+>
+> Nach der Löschung meldet die Oberfläche, wie viele Team-Karten jetzt ohne
+> Zuständige dastehen und wie viele Handlungsfelder ohne Leitung sind – ein
+> Löschverlangen wird deswegen nicht verweigert (das Betroffenenrecht wiegt
+> schwerer), aber die Verwaltung erfährt davon.
+>
+> **Live geprobt:** Testkonto mit Karte auf dem Demo-Team-Board angelegt und
+> über die Oberfläche gelöscht. Ergebnis: Konto weg, Karte steht weiter auf
+> dem Board – sichtbar ohne Avatar, während alle Nachbarkarten Zuständige
+> zeigen. `ersteller_id` ist NULL, die Zuweisung entfernt, das Board intakt.
+> Dazu 12 Tests, die tabellenweise prüfen, dass nichts von der Person
+> übrig bleibt und zugleich fremde Arbeit unangetastet ist.
+
+Ursprünglicher Befund (siehe auch VB-004):
 
 Löschbar sind aktuell nur die Inhaltsdaten (Wohlbefinden, Bewerbungen,
 persönliches Kanban-Board – seit 0.1.42 mit Löschtests abgesichert). Der
@@ -414,18 +444,37 @@ Einrichtung vor Produktivbetrieb" selbst als offenen Punkt (Abschnitt 8).
 
 ## PR-009 – 2FA für Betreuer-/Admin-Rollen {#pr-009}
 
-**Entscheidung nötig**
+**Status: entschieden – wird nicht umgesetzt (0.1.45)**
+
+> ⚪ **Entscheidung des Auftraggebers:** 2FA ist in der Praxis nicht
+> nutzbar, weil Teilnehmer:innen den zweiten Faktor auf **privaten Geräten**
+> erzeugen müssten. Ein verpflichtendes Sicherheitsmerkmal, das ein privates
+> Smartphone voraussetzt, schließt genau die Menschen aus, die keines haben
+> oder es nicht einsetzen wollen – im Reha-Kontext keine tragfähige
+> Grundlage. In ScandyPro wird deshalb keine 2FA gebaut.
+>
+> **Zur Genauigkeit des Protokolls:** Die ursprüngliche Frage betraf nur die
+> *Betreuer- und Admin-Rollen*, nicht die Teilnehmer:innen. Für Beschäftigte
+> mit Dienstgerät greift der Einwand mit dem Privatgerät nicht unbedingt.
+> Diese Unterscheidung ist hier festgehalten, damit sie bei einer späteren
+> Neubewertung nicht verlorengeht – die Entscheidung „keine 2FA in
+> ScandyPro" bleibt davon unberührt, weil eine Eigenlösung ohnehin nicht der
+> richtige Ort dafür wäre.
+>
+> **Wenn eine Einrichtung 2FA für ihre Beschäftigten doch will**, gehört sie
+> in den Identity-Provider: Läuft SSO über Authentik (siehe
+> [`SSO_AUTHENTIK.md`](../../SSO_AUTHENTIK.md)), lässt sich dort ein zweiter
+> Faktor rollenabhängig erzwingen, ohne dass ScandyPro etwas davon wissen
+> muss – und ohne Teilnehmer:innen zu betreffen, die sich weiterhin lokal
+> mit E-Mail und Passwort anmelden.
+
+Ursprünglicher Befund:
 
 Im Datenschutzkonzept (Abschnitt 8) als offene Frage vermerkt: Sollen
-Berufstrainer:innen, psychosoziale Mitarbeit und Einrichtungs-Admins eine
-zweite Faktor benötigen? Diese Rollen sehen freigegebene Gesundheits- und
+Berufstrainer:innen, psychosoziale Mitarbeit und Einrichtungs-Admins einen
+zweiten Faktor benötigen? Diese Rollen sehen freigegebene Gesundheits- und
 Bewerbungsdaten; ein übernommener Account wiegt dort deutlich schwerer als
 bei Teilnehmer:innen.
-
-Falls SSO über Authentik läuft (siehe [`SSO_AUTHENTIK.md`](../../SSO_AUTHENTIK.md)),
-lässt sich 2FA dort erzwingen, ohne in ScandyPro selbst etwas zu bauen –
-das ist vermutlich der pragmatischste Weg und sollte vor einer Eigenlösung
-geprüft werden.
 
 ---
 
@@ -444,10 +493,11 @@ geprüft werden.
    Gegenprobe. Nur `oidc.py` bleibt offen.
 6. ~~**PR-004 (Schlüsselrotation)**~~ – ✅ erledigt in 0.1.45, gegen die
    echte Datenbank geprobt.
-7. **PR-005, PR-007, PR-009** – geplant nachziehen, kein Startblocker, aber
-   keiner davon sollte dauerhaft offen bleiben. Von PR-007 ist die
-   Backup-Ausfall-Meldung bereits umgesetzt.
+7. ~~**PR-005 (Konto-Löschung)**~~ – ✅ erledigt in 0.1.45, live geprobt.
+8. ~~**PR-009 (2FA)**~~ – ⚪ entschieden: nicht umsetzen (Begründung unten).
+9. **PR-007 (Monitoring)** – die Backup-Ausfall-Meldung ist umgesetzt,
+   Monitoring der Anwendung selbst bleibt offen. Kein Startblocker.
 
-Sechs der neun Punkte sind damit geschlossen, darunter der kritische
-(PR-001). Der verbleibende echte Startblocker ist **PR-008**
+Acht der neun Punkte sind damit abgeschlossen oder bewusst entschieden,
+darunter der kritische (PR-001). Der verbleibende echte Startblocker ist **PR-008**
 (organisatorisch, kein Code).

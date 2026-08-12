@@ -5,6 +5,10 @@
 <p class="visibility-hint">Accounts anlegen, bearbeiten und Passwörter zurücksetzen. Die eigene Rolle lässt sich
   aus Sicherheitsgründen nicht ändern.</p>
 
+{% if hinweis %}
+<div class="form-success abstand-unten-4">{{ hinweis }}</div>
+{% endif %}
+
 <div class="seiten-tabs" x-data="{ tab: 'liste' }">
   <nav class="seiten-tabs-nav" aria-label="Benutzerverwaltungs-Bereiche">
     <button type="button" :class="{ 'seiten-tabs-aktiv': tab === 'liste' }" @click="tab = 'liste'">

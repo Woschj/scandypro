@@ -1,27 +1,54 @@
 """Kaskadierende Hard-Delete-Routinen für Wohlbefinden-, Bewerbungs- und
-persönliche Kanban-Daten (siehe CLAUDE.md §10,
-DATENSCHUTZ_UND_BERECHTIGUNGEN.md §5).
+persönliche Kanban-Daten sowie die vollständige Konto-Löschung
+(siehe CLAUDE.md §10, DATENSCHUTZ_UND_BERECHTIGUNGEN.md §5).
 
-Löscht das Konto (User-Zeile) selbst NICHT: Kanban-Karten auf *Team*-Boards
-referenzieren `ersteller_id`/`KartenZuweisung.teilnehmer_id`/
-`KartenBewegung.bewegt_von_id` ohne Kaskade-Handling (nicht nullbar, keine
-ON-DELETE-Regel) - ein Hard-Delete der User-Zeile würde dort entweder gegen
-die Fremdschlüssel-Constraint laufen oder für andere Teilnehmende freigegebene
-Boards mitreißen. Eine vollständige Konto-Löschung inkl. Login ist bewusst
-auf eine spätere Schema-Änderung (z.B. nullbare Spalten + "gelöschte:r
-Nutzer:in"-Anzeige) verschoben - siehe tasks/ganzheitliche-verbesserungen/
-VB-004.md. Hier werden nur die Inhaltsdaten entfernt, die ausschließlich der
-löschenden Person gehören.
+Die vollständige Konto-Löschung (Art. 17 DSGVO, PR-005) unterscheidet drei
+Arten von Bezug auf eine Person - die Unterscheidung ist der ganze Kern:
+
+1. **Eigene Inhalte** (Tagebuch, Bewerbungen, Wochenberichte, persönliches
+   Board) werden gelöscht. Sie gehören ausschließlich dieser Person.
+2. **Zugehörigkeiten** (Kartenzuweisungen, Gruppen-/Handlungsfeld-
+   Mitgliedschaften, PSM-/Trainer-Zuordnungen) werden als Zeilen entfernt.
+   Eine Zuweisung an jemanden, den es nicht mehr gibt, hat keine Bedeutung -
+   und die betroffene Karte fällt dadurch als unzugewiesen auf, was genau
+   das Signal ist, das die Leitung braucht.
+3. **Urheberschaft auf Team-Inhalten** (wer hat die Karte angelegt, wer hat
+   sie bewegt) wird auf NULL gesetzt, der Inhalt bleibt. Auf Team-Boards
+   arbeiten andere Menschen weiter; deren Karten dürfen nicht verschwinden,
+   nur weil eine Person das Haus verlässt. Die Leitung kann solche Karten
+   danach neu zuweisen oder von Hand löschen.
+
+Audit-Log-Einträge bleiben als pseudonymisierter Nachweis bestehen
+(CLAUDE.md §9): `akteur_id` und `ziel_teilnehmer_id` haben deshalb keinen
+Fremdschlüssel und behalten ihre Zahl, obwohl es die Person nicht mehr gibt.
 """
 
-from sqlmodel import select
+import logging
+
+from sqlmodel import select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.uploads import datei_loeschen
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, BewerbungsNotiz, Bewerbungsunterlage
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenBewegung, KartenZuweisung, Spalte, Unteraufgabe
-from app.models.organisation import Teilnehmergruppe, TeilnehmergruppeMitglied
-from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe
+from app.models.organisation import (
+    BerufstrainerZuordnung,
+    Handlungsfeld,
+    HandlungsfeldLeitung,
+    HandlungsfeldMitglied,
+    PsmZuordnung,
+    Teilnehmergruppe,
+    TeilnehmergruppeMitglied,
+)
+from app.models.user import User
+from app.models.wochenbericht import Wochenbericht
+from app.models.wohlbefinden import (
+    TagebuchEintrag,
+    Unterstuetzungsanfrage,
+    WohlbefindenFreigabe,
+)
+
+logger = logging.getLogger(__name__)
 
 
 async def loesche_alle_wohlbefinden_daten(session: AsyncSession, teilnehmer_id: int) -> None:
@@ -188,3 +215,116 @@ async def loesche_persoenliches_kanban_board(session: AsyncSession, teilnehmer_i
 
     await session.delete(board)
     await session.commit()
+
+
+async def loesche_konto_vollstaendig(session: AsyncSession, benutzer_id: int) -> dict[str, int]:
+    """Löscht eine Person vollständig (Art. 17 DSGVO, PR-005).
+
+    Gibt eine Zusammenfassung zurück, damit die Verwaltung sieht, was
+    passiert ist - insbesondere, wie viele Team-Karten jetzt ohne
+    Zuständige dastehen und Aufmerksamkeit brauchen.
+
+    Bewusst NICHT gelöscht: Karten auf Team-Boards. Dort arbeiten andere
+    Menschen weiter, und die Leitung entscheidet selbst, ob eine
+    verwaiste Aufgabe neu zugewiesen oder entfernt wird.
+    """
+    benutzer = await session.get(User, benutzer_id)
+    if benutzer is None:
+        raise ValueError(f"Kein Konto mit ID {benutzer_id}")
+
+    bilanz: dict[str, int] = {}
+
+    # 1. Eigene Inhalte - gehören ausschließlich dieser Person.
+    await loesche_alle_wohlbefinden_daten(session, benutzer_id)
+    await loesche_alle_bewerbungsdaten(session, benutzer_id)
+    await loesche_persoenliches_kanban_board(session, benutzer_id)
+
+    berichte = list(
+        (await session.execute(select(Wochenbericht).where(Wochenbericht.teilnehmer_id == benutzer_id)))
+        .scalars()
+        .all()
+    )
+    for bericht in berichte:
+        await session.delete(bericht)
+    bilanz["wochenberichte"] = len(berichte)
+    await session.flush()
+
+    # 2. Zugehörigkeiten - ohne die Person bedeutungslos. Die betroffenen
+    #    Karten fallen dadurch als unzugewiesen auf, was genau das Signal
+    #    ist, das die Leitung braucht.
+    zuweisungen = list(
+        (await session.execute(select(KartenZuweisung).where(KartenZuweisung.teilnehmer_id == benutzer_id)))
+        .scalars()
+        .all()
+    )
+    for zuweisung in zuweisungen:
+        await session.delete(zuweisung)
+    bilanz["karten_ohne_zustaendige"] = len(zuweisungen)
+
+    for modell, spalten in (
+        (HandlungsfeldMitglied, ("teilnehmer_id",)),
+        (HandlungsfeldLeitung, ("berufstrainer_id",)),
+        (TeilnehmergruppeMitglied, ("teilnehmer_id",)),
+        (PsmZuordnung, ("psm_id", "teilnehmer_id")),
+        (BerufstrainerZuordnung, ("berufstrainer_id", "teilnehmer_id")),
+        (BoardFreigabe, ("teilnehmer_id",)),
+        (Unterstuetzungsanfrage, ("teilnehmer_id", "empfaenger_id")),
+        # Freigaben, bei denen die Person Empfänger:in war - die eigenen
+        # (teilnehmer_id) sind oben schon mit den Inhalten weg.
+        (WohlbefindenFreigabe, ("empfaenger_id",)),
+        (BewerbungsFreigabe, ("empfaenger_id",)),
+    ):
+        for spaltenname in spalten:
+            spalte = getattr(modell, spaltenname)
+            rows = list((await session.execute(select(modell).where(spalte == benutzer_id))).scalars().all())
+            for row in rows:
+                await session.delete(row)
+    await session.flush()
+
+    # Unteraufgaben-Zuweisung ist bereits nullbar - Aufgabe bleibt, nur die
+    # Zuständigkeit fällt weg.
+    await session.execute(
+        update(Unteraufgabe).where(Unteraufgabe.zugewiesen_an == benutzer_id).values(zugewiesen_an=None)
+    )
+
+    # 3. Urheberschaft auf Team-Inhalten - Inhalt bleibt, Personenbezug fällt.
+    #    Wird in der Oberfläche als "Gelöschte:r Nutzer:in" angezeigt.
+    for modell, spaltenname in (
+        (Karte, "ersteller_id"),
+        (Board, "ersteller_id"),
+        (KartenBewegung, "bewegt_von_id"),
+        (Teilnehmergruppe, "erstellt_von"),
+    ):
+        spalte = getattr(modell, spaltenname)
+        await session.execute(update(modell).where(spalte == benutzer_id).values({spaltenname: None}))
+    await session.flush()
+
+    # 4. Handlungsfelder, die durch die Löschung ohne Leitung dastehen -
+    #    kein Grund, die Löschung zu verweigern (das Auskunftsrecht wiegt
+    #    schwerer), aber die Verwaltung muss es erfahren.
+    ohne_leitung = list(
+        (
+            await session.execute(
+                select(Handlungsfeld.id).where(
+                    ~Handlungsfeld.id.in_(select(HandlungsfeldLeitung.handlungsfeld_id))
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    bilanz["handlungsfelder_ohne_leitung"] = len(ohne_leitung)
+
+    # 5. Das Konto selbst.
+    await session.delete(benutzer)
+    await session.commit()
+
+    logger.info(
+        "Konto %s vollständig gelöscht: %s Wochenberichte, %s Kartenzuweisungen entfernt, "
+        "%s Handlungsfelder jetzt ohne Leitung",
+        benutzer_id,
+        bilanz["wochenberichte"],
+        bilanz["karten_ohne_zustaendige"],
+        bilanz["handlungsfelder_ohne_leitung"],
+    )
+    return bilanz

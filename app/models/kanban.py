@@ -26,7 +26,12 @@ class Board(SQLModel, table=True):
     typ: BoardTyp = BoardTyp.team
     handlungsfeld_id: int | None = Field(default=None, foreign_key="handlungsfeld.id", index=True)
     person_teilnehmer_id: int | None = Field(default=None, foreign_key="user.id", index=True)
-    ersteller_id: int = Field(foreign_key="user.id")
+    # Nullbar, damit ein Konto vollständig gelöscht werden kann (Art. 17
+    # DSGVO, siehe app/core/deletion.py:loesche_konto_vollstaendig). Der
+    # Inhalt bleibt bestehen und wird als "Gelöschte:r Nutzer:in" angezeigt -
+    # auf Team-Boards arbeiten andere Menschen weiter, deren Karten nicht
+    # verschwinden dürfen, nur weil eine Person das Haus verlässt.
+    ersteller_id: int | None = Field(default=None, foreign_key="user.id")
     erstellt_am: datetime = Field(default_factory=jetzt)
 
 
@@ -87,7 +92,12 @@ class Karte(SQLModel, table=True):
     titel: str
     beschreibung: str | None = None
     faelligkeit: date | None = None
-    ersteller_id: int = Field(foreign_key="user.id")
+    # Nullbar, damit ein Konto vollständig gelöscht werden kann (Art. 17
+    # DSGVO, siehe app/core/deletion.py:loesche_konto_vollstaendig). Der
+    # Inhalt bleibt bestehen und wird als "Gelöschte:r Nutzer:in" angezeigt -
+    # auf Team-Boards arbeiten andere Menschen weiter, deren Karten nicht
+    # verschwinden dürfen, nur weil eine Person das Haus verlässt.
+    ersteller_id: int | None = Field(default=None, foreign_key="user.id")
     sichtbarkeit: KartenSichtbarkeit = KartenSichtbarkeit.team
     reihenfolge: int = 0
     erstellt_am: datetime = Field(default_factory=jetzt)
@@ -111,7 +121,12 @@ class KartenBewegung(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     karte_id: int = Field(foreign_key="karte.id", index=True)
-    bewegt_von_id: int = Field(foreign_key="user.id", index=True)
+    # Nullbar, damit ein Konto vollständig gelöscht werden kann (Art. 17
+    # DSGVO, siehe app/core/deletion.py:loesche_konto_vollstaendig). Der
+    # Inhalt bleibt bestehen und wird als "Gelöschte:r Nutzer:in" angezeigt -
+    # auf Team-Boards arbeiten andere Menschen weiter, deren Karten nicht
+    # verschwinden dürfen, nur weil eine Person das Haus verlässt.
+    bewegt_von_id: int | None = Field(default=None, foreign_key="user.id", index=True)
     bewegt_am: datetime = Field(default_factory=jetzt)
 
 

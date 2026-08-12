@@ -48,6 +48,25 @@ analog zum Schwestermodul Scandy-Lite.
   Netzlaufwerke empfiehlt die Doku als Ablageort).
 
 ### Added
+- **Vollständige Konto-Löschung nach Art. 17 DSGVO** (PR-005). In der
+  Benutzerverwaltung, abgesichert durch das Bestätigungswort
+  „KONTO LÖSCHEN“; Migration `e6f7a8b9c1d2` macht die nötigen Spalten
+  nullbar.
+  Produktentscheidung: **Karten auf Team-Boards bleiben bestehen**, damit
+  die Berufstrainer:innen sie manuell löschen oder neu zuweisen können.
+  Daraus folgt eine Dreiteilung – eigene Inhalte werden gelöscht,
+  Zugehörigkeiten (Zuweisungen, Mitgliedschaften, Zuordnungen) als Zeilen
+  entfernt, und die Urheberschaft an Team-Inhalten auf NULL gesetzt, ohne
+  den Inhalt anzutasten. Die betroffene Karte fällt danach als
+  unzugewiesen auf, was genau das Signal für die Leitung ist.
+  Audit-Log-Einträge bleiben vollständig erhalten (CLAUDE.md §9:
+  pseudonymisierte Löschung, nicht Verschwinden) – `akteur_id` hat dafür
+  keinen Fremdschlüssel mehr, genau wie `ziel_teilnehmer_id` schon vorher.
+  Nach der Löschung meldet die Oberfläche, wie viele Karten jetzt ohne
+  Zuständige sind und wie viele Handlungsfelder ohne Leitung.
+  Live geprobt: Testkonto mit Karte auf dem Demo-Team-Board über die
+  Oberfläche gelöscht – Konto weg, Karte steht weiter da, sichtbar ohne
+  Avatar. Dazu 12 Tests.
 - **Schlüsselrotation** (PR-004). `FIELD_ENCRYPTION_KEY` nimmt jetzt
   mehrere kommagetrennte Schlüssel (neuester zuerst, `MultiFernet`):
   verschlüsselt wird mit dem ersten, entschlüsselt mit jedem. Ein einzelner

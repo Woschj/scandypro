@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import func, select
 
+from urllib.parse import quote
+
 from app.core.access import require_role
+from app.core.deletion import loesche_konto_vollstaendig
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.security import hash_password
 from app.core.templating import templates
@@ -299,7 +302,9 @@ async def trainer_zuordnung_entfernen(zuordnung_id: int, current_user: CurrentUs
 
 
 @router.get("/benutzer", response_class=HTMLResponse)
-async def benutzer_uebersicht(request: Request, current_user: CurrentUser, session: SessionDep):
+async def benutzer_uebersicht(
+    request: Request, current_user: CurrentUser, session: SessionDep, hinweis: str | None = None
+):
     await _require_admin(current_user)
 
     benutzer_result = await session.execute(select(User).order_by(User.name))
@@ -331,6 +336,7 @@ async def benutzer_uebersicht(request: Request, current_user: CurrentUser, sessi
             "benutzer_by_rolle": benutzer_by_rolle,
             "abteilungen": abteilungen,
             "abteilung_by_id": abteilung_by_id,
+            "hinweis": hinweis,
         },
     )
 
@@ -514,3 +520,51 @@ async def benutzer_passwort_zuruecksetzen(
     session.add(benutzer)
     await session.commit()
     return RedirectResponse(url=f"/admin/benutzer/{benutzer_id}/bearbeiten?erfolg=passwort", status_code=303)
+
+
+BESTAETIGUNGSWORT_KONTO = "KONTO LÖSCHEN"
+
+
+@router.post("/benutzer/{benutzer_id}/loeschen")
+async def benutzer_loeschen(
+    benutzer_id: int,
+    current_user: CurrentUser,
+    session: SessionDep,
+    bestaetigung: str = Form(""),
+):
+    """Vollständige Konto-Löschung nach Art. 17 DSGVO (PR-005).
+
+    Eigene Inhalte (Tagebuch, Bewerbungen, Wochenberichte, persönliches
+    Board) verschwinden. Karten auf Team-Boards bleiben bewusst stehen -
+    dort arbeiten andere weiter, und die Leitung entscheidet selbst, ob eine
+    verwaiste Aufgabe neu zugewiesen oder entfernt wird (siehe
+    app/core/deletion.py:loesche_konto_vollstaendig).
+    """
+    await _require_admin(current_user)
+
+    benutzer = await session.get(User, benutzer_id)
+    if benutzer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    if benutzer.id == current_user.id:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten?fehler=Du+kannst+dein+eigenes+Konto+nicht+löschen.",
+            status_code=303,
+        )
+
+    if bestaetigung.strip() != BESTAETIGUNGSWORT_KONTO:
+        return RedirectResponse(
+            url=f"/admin/benutzer/{benutzer_id}/bearbeiten"
+            f"?fehler=Zum+Löschen+bitte+genau+„{BESTAETIGUNGSWORT_KONTO}“+eintippen.",
+            status_code=303,
+        )
+
+    bilanz = await loesche_konto_vollstaendig(session, benutzer_id)
+
+    hinweis = (
+        f"Konto gelöscht. {bilanz['karten_ohne_zustaendige']} Karte(n) auf Team-Boards "
+        f"haben jetzt keine Zuständigen mehr und brauchen eine Entscheidung."
+    )
+    if bilanz["handlungsfelder_ohne_leitung"]:
+        hinweis += f" {bilanz['handlungsfelder_ohne_leitung']} Handlungsfeld(er) sind ohne Leitung."
+    return RedirectResponse(url=f"/admin/benutzer?hinweis={quote(hinweis)}", status_code=303)
