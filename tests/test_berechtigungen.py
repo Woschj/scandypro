@@ -590,3 +590,55 @@ async def test_deaktivierter_account_wird_sofort_ausgesperrt(client, welt, sessi
     resp = await client.get("/", follow_redirects=False)
     assert resp.status_code == 303
     assert resp.headers["location"] == "/login"
+
+
+async def test_freigegebener_tag_zeigt_alle_inhalte_auch_der_psm(client, welt, session_maker):
+    """Regressionstest zu CA-006: eigene Ansicht und PSM-Ansicht rendern
+    denselben Verlauf. Als beide Templates den Block noch getrennt
+    pflegten, fehlten der PSM-Ansicht die generischen
+    *_uebung_ergebnis-Felder - ein bewusst freigegebener Tag kam
+    unvollständig an. Seit beide dasselbe Partial nutzen
+    (wohlbefinden/_verlauf_eintrag.html) kann das nicht mehr
+    auseinanderdriften; dieser Test hält es fest."""
+    from datetime import date
+
+    from app.models.wohlbefinden import TagebuchEintrag, WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
+
+    inhalte = {
+        "dankbarkeit_1": "INHALT-DANKBARKEIT",
+        "morgen_impuls_antwort": "INHALT-MORGENIMPULS",
+        "wort_des_tages": "INHALT-WORT",
+        "staerken_karte_antwort": "INHALT-STAERKE",
+        "morgen_uebung_ergebnis": "INHALT-MORGENUEBUNG",
+        "highlight_1": "INHALT-HIGHLIGHT",
+        "abend_impuls_antwort": "INHALT-ABENDIMPULS",
+        "ruhe_ort_sehen": "INHALT-RUHEORT",
+        "gedanke_belastend": "INHALT-GEDANKE",
+        "mini_ziel_text": "INHALT-MINIZIEL",
+        "abend_uebung_ergebnis": "INHALT-ABENDUEBUNG",
+    }
+    async with session_maker() as session:
+        session.add(
+            TagebuchEintrag(
+                teilnehmer_id=welt["teilnehmer_id"],
+                datum=date.today(),
+                staerken_karte_frage="Frage S",
+                morgen_uebung_frage="Frage M",
+                abend_uebung_frage="Frage A",
+                **inhalte,
+            )
+        )
+        session.add(
+            WohlbefindenFreigabe(
+                teilnehmer_id=welt["teilnehmer_id"],
+                empfaenger_id=welt["ids"]["psm_zustaendig"],
+                umfang=WohlbefindenFreigabeUmfang.alle,
+            )
+        )
+        await session.commit()
+
+    await _als(client, welt, "psm_zustaendig")
+    resp = await client.get(f"/wohlbefinden/teilnehmer/{welt['teilnehmer_id']}")
+    assert resp.status_code == 200
+    fehlend = [wert for wert in inhalte.values() if wert not in resp.text]
+    assert fehlend == [], f"PSM-Ansicht zeigt freigegebene Inhalte nicht: {fehlend}"

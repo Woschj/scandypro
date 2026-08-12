@@ -490,118 +490,12 @@
 
 <h2>Dein Verlauf</h2>
 {% if verlauf %}
+{# ist_owner=true blendet Energie-Level, eingebettete Bilder, Löschen und
+   Einzel-Freigabe ein - siehe wohlbefinden/_verlauf_eintrag.html. #}
+{% set ist_owner = true %}
 <div class="zuklapp-liste">
   {% for eintrag in verlauf %}
-  <details class="zuklapp-eintrag">
-    <summary>
-      <span class="zuklapp-eintrag-chevron">▸</span>
-      <span class="zuklapp-eintrag-titel">{{ eintrag.label }}</span>
-    </summary>
-    <div class="zuklapp-eintrag-body">
-      {% if eintrag.dankbarkeit | select | list %}
-      <div class="eyebrow">Dankbar für</div>
-      <ul style="margin: var(--space-2) 0 var(--space-4);">
-        {% for d in eintrag.dankbarkeit %}{% if d %}<li>{{ d }}</li>{% endif %}{% endfor %}
-      </ul>
-      {% endif %}
-      {% if eintrag.morgen_impuls_antwort %}
-      <div class="eyebrow">{{ eintrag.morgen_impuls_frage }}</div>
-      <p>{{ eintrag.morgen_impuls_antwort }}</p>
-      {% endif %}
-      {% if eintrag.energie_level %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Energie an dem Tag</div>
-      <div class="energie-batterie" style="margin-top: var(--space-2);">
-        <div class="energie-batterie-kopf"></div>
-        {% for i in range(1, 5) %}
-        <span class="energie-segment {% if i <= eintrag.energie_level %}energie-segment--voll{% endif %}"></span>
-        {% endfor %}
-      </div>
-      {% endif %}
-      {% if eintrag.wort_des_tages %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Wort des Tages</div>
-      <p>{{ eintrag.wort_des_tages }}</p>
-      {% endif %}
-      {% if eintrag.staerken_karte_antwort %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.staerken_karte_frage }}</div>
-      <p>{{ eintrag.staerken_karte_antwort }}</p>
-      {% endif %}
-      {% if eintrag.morgen_uebung_ergebnis %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.morgen_uebung_frage or "Morgens" }}</div>
-      <p>{{ eintrag.morgen_uebung_ergebnis }}</p>
-      {% endif %}
-      {% if eintrag.hat_morgen_uebung_datei %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Motivations-Foto</div>
-      <img style="margin-top: var(--space-2); max-width: 320px; border-radius: var(--radius);" src="/wohlbefinden/uebungsdatei/{{ eintrag.eintrag_id }}/morgen" alt="Dein Motivations-Foto vom {{ eintrag.label }}">
-      {% endif %}
-      {% if eintrag.highlights | select | list %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Großartige Momente</div>
-      <ul style="margin: var(--space-2) 0 var(--space-4);">
-        {% for h in eintrag.highlights %}{% if h %}<li>{{ h }}</li>{% endif %}{% endfor %}
-      </ul>
-      {% endif %}
-      {% if eintrag.abend_impuls_antwort %}
-      <div class="eyebrow">{{ eintrag.abend_impuls_frage }}</div>
-      <p>{{ eintrag.abend_impuls_antwort }}</p>
-      {% endif %}
-      {% if eintrag.hat_zeichnung %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Deine Zeichnung</div>
-      <img class="zeichenfeld-bestehend" style="margin-top: var(--space-2); max-width: 320px;" src="/wohlbefinden/zeichnung/{{ eintrag.eintrag_id }}" alt="Deine Zeichnung vom {{ eintrag.label }}">
-      {% endif %}
-      {% if eintrag.hat_dankbarkeitsfoto %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Foto</div>
-      <img style="margin-top: var(--space-2); max-width: 320px; border-radius: var(--radius);" src="/wohlbefinden/dankbarkeitsfoto/{{ eintrag.eintrag_id }}" alt="Dein Foto vom {{ eintrag.label }}">
-      {% endif %}
-      {% if eintrag.ruhe_ort_sehen or eintrag.ruhe_ort_hoeren or eintrag.ruhe_ort_spueren %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Ruhe-Ort</div>
-      <ul style="margin: var(--space-2) 0 var(--space-4);">
-        {% if eintrag.ruhe_ort_sehen %}<li>{{ eintrag.ruhe_ort_sehen }}</li>{% endif %}
-        {% if eintrag.ruhe_ort_hoeren %}<li>{{ eintrag.ruhe_ort_hoeren }}</li>{% endif %}
-        {% if eintrag.ruhe_ort_spueren %}<li>{{ eintrag.ruhe_ort_spueren }}</li>{% endif %}
-      </ul>
-      {% endif %}
-      {% if eintrag.gedanke_belastend or eintrag.gedanke_ausgewogen %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Gedanken-Waage</div>
-      {% if eintrag.gedanke_belastend %}<p>{{ eintrag.gedanke_belastend }}</p>{% endif %}
-      {% if eintrag.gedanke_ausgewogen %}<p>{{ eintrag.gedanke_ausgewogen }}</p>{% endif %}
-      {% endif %}
-      {% if eintrag.mini_ziel_text %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Mini-Ziel des Tages</div>
-      <p>{{ eintrag.mini_ziel_text }} {% if eintrag.mini_ziel_geschafft %}<span class="chip chip-success">hat geklappt</span>{% endif %}</p>
-      {% endif %}
-      {% if eintrag.abend_uebung_ergebnis %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">{{ eintrag.abend_uebung_frage or "Abends" }}</div>
-      <p>{{ eintrag.abend_uebung_ergebnis }}</p>
-      {% endif %}
-      {% if eintrag.hat_abend_uebung_datei %}
-      <div class="eyebrow" style="margin-top: var(--space-3);">Dein Abend-Foto</div>
-      <img style="margin-top: var(--space-2); max-width: 320px; border-radius: var(--radius);" src="/wohlbefinden/uebungsdatei/{{ eintrag.eintrag_id }}/abend" alt="Dein Abend-Foto vom {{ eintrag.label }}">
-      {% endif %}
-      {% if eintrag.check_pause_gemacht or eintrag.check_jemandem_geholfen or eintrag.check_kleines_erfolgserlebnis %}
-      <div class="tagebuch-chip-liste" style="margin-top: var(--space-3);">
-        {% if eintrag.check_pause_gemacht %}<span class="chip chip-neutral">Pause gemacht</span>{% endif %}
-        {% if eintrag.check_jemandem_geholfen %}<span class="chip chip-neutral">Jemandem geholfen</span>{% endif %}
-        {% if eintrag.check_kleines_erfolgserlebnis %}<span class="chip chip-neutral">Kleines Erfolgserlebnis</span>{% endif %}
-      </div>
-      {% endif %}
-      <div style="margin-top: var(--space-4); display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap;">
-        {% if psm_kontakt %}
-        {% if eintrag.eintrag_id in einzeln_geteilte_tage %}
-        <span class="chip chip-success">Für {{ psm_kontakt.name }} freigegeben</span>
-        {% else %}
-        <form method="post" action="/wohlbefinden/eintraege/{{ eintrag.eintrag_id }}/freigeben">
-          {% include "partials/csrf_field.html" %}
-          <button type="submit" class="btn btn-ghost btn-sm">Nur diesen Tag für {{ psm_kontakt.name }} freigeben</button>
-        </form>
-        {% endif %}
-        {% endif %}
-      </div>
-      <form method="post" action="/wohlbefinden/tag/loeschen" data-confirm="Eintrag vom {{ eintrag.label }} unwiderruflich löschen?" style="margin-top: var(--space-3);">
-        {% include "partials/csrf_field.html" %}
-        <input type="hidden" name="datum" value="{{ eintrag.datum }}">
-        <button type="submit" class="link-btn danger">Diesen Tag löschen</button>
-      </form>
-    </div>
-  </details>
+  {% include "wohlbefinden/_verlauf_eintrag.html" %}
   {% endfor %}
 </div>
 {% else %}
