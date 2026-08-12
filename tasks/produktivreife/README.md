@@ -20,7 +20,7 @@ die Betriebs- und Compliance-Sicht.
 |---|---|---|---|---|
 | [PR-001](#pr-001) | Kein Backup – Totalverlust-Risiko | **Kritisch** | M | ✅ behoben (Restore geprobt) |
 | [PR-002](#pr-002) | Migrationen laufen in keinem Test | **Hoch** | M | 🟡 teilweise |
-| [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | offen |
+| [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | ✅ behoben (opt-in, fail closed) |
 | [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | offen |
 | [PR-005](#pr-005) | Kontolöschung unvollständig (Art. 17) | Mittel | L | offen |
 | [PR-006](#pr-006) | `admin.py` und `bewerbungen.py` ohne Tests | Mittel | M | 🟡 `admin.py` abgedeckt (21 Tests) |
@@ -156,7 +156,48 @@ Abgleich des erzeugten Schemas gegen `SQLModel.metadata`.
 
 ## PR-003 – Kein Virenscan bei Uploads {#pr-003}
 
-**Schwere: Hoch · Aufwand: M**
+**Schwere: Hoch · Aufwand: M · Status: behoben (0.1.44)**
+
+> ✅ **Umgesetzt.** `app/core/virenscan.py`, aufgerufen aus
+> `app/core/uploads.py` **vor** dem Verschlüsseln und Schreiben – eine
+> erkannte Datei erreicht die Platte gar nicht erst (danach wäre sie
+> verschlüsselt und für einen dateibasierten Scan unsichtbar).
+>
+> clamd wird direkt über sein INSTREAM-Protokoll angesprochen (asyncio-
+> Socket, keine neue Abhängigkeit; die verfügbaren Python-Pakete sind
+> synchron und würden den Event-Loop blockieren). ClamAV liegt als
+> optionaler Compose-Dienst hinter dem Profil `virenscan`, weil das Image
+> ~1 GB Signaturen lädt und für die reine Funktionsbewertung nicht nötig
+> ist.
+>
+> **Schaltlogik bewusst so:** ohne `CLAMAV_HOST` ist die Prüfung aus
+> (Prototyp-Standard). Sobald der Host gesetzt ist, ist sie *verbindlich* –
+> ein nicht erreichbarer Scanner oder ein Timeout führt zur **Ablehnung**
+> des Uploads, nicht zum stillen Überspringen. Ein Scanner, der im
+> Fehlerfall durchwinkt, ist gefährlicher als gar keiner, weil er Schutz
+> vortäuscht.
+>
+> **Gegen einen echten clamd verifiziert**, nicht nur gegen den Test-Fake:
+> saubere Datei durch, EICAR-Testsignatur abgelehnt, EICAR eingebettet in
+> 10 KB Beiwerk ebenfalls abgelehnt (belegt, dass wirklich der Inhalt
+> gescannt wird und nicht nur ein Hash), 2 MB über mehrere INSTREAM-Chunks
+> korrekt übertragen, leere Datei ohne Fehler. Zusätzlich 9 Unit-Tests
+> (`tests/test_virenscan.py`) inkl. Gegenprobe: ohne den Scan-Aufruf in
+> `uploads.py` schlägt genau der Test fehl, der prüft, dass eine infizierte
+> Datei nicht auf der Platte landet.
+>
+> Die Fehlermeldung ist bewusst neutral formuliert – sie erscheint Menschen
+> in beruflicher Reha, die die Datei meist nur weiterreichen und nichts
+> falsch gemacht haben (CLAUDE.md §24). Im Log landet nur die Signatur,
+> nie der Dateiname: der ist häufig personenbezogen
+> („Lebenslauf Maria Muster.pdf", CLAUDE.md §13).
+>
+> **Offen:** Die Einrichtung muss den Dienst aktivieren und für aktuelle
+> Signaturen sorgen (freshclam läuft im Container mit). Auf arm64 gibt es
+> kein offizielles ClamAV-Image – für die üblichen x86-Server irrelevant,
+> auf Apple-Silicon-Entwicklungsmaschinen bleibt die Prüfung praktisch aus.
+
+Ursprünglicher Befund:
 
 `app/core/uploads.py` prüft Endung, Größe (10 MB) und Magic Bytes. Die
 Magic-Byte-Prüfung stellt sicher, *dass* die Datei ein PDF/PNG/JPEG/Word-
@@ -166,11 +207,6 @@ Relevant ist das, weil Dateien zwischen Nutzenden wandern:
 Teilnehmer:innen laden Bewerbungsunterlagen hoch, Berufstrainer:innen laden
 sie herunter und öffnen sie lokal. Ein präpariertes PDF ist damit ein
 Verbreitungsweg innerhalb der Einrichtung.
-
-**Vorschlag:** ClamAV als eigener Container, Scan beim Upload vor dem
-Verschlüsseln; bei Fund ablehnen mit neutraler Fehlermeldung. Alternativ –
-falls kein Scanner gewünscht ist – die Entscheidung bewusst dokumentieren
-und die Einrichtung darüber informieren.
 
 ---
 
@@ -321,11 +357,13 @@ geprüft werden.
    weiterhin.
 3. **PR-008 (DSGVO-Papierlage)** – läuft organisatorisch parallel und hat
    Vorlauf; ohne das darf ohnehin nicht produktiv gestartet werden.
-4. **PR-003 (Virenscan)** – vor dem ersten echten Bewerbungs-Upload.
+4. ~~**PR-003 (Virenscan)**~~ – ✅ erledigt in 0.1.44. Die Einrichtung muss
+   den Dienst nur noch aktivieren (`--profile virenscan` + `CLAMAV_HOST`).
 5. ~~**PR-006 (Tests für admin.py)**~~ – ✅ erledigt in 0.1.44, 21 Tests
    inkl. Gegenprobe. `bewerbungen.py` und `wochenberichte.py` bleiben offen.
 6. **PR-004, PR-005, PR-007, PR-009** – geplant nachziehen, kein
    Startblocker, aber keiner davon sollte dauerhaft offen bleiben.
 
-Damit ist der kritischste Punkt der Liste geschlossen. Der verbleibende
-echte Startblocker ist **PR-008** (organisatorisch, kein Code).
+Vier der neun Punkte sind damit geschlossen, darunter der kritische
+(PR-001). Der verbleibende echte Startblocker ist **PR-008**
+(organisatorisch, kein Code).

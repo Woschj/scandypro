@@ -34,6 +34,26 @@ analog zum Schwestermodul Scandy-Lite.
   Restore sonst gerne scheitert (falscher `FIELD_ENCRYPTION_KEY`).
   Ablauf als Checkliste in `docs/BACKUP.md`.
 
+- **Virenprüfung für Uploads** (`app/core/virenscan.py`, PR-003). Bisher
+  prüfte `uploads.py` Endung, Größe und Magic Bytes – das stellt sicher,
+  *dass* eine Datei ein PDF ist, nicht dass ihr Inhalt harmlos ist. Da
+  Bewerbungsunterlagen zwischen Teilnehmenden und Berufstrainer:innen
+  wandern und dort lokal geöffnet werden, war ScandyPro damit ein
+  Verbreitungsweg innerhalb der Einrichtung.
+  clamd wird direkt über INSTREAM angesprochen (asyncio-Socket, keine neue
+  Abhängigkeit – die verfügbaren Pakete sind synchron und würden den
+  Event-Loop blockieren). Gescannt wird **vor** dem Verschlüsseln, sonst
+  läge die Datei bereits als Ciphertext auf der Platte.
+  ClamAV steckt als Compose-Dienst hinter dem Profil `virenscan`; ohne
+  `CLAMAV_HOST` ist die Prüfung aus. Sobald der Host gesetzt ist, ist sie
+  verbindlich: nicht erreichbarer Scanner oder Timeout führen zur Ablehnung
+  des Uploads, nicht zum stillen Überspringen – ein Scanner, der im
+  Fehlerfall durchwinkt, täuscht Schutz nur vor.
+  Gegen einen echten clamd verifiziert (EICAR erkannt, auch eingebettet in
+  größeren Inhalt; 2 MB über mehrere Chunks korrekt übertragen) plus 9
+  Unit-Tests mit Gegenprobe. Nutzermeldung neutral formuliert (CLAUDE.md
+  §24), im Log steht nur die Signatur, nie der oft personenbezogene
+  Dateiname (§13).
 - **Tests für `app/routers/admin.py`** (21 Tests, PR-006). Von allen
   ungetesteten Routern war das der heikelste: dort werden Rollen vergeben,
   Konten gesperrt und Passwörter zurückgesetzt – ein Fehler dort vergibt

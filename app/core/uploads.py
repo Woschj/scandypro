@@ -12,6 +12,7 @@ from fastapi import HTTPException, UploadFile, status
 
 from app.core.config import settings
 from app.core.crypto import entschluessle_bytes, verschluessle_bytes
+from app.core.virenscan import pruefe_auf_schadsoftware
 
 ERLAUBTE_ENDUNGEN = {".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
 MAX_DATEIGROESSE_BYTES = 10 * 1024 * 1024
@@ -70,6 +71,11 @@ async def datei_speichern(upload: UploadFile, unterordner: str) -> tuple[str, st
             status.HTTP_400_BAD_REQUEST,
             f"Der Dateiinhalt passt nicht zur Endung {endung} - bitte die richtige Datei auswählen.",
         )
+
+    # Bewusst vor dem Verschlüsseln und Schreiben: eine als schädlich
+    # erkannte Datei soll die Platte gar nicht erst erreichen (danach wäre
+    # sie verschlüsselt und für einen dateibasierten Scan unsichtbar).
+    await pruefe_auf_schadsoftware(bytes(inhalt), upload.filename or "")
 
     ziel_ordner = Path(settings.upload_dir) / unterordner
     ziel_ordner.mkdir(parents=True, exist_ok=True)

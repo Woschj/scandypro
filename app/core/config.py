@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     debug: bool = False
     upload_dir: str = "/app/uploads"
 
+    # Virenprüfung hochgeladener Dateien über ClamAV (siehe
+    # app/core/virenscan.py). Leerer Host = Prüfung aus (Prototyp-Standard,
+    # als offene Lücke dokumentiert). Sobald ein Host gesetzt ist, ist die
+    # Prüfung verbindlich: ein nicht erreichbarer Scanner führt dann zur
+    # Ablehnung des Uploads, nicht zum stillen Überspringen.
+    clamav_host: str | None = None
+    clamav_port: int = 3310
+    clamav_timeout_sekunden: float = 30.0
+
     # Session-Cookie nur über HTTPS senden (Secure-Flag) - erst auf true
     # setzen, wenn ein Reverse-Proxy davor TLS terminiert (siehe
     # caddy/Caddyfile.domain-example), sonst verwirft der Browser das

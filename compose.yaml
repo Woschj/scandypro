@@ -14,6 +14,29 @@ services:
       timeout: 5s
       retries: 10
 
+  # Virenprüfung für Uploads (siehe app/core/virenscan.py, docs/BACKUP.md ist
+  # davon unberührt). Bewusst hinter einem Profil: das Image lädt ~1 GB
+  # Signaturen und wird für die reine Funktionsbewertung nicht gebraucht.
+  # Aktivieren mit:
+  #   docker compose --profile virenscan up -d
+  # und in der .env CLAMAV_HOST=clamav setzen. Ohne CLAMAV_HOST ist die
+  # Prüfung aus; sobald sie gesetzt ist, lehnt die App Uploads ab, wenn der
+  # Scanner nicht erreichbar ist (fail closed).
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["virenscan"]
+    restart: unless-stopped
+    volumes:
+      - clamav_signaturen:/var/lib/clamav
+    healthcheck:
+      # Der erste Start dauert lange (Signatur-Download), daher großzügige
+      # start_period - sonst gilt der Dienst als ungesund, bevor er fertig ist.
+      test: ["CMD-SHELL", "clamdcheck.sh || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+
   app:
     build: .
     restart: unless-stopped
@@ -49,5 +72,6 @@ services:
 volumes:
   scandypro_db_data:
   scandypro_uploads:
+  clamav_signaturen:
   caddy_data:
   caddy_config:

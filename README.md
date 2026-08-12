@@ -222,6 +222,25 @@ docker compose down          # Container stoppen, Daten bleiben (Volume)
 docker compose down -v       # Container stoppen UND Datenbank löschen
 ```
 
+## Virenprüfung für Uploads
+
+Standardmäßig **aus**. Vor dem ersten echten Bewerbungs-Upload aktivieren –
+Dateien wandern zwischen Teilnehmenden und Berufstrainer:innen und werden
+dort lokal geöffnet:
+
+```bash
+docker compose --profile virenscan up -d
+```
+
+Danach in der `.env` `CLAMAV_HOST=clamav` setzen und die App neu starten.
+Der erste Start des ClamAV-Containers dauert einige Minuten (Signatur-
+Download, ca. 1 GB).
+
+Sobald `CLAMAV_HOST` gesetzt ist, ist die Prüfung **verbindlich**: Ist der
+Scanner nicht erreichbar, lehnt ScandyPro den Upload ab, statt ihn
+ungeprüft zu speichern. Gescannt wird vor dem Verschlüsseln – eine
+erkannte Datei erreicht die Platte gar nicht erst.
+
 ## Backup
 
 **Vor dem Einsatz mit echten Teilnehmerdaten einrichten.** Vollständige
@@ -300,9 +319,11 @@ Die wichtigsten Punkte in Kürze:
   einmal real gegen PostgreSQL 16 gelaufen, aber es gibt weiterhin keinen
   wiederholbaren `upgrade head`-Test. Neue Migrationen fallen damit wieder
   erst beim Deploy auf.
-- **Virenscan/Content-Prüfung** von Uploads (PR-003) – es gibt Endungs-,
-  Größen- und Magic-Byte-Prüfung (`app/core/uploads.py`), aber keinen Scan
-  auf Schadinhalte.
+- **Virenscan ist vorhanden, aber standardmäßig aus** (PR-003) – ClamAV-
+  Anbindung existiert (`app/core/virenscan.py`), muss aber aktiviert
+  werden: `docker compose --profile virenscan up -d` und `CLAMAV_HOST=clamav`
+  in der `.env`. Ohne das greifen nur Endungs-, Größen- und
+  Magic-Byte-Prüfung.
 - **Key-Rotation** für die Feldverschlüsselung (PR-004).
 - **Vollständige Konto-Löschung** (PR-005) – aktuell nur Inhaltsdaten
   löschbar, siehe oben.
