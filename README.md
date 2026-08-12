@@ -246,10 +246,21 @@ erkannte Datei erreicht die Platte gar nicht erst.
 **Vor dem Einsatz mit echten Teilnehmerdaten einrichten.** Vollständige
 Anleitung inkl. Restore-Probe: [docs/BACKUP.md](docs/BACKUP.md).
 
+Zwei Werte in die `.env` – beide sind nötig, die Passphrase **und** ein
+Ziel außerhalb des Hosts:
+
 ```bash
 echo "BACKUP_PASSPHRASE=$(openssl rand -base64 48)" >> .env
+echo "BACKUP_DIR=/mnt/backup/scandypro" >> .env    # Pfad anpassen!
 ./scripts/backup.sh
 ```
+
+> ⚠️ **`BACKUP_DIR` wirklich setzen.** Ohne diese Zeile landen die Archive
+> in `./backups`, also im Projektverzeichnis auf derselben Platte wie die
+> Docker-Volumes – derselbe Hardwaredefekt nimmt dann Original *und*
+> Sicherung mit. Sinnvoll ist ein Netzlaufwerk, ein zweiter Datenträger
+> oder ein gemounteter Objektspeicher. Der Standardwert existiert nur,
+> damit ein Probelauf ohne Vorbereitung funktioniert.
 
 Sichert Datenbank (`pg_dump`) und Uploads in **ein** verschlüsseltes Archiv
 und rotiert alte Stände (7 täglich / 4 wöchentlich / 6 monatlich). Erkennt
@@ -267,13 +278,18 @@ Täglich per Cron:
 Zurückspielen (ersetzt Datenbank und Uploads vollständig):
 
 ```bash
-./scripts/restore.sh --pruefen backups/scandypro-<zeitstempel>.tar.gz.enc   # nur prüfen
-./scripts/restore.sh backups/scandypro-<zeitstempel>.tar.gz.enc            # echt
+./scripts/restore.sh --pruefen /mnt/backup/scandypro/scandypro-<zeitstempel>.tar.gz.enc   # nur prüfen
+./scripts/restore.sh /mnt/backup/scandypro/scandypro-<zeitstempel>.tar.gz.enc            # echt
 ```
 
 `BACKUP_PASSPHRASE` **und** `FIELD_ENCRYPTION_KEY` gehören getrennt vom
 Backup aufbewahrt – ohne beide zusammen ist ein Archiv nicht
 wiederherstellbar.
+
+**Ein Backup, das nie zurückgespielt wurde, ist kein Backup.** Die
+Restore-Probe steht als Checkliste in
+[docs/BACKUP.md](docs/BACKUP.md#den-restore-proben) und sollte nach jeder
+Schema-Änderung einmal durchlaufen werden.
 
 ## Datenschutz-Bausteine (v0.1)
 
@@ -312,6 +328,23 @@ Produktivbetrieb.
 > 📋 **Vollständige Liste mit Schweregrad, Begründung und Reihenfolge:**
 > [`tasks/produktivreife/README.md`](tasks/produktivreife/README.md)
 
+### Was die Einrichtung selbst scharfschalten muss
+
+Diese Punkte sind fertig implementiert, aber im Auslieferungszustand
+**nicht aktiv**. Sie schützen erst, wenn sie eingerichtet werden:
+
+| Was | Wie | Ohne das |
+|---|---|---|
+| **Backup** | `BACKUP_PASSPHRASE` + `BACKUP_DIR` in die `.env`, Cron-Eintrag – siehe [Backup](#backup) | Kein Backup. Bei Volume-Verlust sind Tagebücher, Bewerbungen und Wochenberichte weg. |
+| **Backup-Ziel außerhalb des Hosts** | `BACKUP_DIR` auf Netzlaufwerk/zweiten Datenträger | Sicherung liegt neben dem Original und stirbt mit ihm. |
+| **Virenscan** | `docker compose --profile virenscan up -d` + `CLAMAV_HOST=clamav` | Uploads werden nur auf Endung/Größe/Magic Bytes geprüft, nicht auf Inhalt. |
+| **TLS** | siehe [TLS (Produktivbetrieb)](#tls-produktivbetrieb) | Login und Session-Cookie gehen unverschlüsselt über das Netz. |
+
+Alle vier sind bewusst opt-in, damit ein Probelauf ohne Vorbereitung
+funktioniert – für echte Teilnehmerdaten ist keines davon optional.
+
+### Weiterhin offen
+
 Die wichtigsten Punkte in Kürze:
 
 - **Kein automatisierter Migrationstest** (PR-002) – die Kette wird seit
@@ -319,25 +352,23 @@ Die wichtigsten Punkte in Kürze:
   einmal real gegen PostgreSQL 16 gelaufen, aber es gibt weiterhin keinen
   wiederholbaren `upgrade head`-Test. Neue Migrationen fallen damit wieder
   erst beim Deploy auf.
-- **Virenscan ist vorhanden, aber standardmäßig aus** (PR-003) – ClamAV-
-  Anbindung existiert (`app/core/virenscan.py`), muss aber aktiviert
-  werden: `docker compose --profile virenscan up -d` und `CLAMAV_HOST=clamav`
-  in der `.env`. Ohne das greifen nur Endungs-, Größen- und
-  Magic-Byte-Prüfung.
 - **Key-Rotation** für die Feldverschlüsselung (PR-004).
 - **Vollständige Konto-Löschung** (PR-005) – aktuell nur Inhaltsdaten
   löschbar, siehe oben.
+- **Kein Monitoring** (PR-007) – ein stiller Ausfall, auch des Backups,
+  fällt erst auf, wenn jemand anruft.
 - **DSGVO-Dokumentation und rechtliche Prüfung** (PR-008) – organisatorisch,
   aber echter Blocker bei Art.-9-Daten.
-- **TLS im Standard-Setup** – Caddy läuft ohne eigene Domain auf Port 8080
-  ohne Verschlüsselung (nur für lokale Bewertung, nicht so deployen). Sowohl
-  echte Domain mit automatischem HTTPS als auch selbstsigniertes HTTPS
-  fürs rein interne Netz sind bereits vorbereitet, aber ein bewusster
-  manueller Schritt – siehe Abschnitt "TLS (Produktivbetrieb)" unten.
+- **2FA für Betreuer-/Admin-Rollen** (PR-009) – Entscheidung offen; über
+  Authentik erzwingbar, ohne in ScandyPro selbst etwas zu bauen.
+- Eigene Tests für `bewerbungen.py`, `wochenberichte.py` und `oidc.py`
+  fehlen weiterhin (PR-006 ist nur für `admin.py` erledigt).
 
 Erledigt seit 0.1.42: Berechtigungs- und Löschtests laut
-CLAUDE.md-Review-Checkliste (31 Tests, siehe
-[`tasks/codebase-audit/README.md`](tasks/codebase-audit/README.md)).
+CLAUDE.md-Review-Checkliste, Benutzerverwaltung und Virenscan – aktuell
+**98 Tests** (siehe [`tasks/codebase-audit/README.md`](tasks/codebase-audit/README.md)
+und [`tasks/produktivreife/README.md`](tasks/produktivreife/README.md)).
+Backup inkl. geprobtem Restore seit 0.1.44.
 
 Diese Punkte sind kein Versehen, sondern bewusst auf spätere Phasen
 verschoben, um zuerst die Kernfunktionalität bewerten zu können – siehe
