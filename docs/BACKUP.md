@@ -158,6 +158,53 @@ Fernet-Ciphertext auf der Platte.
 
 ---
 
+## Schlüsselrotation und Backups
+
+`FIELD_ENCRYPTION_KEY` darf mehrere kommagetrennte Schlüssel enthalten,
+**neuester zuerst**. Verschlüsselt wird mit dem ersten, entschlüsselt mit
+jedem. Ein einzelner Schlüssel (der Normalfall) verhält sich unverändert.
+
+Ablauf – die Reihenfolge ist nicht verhandelbar:
+
+```bash
+# 1. Neuen Schlüssel VORNE anhängen. Altdaten bleiben lesbar.
+#    FIELD_ENCRYPTION_KEY=<neu>,<alt>
+python scripts/reencrypt.py --pruefen   # zeigt, was noch am alten hängt
+
+# 2. Bestandsdaten umschreiben (Datenbank + Uploads)
+python scripts/reencrypt.py
+
+# 3. Erst wenn --pruefen 0 offene Einträge meldet:
+python scripts/reencrypt.py --pruefen   # muss "Nichts hängt mehr..." sagen
+#    dann den alten Schlüssel aus FIELD_ENCRYPTION_KEY entfernen
+```
+
+Danach die App neu starten (die Schlüssel werden beim Import gelesen).
+
+> ⚠️ **Wer Schritt 3 vor Schritt 2 macht, verliert die Daten endgültig** –
+> und das Backup rettet nichts, weil dort derselbe Ciphertext liegt. Genau
+> deshalb gibt es `--pruefen`; es beendet sich mit Exit-Code 1, solange
+> noch etwas offen ist, und lässt sich damit in ein Skript einbauen.
+
+### Was das für die Backups bedeutet
+
+| Archiv aus | Braucht zum Restore |
+|---|---|
+| vor der Rotation | den **alten** Schlüssel |
+| während der Rotation | **beide** Schlüssel (gemischter Bestand) |
+| nach der Rotation | den **neuen** Schlüssel |
+
+Alte Schlüssel deshalb **nicht wegwerfen, solange noch Backups aus ihrer
+Zeit aufbewahrt werden** – bei 6 Monatsständen also mindestens ein halbes
+Jahr. Am einfachsten: im Passwortmanager beim Schlüssel notieren, ab wann
+er gilt, und ihn erst löschen, wenn das letzte Archiv aus seiner Zeit
+rotiert ist.
+
+Praktisch bewährt: direkt nach Schritt 2 ein frisches Backup ziehen. Dann
+gibt es einen sauberen Stand, der nur den neuen Schlüssel braucht.
+
+---
+
 ## Was dieses Backup nicht abdeckt
 
 - **Die `.env` selbst.** Sie enthält `SECRET_KEY`, `FIELD_ENCRYPTION_KEY`

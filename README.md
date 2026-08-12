@@ -296,8 +296,10 @@ Schema-Änderung einmal durchlaufen werden.
 - **Verschlüsselung**: Wohlbefinden-Kommentare, Bewerbungsnotizen und alle
   hochgeladenen Dateien (Lebenslauf/Zeugnisse/Anschreiben/Deckblatt) liegen
   Fernet-verschlüsselt in DB bzw. Upload-Volume (`app/core/crypto.py`).
-  Schlüssel kommt aus `FIELD_ENCRYPTION_KEY` (ENV) - noch keine
-  Key-Rotation.
+  Schlüssel kommt aus `FIELD_ENCRYPTION_KEY` (ENV). Rotation wird
+  unterstützt: mehrere kommagetrennte Schlüssel (neuester zuerst) plus
+  `scripts/reencrypt.py` für die Bestandsdaten - Ablauf in
+  [docs/BACKUP.md](docs/BACKUP.md#schlüsselrotation-und-backups).
 - **Freigabe-System (Consent)**: Teilnehmer:innen geben Wohlbefinden
   gezielt für ihre PSM-Kontaktperson bzw. Bewerbungen für ihren
   Berufstrainer frei (ganz oder befristet/einzeln), jederzeit widerrufbar
@@ -352,7 +354,6 @@ Die wichtigsten Punkte in Kürze:
   Drift-Abgleich, Rundlauf), er wird ohne gesetztes `TEST_POSTGRES_URL`
   aber übersprungen. Vor einem Release bewusst mit laufender Datenbank
   ausführen – siehe Modul-Docstring.
-- **Key-Rotation** für die Feldverschlüsselung (PR-004).
 - **Vollständige Konto-Löschung** (PR-005) – aktuell nur Inhaltsdaten
   löschbar, siehe oben.
 - **Kein Monitoring** (PR-007) – ein stiller Ausfall, auch des Backups,

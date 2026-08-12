@@ -21,7 +21,7 @@ die Betriebs- und Compliance-Sicht.
 | [PR-001](#pr-001) | Kein Backup – Totalverlust-Risiko | **Kritisch** | M | ✅ behoben (Restore geprobt) |
 | [PR-002](#pr-002) | Migrationen laufen in keinem Test | **Hoch** | M | ✅ behoben (2 Fehler gefunden) |
 | [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | ✅ behoben (opt-in, fail closed) |
-| [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | offen |
+| [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | ✅ behoben (live geprobt) |
 | [PR-005](#pr-005) | Kontolöschung unvollständig (Art. 17) | Mittel | L | offen |
 | [PR-006](#pr-006) | Router ohne eigene Tests | Mittel | M | ✅ behoben (48 Tests) |
 | [PR-007](#pr-007) | Kein Monitoring, keine Redundanz | Niedrig | M | offen |
@@ -238,7 +238,43 @@ Verbreitungsweg innerhalb der Einrichtung.
 
 ## PR-004 – Keine Schlüsselrotation {#pr-004}
 
-**Schwere: Mittel · Aufwand: L**
+**Schwere: Mittel · Aufwand: L · Status: behoben (0.1.45)**
+
+> ✅ **Umgesetzt.** `FIELD_ENCRYPTION_KEY` nimmt jetzt mehrere
+> kommagetrennte Schlüssel (neuester zuerst, `MultiFernet`): verschlüsselt
+> wird mit dem ersten, entschlüsselt mit jedem. Ein einzelner Schlüssel –
+> der Normalfall und alle bestehenden Installationen – verhält sich
+> unverändert. Dazu `scripts/reencrypt.py` für die Bestandsdaten
+> (Datenbank **und** Uploads), Ablauf in
+> [`docs/BACKUP.md`](../../docs/BACKUP.md#schlüsselrotation-und-backups).
+>
+> Der Prüfmodus ist der eigentliche Schutz: Er meldet, ob noch etwas am
+> alten Schlüssel hängt, und beendet sich mit Exit-Code 1, solange das so
+> ist. Wer den alten Schlüssel vorher entfernt, verliert die Daten
+> endgültig – auch aus dem Backup heraus, weil dort derselbe Ciphertext
+> liegt. Genau dieser Schadensfall ist als Test festgehalten.
+>
+> **Gegen die echte Datenbank geprobt** (44.616 verschlüsselte Werte,
+> 4 Upload-Dateien): Rotation auf einen neuen Schlüssel, Prüfmodus meldet
+> 0 offene, Rückrotation auf den alten, anschließend liest die App wieder
+> alles im Klartext – Tagebucheinträge, Bewerbungsnotizen und eine echte
+> PDF-Datei. Dabei zwei Fehler gefunden und behoben:
+>
+> 1. Das Skript las über SQLAlchemy und bekam dadurch vom TypeDecorator
+>    bereits *entschlüsselten* Klartext – der Rotationsversuch scheiterte
+>    still an jedem einzelnen Wert, und der Prüfmodus hätte nie grünes
+>    Licht gegeben. Jetzt rohes SQL.
+> 2. 44.616 Einzel-UPDATEs brauchten über zehn Minuten und liefen in einen
+>    Timeout. Gebündelt sind es zwei Sekunden. Eine Rotation, die scheinbar
+>    hängt, wird abgebrochen – und ein halb rotierter Bestand ist genau der
+>    Zustand, den niemand will.
+>
+> **Wichtig für den Betrieb:** Alte Schlüssel dürfen erst weg, wenn auch
+> das letzte Backup aus ihrer Zeit ausgelaufen ist (bei 6 Monatsständen
+> also ein halbes Jahr) – sonst ist das Archiv da, aber nicht lesbar.
+> Steht als Tabelle in docs/BACKUP.md.
+
+Ursprünglicher Befund:
 
 `FIELD_ENCRYPTION_KEY` ist über die Lebensdauer der Installation
 unveränderlich (`app/core/crypto.py` nennt das selbst als bewusste
@@ -406,9 +442,12 @@ geprüft werden.
 5. ~~**PR-006 (Router-Tests)**~~ – ✅ erledigt in 0.1.44/0.1.45: `admin.py`
    (21), `bewerbungen.py` (15), `wochenberichte.py` (12), jeweils mit
    Gegenprobe. Nur `oidc.py` bleibt offen.
-6. **PR-004, PR-005, PR-007, PR-009** – geplant nachziehen, kein
-   Startblocker, aber keiner davon sollte dauerhaft offen bleiben.
+6. ~~**PR-004 (Schlüsselrotation)**~~ – ✅ erledigt in 0.1.45, gegen die
+   echte Datenbank geprobt.
+7. **PR-005, PR-007, PR-009** – geplant nachziehen, kein Startblocker, aber
+   keiner davon sollte dauerhaft offen bleiben. Von PR-007 ist die
+   Backup-Ausfall-Meldung bereits umgesetzt.
 
-Vier der neun Punkte sind damit geschlossen, darunter der kritische
+Sechs der neun Punkte sind damit geschlossen, darunter der kritische
 (PR-001). Der verbleibende echte Startblocker ist **PR-008**
 (organisatorisch, kein Code).

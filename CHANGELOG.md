@@ -11,6 +11,17 @@ analog zum Schwestermodul Scandy-Lite.
 ## [0.1.45] - 2026-08-12
 
 ### Fixed
+- **`scripts/reencrypt.py` hätte gar nichts umgeschrieben.** Beim ersten
+  echten Lauf gefunden: Das Skript las die verschlüsselten Spalten über
+  SQLAlchemy und bekam dadurch vom `VerschluesselterText`-TypeDecorator
+  bereits *entschlüsselten* Klartext. Der Rotationsversuch scheiterte
+  still an jedem einzelnen Wert, und `--pruefen` hätte dauerhaft
+  "alles veraltet" gemeldet, also nie grünes Licht gegeben. Jetzt rohes
+  SQL, das den Decorator umgeht.
+- **Rotation lief in einen Timeout.** 44.616 Einzel-UPDATEs sind je ein
+  Round-Trip und brauchten über zehn Minuten; gebündelt sind es zwei
+  Sekunden. Eine Rotation, die scheinbar hängt, wird abgebrochen - und ein
+  halb rotierter Bestand ist der schlechteste denkbare Zustand.
 - **`downgrade base` machte die Datenbank unbrauchbar für ein erneutes
   `upgrade head`.** Alembics Autogenerate löscht beim Downgrade zwar die
   Tabellen, aber nicht die Postgres-ENUM-Typen (daher das `please adjust!`
@@ -37,6 +48,18 @@ analog zum Schwestermodul Scandy-Lite.
   Netzlaufwerke empfiehlt die Doku als Ablageort).
 
 ### Added
+- **Schlüsselrotation** (PR-004). `FIELD_ENCRYPTION_KEY` nimmt jetzt
+  mehrere kommagetrennte Schlüssel (neuester zuerst, `MultiFernet`):
+  verschlüsselt wird mit dem ersten, entschlüsselt mit jedem. Ein einzelner
+  Schlüssel verhält sich unverändert, bestehende Installationen merken
+  nichts. Dazu `scripts/reencrypt.py` für die Bestandsdaten (Datenbank und
+  Uploads) mit `--pruefen`-Modus, der vor dem Entfernen des alten
+  Schlüssels meldet, ob noch etwas daran hängt - wer das überspringt,
+  verliert die Daten endgültig, auch aus dem Backup heraus. Dieser
+  Schadensfall ist als Test festgehalten.
+  Gegen die echte Datenbank geprobt (44.616 Werte, 4 Dateien): hin
+  rotieren, prüfen, zurück rotieren, App liest anschließend wieder alles
+  im Klartext.
 - **Tests für `bewerbungen.py` (15) und `wochenberichte.py` (12)**
   (PR-006 abgeschlossen). Bei den Bewerbungen liegt der Schwerpunkt auf
   IDOR: jede Route, die eine ID aus der URL nimmt, wird mit einer fremden
