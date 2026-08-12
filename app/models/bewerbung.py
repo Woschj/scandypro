@@ -52,7 +52,15 @@ class BewerbungsNotiz(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     bewerbung_id: int = Field(foreign_key="bewerbung.id", index=True)
-    text: str = Field(sa_column=Column(VerschluesselterText))
+    # nullable=False muss hier explizit stehen: bei sa_column übernimmt
+    # SQLModel die Nullability NICHT aus der Annotation, und Column()
+    # defaultet auf nullable=True. In der Datenbank ist die Spalte seit der
+    # Migration d1e2f3a4b5c6 NOT NULL - ohne diese Angabe wich das Modell
+    # davon ab, und da die Tests ihr Schema per create_all aus den Modellen
+    # bauen, wäre die Spalte dort nullable gewesen: ein Test hätte NULL
+    # einfügen können, was gegen die echte Datenbank scheitert.
+    # Gefunden vom Drift-Test in tests/test_migrationen_postgres.py.
+    text: str = Field(sa_column=Column(VerschluesselterText, nullable=False))
     erstellt_am: datetime = Field(default_factory=jetzt)
 
 

@@ -19,7 +19,7 @@ die Betriebs- und Compliance-Sicht.
 | ID | Titel | Schwere | Aufwand | Status |
 |---|---|---|---|---|
 | [PR-001](#pr-001) | Kein Backup – Totalverlust-Risiko | **Kritisch** | M | ✅ behoben (Restore geprobt) |
-| [PR-002](#pr-002) | Migrationen laufen in keinem Test | **Hoch** | M | 🟡 teilweise |
+| [PR-002](#pr-002) | Migrationen laufen in keinem Test | **Hoch** | M | ✅ behoben (2 Fehler gefunden) |
 | [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | ✅ behoben (opt-in, fail closed) |
 | [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | offen |
 | [PR-005](#pr-005) | Kontolöschung unvollständig (Art. 17) | Mittel | L | offen |
@@ -143,10 +143,36 @@ ausführen (ältere Migrationen nutzen ungeschütztes Postgres-SQL, z.B.
 > die App danach `alembic upgrade head` fahren – damit ist auch der Pfad
 > „altes Backup, neuerer Code" einmal real durchlaufen.
 
-> ⚠️ **Weiterhin offen:** Es gibt nach wie vor keinen *automatisierten*
-> Migrationstest gegen PostgreSQL. Die Absicherung oben ist ein manueller
-> Durchlauf, kein wiederholbarer Test – neue Migrationen fallen genauso
-> wieder erst beim Deploy auf.
+> ✅ **Automatisierter Test ergänzt (0.1.45):**
+> `tests/test_migrationen_postgres.py` legt eine Wegwerf-Datenbank an,
+> fährt die Kette dagegen und räumt wieder auf. Vier Fälle: `upgrade head`,
+> Schema-Abgleich gegen die SQLModel-Modelle (Drift), Rundlauf
+> `head → base → head`, sowie jede Revision einzeln statt in einem Rutsch.
+> Ohne `TEST_POSTGRES_URL` werden sie übersprungen, damit der normale
+> Testlauf keine Datenbank voraussetzt.
+>
+> **Der Test hat sofort zwei echte Fehler gefunden:**
+>
+> 1. **Der Rückweg war versperrt.** `downgrade base` ließ elf
+>    Postgres-ENUM-Typen stehen (`roleenum`, `auditaktion`, …), weil
+>    Alembics Autogenerate zwar Tabellen löscht, aber keine Typen – daher
+>    auch das `please adjust!` im generierten Code, das nie umgesetzt
+>    wurde. Ein anschließendes `upgrade head` scheiterte an
+>    `type "roleenum" already exists`. Nach einem misslungenen Deploy wäre
+>    genau der Rückweg blockiert gewesen, den man dann braucht. Behoben in
+>    `ff957f57f077` (nur `downgrade()`, `upgrade()` unverändert – für
+>    bestehende Installationen folgenlos).
+> 2. **Modell und Datenbank wichen auseinander.**
+>    `BewerbungsNotiz.text` ist in der Datenbank `NOT NULL`, im Modell aber
+>    nullable: bei `sa_column=Column(...)` übernimmt SQLModel die
+>    Nullability nicht aus der Annotation, und `Column()` defaultet auf
+>    nullable. Weil die Tests ihr Schema per `create_all` aus den Modellen
+>    bauen, war die Spalte dort nullable – ein Test hätte `NULL` einfügen
+>    und bestehen können, während dieselbe Operation gegen die echte
+>    Datenbank scheitert. Behoben am Modell, keine Migration nötig.
+>
+> Genau dafür war der Punkt gedacht: beides wäre sonst erst im Ernstfall
+> aufgefallen.
 
 **Vorschlag:** Postgres-Container in der Testumgebung (oder CI), ein
 Smoke-Test `upgrade head` → `downgrade base` → `upgrade head`, plus ein
@@ -352,9 +378,9 @@ geprüft werden.
 ## Empfohlene Reihenfolge
 
 1. ~~**PR-001 (Backup)**~~ – ✅ erledigt in 0.1.44, Restore geprobt.
-2. ~~**PR-002 (die zwei nie gelaufenen Migrationen)**~~ – ✅ gegen
-   PostgreSQL 16 durchgelaufen. Ein *automatisierter* Migrationstest fehlt
-   weiterhin.
+2. ~~**PR-002 (Migrationen testen)**~~ – ✅ erledigt in 0.1.45, inkl.
+   automatisiertem Test gegen PostgreSQL. Zwei echte Fehler dabei gefunden
+   und behoben.
 3. **PR-008 (DSGVO-Papierlage)** – läuft organisatorisch parallel und hat
    Vorlauf; ohne das darf ohnehin nicht produktiv gestartet werden.
 4. ~~**PR-003 (Virenscan)**~~ – ✅ erledigt in 0.1.44. Die Einrichtung muss

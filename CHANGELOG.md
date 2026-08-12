@@ -8,6 +8,46 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.45] - 2026-08-12
+
+### Fixed
+- **`downgrade base` machte die Datenbank unbrauchbar für ein erneutes
+  `upgrade head`.** Alembics Autogenerate löscht beim Downgrade zwar die
+  Tabellen, aber nicht die Postgres-ENUM-Typen (daher das `please adjust!`
+  im generierten Code, das nie umgesetzt wurde). Nach `downgrade base`
+  standen elf verwaiste Typen im Schema, und der nächste Upgrade-Versuch
+  scheiterte an `type "roleenum" already exists` – ausgerechnet der
+  Rückweg, den man nach einem misslungenen Deploy braucht, war blockiert.
+  Behoben in `ff957f57f077`; nur `downgrade()` geändert, `upgrade()` bleibt
+  unverändert, für bestehende Installationen also folgenlos.
+- **`BewerbungsNotiz.text`: Modell und Datenbank wichen auseinander.** In
+  der Datenbank `NOT NULL`, im Modell nullable – bei `sa_column=Column(…)`
+  übernimmt SQLModel die Nullability nicht aus der Annotation, und
+  `Column()` defaultet auf nullable. Da die Tests ihr Schema per
+  `create_all` aus den Modellen bauen, war die Spalte dort nullable: ein
+  Test hätte `NULL` einfügen und bestehen können, während dieselbe
+  Operation gegen die echte Datenbank scheitert. Keine Migration nötig.
+- **`backup.sh` legte Wochen-/Monatsstände unter Umständen stillschweigend
+  nie an.** Der Zielpfad entstand über eine Ersetzung im *vollen* Pfad, was
+  bei einem `BACKUP_DIR` wie `/mnt/nas/scandypro-backups` den
+  Verzeichnisnamen traf statt der Datei – der Link zeigte in ein nicht
+  existierendes Verzeichnis, `ln` schlug fehl, und der Fehler wurde
+  unterdrückt. Zusätzlich gibt es jetzt einen `cp`-Fallback, wenn das Ziel
+  keine Hardlinks kann (bei SMB-/NFS-Freigaben üblich – und genau solche
+  Netzlaufwerke empfiehlt die Doku als Ablageort).
+
+### Added
+- **Automatisierter Migrationstest gegen PostgreSQL**
+  (`tests/test_migrationen_postgres.py`, PR-002). Legt eine
+  Wegwerf-Datenbank an, fährt `upgrade head` dagegen, vergleicht das
+  Ergebnis mit den SQLModel-Modellen, prüft den Rundlauf
+  `head → base → head` und wendet zusätzlich jede Revision einzeln an.
+  Ohne `TEST_POSTGRES_URL` werden die Tests übersprungen, damit der normale
+  Lauf keine Datenbank voraussetzt. Beide oben genannten Schema-Fehler
+  stammen aus dem ersten Lauf dieses Tests.
+- `scripts/tests/rotation_test.sh` – prüft die Backup-Rotation ohne
+  Datenbank (Zielpfade, Hardlink-Überleben, Trennung der Generationen).
+
 ## [0.1.44] - 2026-08-12
 
 ### Added

@@ -28,7 +28,12 @@ def _sync_database_url() -> str:
     return settings.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
 
 
-config.set_main_option("sqlalchemy.url", _sync_database_url())
+# Eine bereits gesetzte URL hat Vorrang: der Migrationstest
+# (tests/test_migrationen_postgres.py) fährt die Kette gegen eine
+# Wegwerf-Datenbank und darf dabei auf keinen Fall auf settings.database_url
+# umgebogen werden - das wäre die Produktivdatenbank.
+if not config.get_main_option("sqlalchemy.url", None):
+    config.set_main_option("sqlalchemy.url", _sync_database_url())
 
 
 def run_migrations_offline() -> None:

@@ -346,3 +346,29 @@ def downgrade() -> None:
     op.drop_table('handlungsfeld')
     op.drop_table('abteilung')
     # ### end Alembic commands ###
+
+    # Alembics Autogenerate legt die Postgres-ENUM-Typen beim upgrade zwar
+    # implizit über die Spaltendefinitionen an, räumt sie beim downgrade aber
+    # NICHT wieder ab (daher auch das "please adjust!" oben). Ohne diese
+    # Zeilen bleiben nach `downgrade base` elf verwaiste Typen stehen, und
+    # ein anschließendes `upgrade head` scheitert an
+    #   type "roleenum" already exists
+    # - der Rückweg nach einem misslungenen Deploy wäre damit versperrt.
+    # Gefunden von tests/test_migrationen_postgres.py.
+    #
+    # Nur downgrade() ist betroffen; upgrade() bleibt unverändert, deshalb
+    # ist die nachträgliche Änderung dieser bereits angewendeten Migration
+    # für bestehende Installationen folgenlos.
+    for enum_name in (
+        'roleenum',
+        'auditaktion',
+        'auditzieltyp',
+        'bewerbungstatus',
+        'boardtyp',
+        'kartensichtbarkeit',
+        'unterlagenkategorie',
+        'wochenberichtstatus',
+        'wohlbefindenfreigabeumfang',
+        'bewerbungsfreigabeumfang',
+    ):
+        op.execute(f'DROP TYPE IF EXISTS {enum_name}')

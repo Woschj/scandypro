@@ -347,11 +347,11 @@ funktioniert – für echte Teilnehmerdaten ist keines davon optional.
 
 Die wichtigsten Punkte in Kürze:
 
-- **Kein automatisierter Migrationstest** (PR-002) – die Kette wird seit
-  0.1.43 statisch geprüft (`tests/test_migrationen.py`) und ist inzwischen
-  einmal real gegen PostgreSQL 16 gelaufen, aber es gibt weiterhin keinen
-  wiederholbaren `upgrade head`-Test. Neue Migrationen fallen damit wieder
-  erst beim Deploy auf.
+- **Migrationstest läuft nicht automatisch mit** (PR-002) – seit 0.1.45
+  gibt es `tests/test_migrationen_postgres.py` (echter `upgrade head`,
+  Drift-Abgleich, Rundlauf), er wird ohne gesetztes `TEST_POSTGRES_URL`
+  aber übersprungen. Vor einem Release bewusst mit laufender Datenbank
+  ausführen – siehe Modul-Docstring.
 - **Key-Rotation** für die Feldverschlüsselung (PR-004).
 - **Vollständige Konto-Löschung** (PR-005) – aktuell nur Inhaltsdaten
   löschbar, siehe oben.
