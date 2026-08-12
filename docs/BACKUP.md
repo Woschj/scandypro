@@ -170,6 +170,41 @@ Fernet-Ciphertext auf der Platte.
 - **Automatische Auslagerung.** Das Skript schreibt dorthin, wohin
   `BACKUP_DIR` zeigt. Dass dieses Ziel den Host überlebt (Netzlaufwerk,
   Offsite-Sync), muss die Einrichtung sicherstellen.
-- **Überwachung.** Ein stiller Ausfall fällt niemandem auf. Die Cron-
-  Ausgabe sollte in eine Log-Auswertung oder eine Benachrichtigung laufen
-  (siehe PR-007).
+- **Zustellung der Warnung.** `BACKUP_PING_URL` (siehe unten) meldet
+  Ausfälle an einen Monitoring-Dienst, aber jemand muss dessen
+  Benachrichtigungen auch tatsächlich empfangen und lesen.
+
+---
+
+## Merken, wenn das Backup ausfällt
+
+Ein Backup, das stillschweigend nicht mehr läuft, ist schlimmer als keines:
+es gibt Sicherheit vor, die nicht existiert. Cron schickt zwar eine Mail
+bei Ausgabe auf stderr – aber nur, wenn ein MTA eingerichtet ist, und in
+einem LXC-Container ist das selten der Fall.
+
+```bash
+echo "BACKUP_PING_URL=https://hc-ping.com/DEINE-UUID" >> .env
+```
+
+Das Skript ruft diese URL nach jedem erfolgreichen Lauf auf und im
+Fehlerfall mit dem Suffix `/fail`. Funktioniert mit
+[healthchecks.io](https://healthchecks.io), Uptime Kuma (Push-Monitor) und
+jedem Dienst, der auf einen HTTP-Aufruf hin einen Timer zurücksetzt.
+
+Der eigentliche Nutzen liegt im **ausbleibenden** Ping: Der Monitor schlägt
+Alarm, wenn das Backup gar nicht erst startet – weil der Cron-Eintrag
+gelöscht wurde, der Container nicht läuft oder der Host aus ist. Genau
+diese Fälle kann eine Fehlermeldung aus dem Skript naturgemäß nie melden.
+
+Abgedeckt sind:
+
+| Situation | Ping |
+|---|---|
+| Lauf erfolgreich | `URL` |
+| Passphrase fehlt, Ziel nicht beschreibbar, … | `URL/fail` |
+| Abbruch mitten im Lauf (DB weg, Platte voll, `kill`) | `URL/fail` |
+| Backup läuft überhaupt nicht mehr | *kein Ping* → Monitor alarmiert |
+
+Im Ping stehen bewusst keine Inhalte: Die URL geht an einen Dritten, und
+dorthin gehören keine Datenbanknamen, Pfade oder Hostnamen.

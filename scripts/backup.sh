@@ -40,7 +40,56 @@ POSTGRES_USER="${POSTGRES_USER:-scandypro}"
 POSTGRES_DB="${POSTGRES_DB:-scandypro}"
 
 log() { printf '%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
-fehler() { printf '%s  FEHLER: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2; exit 1; }
+
+# ---------------------------------------------------------------------------
+# Ausfall-Meldung (siehe tasks/produktivreife, PR-007)
+#
+# Ein Backup, das stillschweigend nicht mehr läuft, ist schlimmer als gar
+# keines: es gibt Sicherheit vor, die nicht existiert. Cron schickt zwar
+# eine Mail bei Ausgabe auf stderr, aber nur wenn ein MTA eingerichtet ist -
+# in einem LXC-Container ist das selten der Fall.
+#
+# BACKUP_PING_URL (optional): wird am Ende eines erfolgreichen Laufs
+# angepingt, im Fehlerfall mit dem Suffix /fail. Kompatibel mit
+# healthchecks.io, Uptime Kuma (Push-Monitor) und jedem anderen Dienst, der
+# auf einen HTTP-Aufruf hin einen Timer zurücksetzt. Der Nutzen liegt im
+# *ausbleibenden* Ping: der Dienst schlägt Alarm, wenn das Backup gar nicht
+# erst startet - was ein Fehler-Ping naturgemäß nie melden könnte.
+#
+# Bewusst ohne Inhalt im Ping: die URL geht an einen Dritten, und dorthin
+# gehören keine Datenbanknamen, Pfade oder Hostnamen.
+# ---------------------------------------------------------------------------
+
+ping_monitor() {
+  local pfad="${1:-}"
+  [[ -n "${BACKUP_PING_URL:-}" ]] || return 0
+  command -v curl >/dev/null 2>&1 || return 0
+  curl -fsS -m 10 --retry 3 -o /dev/null "${BACKUP_PING_URL}${pfad}" 2>/dev/null || true
+}
+
+fehler() {
+  printf '%s  FEHLER: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >&2
+  ping_monitor "/fail"
+  exit 1
+}
+
+# EIN gemeinsamer EXIT-Trap für Aufräumen und Meldung. Bewusst nicht zwei
+# getrennte: ein zweites `trap ... EXIT` ersetzt das erste stillschweigend,
+# und dann räumt entweder das Temp-Verzeichnis nicht auf oder die
+# Fehlermeldung bleibt aus.
+#
+# Fängt auch ab, was fehler() nicht abdeckt: einen Abbruch durch set -e
+# irgendwo im Skript, ein kill, einen vollen Datenträger mitten im tar.
+ARBEIT=""
+beim_beenden() {
+  local code=$?
+  [[ -n "$ARBEIT" ]] && rm -rf "$ARBEIT"
+  if (( code != 0 )); then
+    printf '%s  ABGEBROCHEN (Exit-Code %s)\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$code" >&2
+    ping_monitor "/fail"
+  fi
+}
+trap beim_beenden EXIT
 
 # ---------------------------------------------------------------------------
 # Verschlüsselung: ohne Passphrase wird bewusst abgebrochen statt still
@@ -90,8 +139,7 @@ log "Betriebsart: $MODUS"
 # ---------------------------------------------------------------------------
 
 ZEITSTEMPEL="$(date '+%Y-%m-%dT%H-%M-%S')"
-ARBEIT="$(mktemp -d)"
-trap 'rm -rf "$ARBEIT"' EXIT
+ARBEIT="$(mktemp -d)"   # wird von beim_beenden() aufgeräumt (EXIT-Trap oben)
 
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
@@ -244,6 +292,11 @@ log "Rotation …"
 rotiere 'scandypro-2*'             "$BEHALTE_TAEGLICH"      "täglich"
 rotiere 'scandypro-woechentlich-*' "$BEHALTE_WOECHENTLICH"  "wöchentlich"
 rotiere 'scandypro-monatlich-*'    "$BEHALTE_MONATLICH"     "monatlich"
+
+ping_monitor
+if [[ -n "${BACKUP_PING_URL:-}" ]]; then
+  log "Monitor benachrichtigt."
+fi
 
 log "Fertig."
 log ""
