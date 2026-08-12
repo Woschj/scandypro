@@ -23,7 +23,7 @@ die Betriebs- und Compliance-Sicht.
 | [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | offen |
 | [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | offen |
 | [PR-005](#pr-005) | Kontolöschung unvollständig (Art. 17) | Mittel | L | offen |
-| [PR-006](#pr-006) | `admin.py` und `bewerbungen.py` ohne Tests | Mittel | M | offen |
+| [PR-006](#pr-006) | `admin.py` und `bewerbungen.py` ohne Tests | Mittel | M | 🟡 `admin.py` abgedeckt (21 Tests) |
 | [PR-007](#pr-007) | Kein Monitoring, keine Redundanz | Niedrig | M | offen |
 | [PR-008](#pr-008) | DSGVO-Dokumentation und rechtliche Prüfung | **Blocker** | – | organisatorisch |
 | [PR-009](#pr-009) | 2FA für Betreuer-/Admin-Rollen ungeklärt | Offen | M | Entscheidung nötig |
@@ -214,20 +214,38 @@ passieren soll.
 
 ## PR-006 – Router ohne eigene Tests {#pr-006}
 
-**Schwere: Mittel · Aufwand: M**
+**Schwere: Mittel · Aufwand: M · Status: `admin.py` erledigt (0.1.44)**
 
 Die Zugriffs*schicht* ist seit 0.1.42 abgesichert (24 Berechtigungstests),
 die Routen darüber teilweise noch nicht:
 
 | Router | Routen | eigene Testdatei |
 |---|---|---|
-| `admin.py` | 19 | nein |
+| `admin.py` | 19 | ✅ `tests/test_admin.py` (21 Tests) |
 | `bewerbungen.py` | 18 | nein (nur indirekt über Berechtigungstests) |
 | `wochenberichte.py` | 7 | nein (nur indirekt) |
 | `oidc.py` | 2 | nein |
 
-`admin.py` ist dabei der heikelste: dort werden Rollen zugewiesen,
-Accounts freigeschaltet und Passwörter zurückgesetzt.
+`admin.py` war dabei der heikelste: dort werden Rollen zugewiesen,
+Accounts freigeschaltet und Passwörter zurückgesetzt. Ein Fehler dort
+vergibt Zugriff auf Gesundheits- und Bewerbungsdaten, ohne dass je eine
+Freigabe erteilt wurde – die getestete Zugriffsschicht hilft dann nicht
+mehr, weil sie die Rolle als gegeben hinnimmt.
+
+Abgedeckt sind vor allem die Fälle, die *nicht* passieren dürfen:
+Teilnehmer:innen und Trainer:innen kommen auf keine Verwaltungsseite und
+können weder Accounts anlegen noch sich selbst befördern noch fremde
+Passwörter zurücksetzen; niemand ändert die eigene Rolle oder sperrt sich
+selbst aus; ein gesperrtes Konto kommt weder durch den Login noch mit
+bestehender Sitzung ans Dashboard (der Fehler aus 0.1.42); E-Mails werden
+vor der Dublettenprüfung normalisiert, sonst entstünden zwei Accounts mit
+derselben Adresse in unterschiedlicher Schreibweise.
+
+**Gegenprobe durchgeführt:** mit entfernter Rollenprüfung in
+`benutzer_erstellen` bzw. entferntem Selbstsperr-Schutz schlagen genau die
+zuständigen Tests fehl – die Tests laufen also nicht bloß mit.
+
+Offen bleiben `bewerbungen.py`, `wochenberichte.py` und `oidc.py`.
 
 ---
 
@@ -304,8 +322,8 @@ geprüft werden.
 3. **PR-008 (DSGVO-Papierlage)** – läuft organisatorisch parallel und hat
    Vorlauf; ohne das darf ohnehin nicht produktiv gestartet werden.
 4. **PR-003 (Virenscan)** – vor dem ersten echten Bewerbungs-Upload.
-5. **PR-006 (Tests für admin.py)** – bevor mehrere Personen Accounts
-   verwalten.
+5. ~~**PR-006 (Tests für admin.py)**~~ – ✅ erledigt in 0.1.44, 21 Tests
+   inkl. Gegenprobe. `bewerbungen.py` und `wochenberichte.py` bleiben offen.
 6. **PR-004, PR-005, PR-007, PR-009** – geplant nachziehen, kein
    Startblocker, aber keiner davon sollte dauerhaft offen bleiben.
 

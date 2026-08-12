@@ -34,6 +34,16 @@ analog zum Schwestermodul Scandy-Lite.
   Restore sonst gerne scheitert (falscher `FIELD_ENCRYPTION_KEY`).
   Ablauf als Checkliste in `docs/BACKUP.md`.
 
+- **Tests für `app/routers/admin.py`** (21 Tests, PR-006). Von allen
+  ungetesteten Routern war das der heikelste: dort werden Rollen vergeben,
+  Konten gesperrt und Passwörter zurückgesetzt – ein Fehler dort vergibt
+  Zugriff auf Gesundheitsdaten, ohne dass je eine Freigabe erteilt wurde,
+  und die sorgfältig getestete Zugriffsschicht hilft nicht mehr, weil sie
+  die Rolle als gegeben hinnimmt. Schwerpunkt liegt deshalb auf den Fällen,
+  die *nicht* passieren dürfen. Per Gegenprobe verifiziert: mit entfernter
+  Rollenprüfung bzw. entferntem Selbstsperr-Schutz schlagen genau die
+  zuständigen Tests fehl. Gesamtstand jetzt 89 Tests.
+
 ### Changed
 - **UI-013:** 118 duplizierte Inline-Styles durch eine kleine, geschlossene
   Menge Abstands-/Layout-Utilities ersetzt (`.abstand-oben-*`,
