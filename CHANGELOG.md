@@ -37,6 +37,19 @@ analog zum Schwestermodul Scandy-Lite.
   Netzlaufwerke empfiehlt die Doku als Ablageort).
 
 ### Added
+- **Tests für `bewerbungen.py` (15) und `wochenberichte.py` (12)**
+  (PR-006 abgeschlossen). Bei den Bewerbungen liegt der Schwerpunkt auf
+  IDOR: jede Route, die eine ID aus der URL nimmt, wird mit einer fremden
+  Teilnehmer:in durchprobiert. Festgeschrieben ist außerdem die
+  dokumentierte Grenze, dass Berufstrainer:innen auch *mit* Freigabe keine
+  Dateien herunterladen können - eine stille Ausweitung wäre eine
+  Datenschutz-Änderung und soll auffallen.
+  Bei den Wochenberichten geht es um die statusabhängige Sichtbarkeit: ein
+  Entwurf gehört ausschließlich der schreibenden Person, erst das Abgeben
+  öffnet ihn für die Leitung des eigenen Handlungsfelds, das Zurückziehen
+  schließt ihn wieder. Gegenproben: ohne `require_owner` im Datei-Download
+  fallen beide Datei-Tests, ohne die Statuskopplung genau die zwei
+  Sichtbarkeits-Tests. Gesamtstand 125 Tests.
 - **Automatisierter Migrationstest gegen PostgreSQL**
   (`tests/test_migrationen_postgres.py`, PR-002). Legt eine
   Wegwerf-Datenbank an, fährt `upgrade head` dagegen, vergleicht das

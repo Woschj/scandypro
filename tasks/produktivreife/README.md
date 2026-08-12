@@ -1,6 +1,6 @@
 # ScandyPro – Was einem Produktiveinsatz im Weg steht
 
-**Stand:** 0.1.42 (2026-08-12)
+**Stand:** 0.1.45 (2026-08-12)
 **Frage:** Was fehlt noch, bevor die App mit echten Teilnehmerdaten laufen kann?
 
 **Methode:** Durchsicht von Deployment (`compose.yaml`, `Dockerfile`,
@@ -23,7 +23,7 @@ die Betriebs- und Compliance-Sicht.
 | [PR-003](#pr-003) | Kein Virenscan bei Uploads | **Hoch** | M | ✅ behoben (opt-in, fail closed) |
 | [PR-004](#pr-004) | Keine Schlüsselrotation | Mittel | L | offen |
 | [PR-005](#pr-005) | Kontolöschung unvollständig (Art. 17) | Mittel | L | offen |
-| [PR-006](#pr-006) | `admin.py` und `bewerbungen.py` ohne Tests | Mittel | M | 🟡 `admin.py` abgedeckt (21 Tests) |
+| [PR-006](#pr-006) | Router ohne eigene Tests | Mittel | M | ✅ behoben (48 Tests) |
 | [PR-007](#pr-007) | Kein Monitoring, keine Redundanz | Niedrig | M | offen |
 | [PR-008](#pr-008) | DSGVO-Dokumentation und rechtliche Prüfung | **Blocker** | – | organisatorisch |
 | [PR-009](#pr-009) | 2FA für Betreuer-/Admin-Rollen ungeklärt | Offen | M | Entscheidung nötig |
@@ -276,7 +276,7 @@ passieren soll.
 
 ## PR-006 – Router ohne eigene Tests {#pr-006}
 
-**Schwere: Mittel · Aufwand: M · Status: `admin.py` erledigt (0.1.44)**
+**Schwere: Mittel · Aufwand: M · Status: behoben (0.1.44/0.1.45)**
 
 Die Zugriffs*schicht* ist seit 0.1.42 abgesichert (24 Berechtigungstests),
 die Routen darüber teilweise noch nicht:
@@ -284,8 +284,8 @@ die Routen darüber teilweise noch nicht:
 | Router | Routen | eigene Testdatei |
 |---|---|---|
 | `admin.py` | 19 | ✅ `tests/test_admin.py` (21 Tests) |
-| `bewerbungen.py` | 18 | nein (nur indirekt über Berechtigungstests) |
-| `wochenberichte.py` | 7 | nein (nur indirekt) |
+| `bewerbungen.py` | 18 | ✅ `tests/test_bewerbungen.py` (15 Tests) |
+| `wochenberichte.py` | 7 | ✅ `tests/test_wochenberichte.py` (12 Tests) |
 | `oidc.py` | 2 | nein |
 
 `admin.py` war dabei der heikelste: dort werden Rollen zugewiesen,
@@ -307,7 +307,25 @@ derselben Adresse in unterschiedlicher Schreibweise.
 `benutzer_erstellen` bzw. entferntem Selbstsperr-Schutz schlagen genau die
 zuständigen Tests fehl – die Tests laufen also nicht bloß mit.
 
-Offen bleiben `bewerbungen.py`, `wochenberichte.py` und `oidc.py`.
+Für `bewerbungen.py` liegt der Schwerpunkt auf IDOR: jede Route, die eine
+ID aus der URL nimmt, wird mit einer fremden Teilnehmer:in durchprobiert.
+Zusätzlich festgeschrieben ist die dokumentierte Grenze, dass
+Berufstrainer:innen auch **mit** Freigabe keine Dateien herunterladen
+können - eine stille Ausweitung wäre eine Datenschutz-Änderung und soll
+auffallen.
+
+Bei `wochenberichte.py` geht es um die statusabhängige Sichtbarkeit: Ein
+Entwurf gehört ausschließlich der schreibenden Person, erst das Abgeben
+öffnet ihn für die Leitung des eigenen Handlungsfelds, das Zurückziehen
+schließt ihn wieder. Das ist eine Zusage an die Teilnehmer:innen
+("solange du daran arbeitest, liest niemand mit"), deren Bruch von außen
+niemandem auffallen würde.
+
+**Gegenproben:** ohne `require_owner` im Datei-Download fallen beide
+Datei-Tests; ohne die Statuskopplung in der Wochenbericht-Übersicht fallen
+genau die zwei Sichtbarkeits-Tests.
+
+Offen bleibt `oidc.py` (2 Routen).
 
 ---
 
@@ -385,8 +403,9 @@ geprüft werden.
    Vorlauf; ohne das darf ohnehin nicht produktiv gestartet werden.
 4. ~~**PR-003 (Virenscan)**~~ – ✅ erledigt in 0.1.44. Die Einrichtung muss
    den Dienst nur noch aktivieren (`--profile virenscan` + `CLAMAV_HOST`).
-5. ~~**PR-006 (Tests für admin.py)**~~ – ✅ erledigt in 0.1.44, 21 Tests
-   inkl. Gegenprobe. `bewerbungen.py` und `wochenberichte.py` bleiben offen.
+5. ~~**PR-006 (Router-Tests)**~~ – ✅ erledigt in 0.1.44/0.1.45: `admin.py`
+   (21), `bewerbungen.py` (15), `wochenberichte.py` (12), jeweils mit
+   Gegenprobe. Nur `oidc.py` bleibt offen.
 6. **PR-004, PR-005, PR-007, PR-009** – geplant nachziehen, kein
    Startblocker, aber keiner davon sollte dauerhaft offen bleiben.
 
