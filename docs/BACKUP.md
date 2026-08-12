@@ -84,6 +84,18 @@ Die drei Generationen rotieren getrennt. Das ist Absicht: fällt das Backup
 still aus und läuft danach mehrfach hintereinander durch, rotieren nicht
 innerhalb von Stunden alle Stände weg.
 
+Wochen- und Monatsstände werden per Hardlink angelegt. Kann das Zielsystem
+keine Hardlinks – bei SMB-/NFS-Freigaben durchaus üblich, und genau solche
+Netzlaufwerke sind hier als Ablageort empfohlen – wird stattdessen kopiert
+und das im Log vermerkt. Lieber doppelter Speicherverbrauch als eine
+Generation, die es stillschweigend nie gab.
+
+Die Rotationslogik lässt sich ohne Datenbank prüfen:
+
+```bash
+./scripts/tests/rotation_test.sh
+```
+
 ---
 
 ## Wiederherstellung

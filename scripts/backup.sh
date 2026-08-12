@@ -204,14 +204,40 @@ rotiere() {
   fi
 }
 
-# Monats- und Wochenstände als Hardlink markieren, bevor die Tagesstände
-# rotieren - so kostet eine Generation keinen zusätzlichen Speicherplatz.
+# Monats- und Wochenstände markieren, bevor die Tagesstände rotieren.
+#
+# Bewusst über dirname/basename statt über eine Ersetzung im vollen Pfad:
+# ${ARCHIV/scandypro-/...} würde bei einem BACKUP_DIR wie
+# /mnt/nas/scandypro-backups den *Verzeichnisnamen* treffen und den Link in
+# ein nicht existierendes Verzeichnis legen - stillschweigend, weil ln
+# fehlschlägt und der Fehler unterdrückt wird. Es gäbe dann nie einen
+# Monatsstand, ohne dass das jemandem auffällt.
+markiere_generation() {
+  local praefix="$1"
+  local verzeichnis dateiname ziel
+  verzeichnis="$(dirname "$ARCHIV")"
+  dateiname="$(basename "$ARCHIV")"
+  ziel="$verzeichnis/scandypro-$praefix-${dateiname#scandypro-}"
+
+  # Erst Hardlink versuchen (kostet keinen zusätzlichen Speicher). Scheitert
+  # das - etwa auf SMB/NFS-Zielen, die keine Hardlinks können, und genau
+  # solche Netzlaufwerke empfehlen wir als Ablageort - wird kopiert. Lieber
+  # doppelter Speicherverbrauch als eine fehlende Generation.
+  if ln -f "$ARCHIV" "$ziel" 2>/dev/null; then
+    log "  $praefix-Stand verlinkt: $(basename "$ziel")"
+  elif cp "$ARCHIV" "$ziel"; then
+    log "  $praefix-Stand kopiert (Hardlinks nicht möglich): $(basename "$ziel")"
+  else
+    log "  WARNUNG: $praefix-Stand konnte nicht angelegt werden ($ziel)"
+  fi
+}
+
 TAG_IM_MONAT="$(date '+%d')"
 WOCHENTAG="$(date '+%u')"
 if [[ "$TAG_IM_MONAT" == "01" ]]; then
-  ln -f "$ARCHIV" "${ARCHIV/scandypro-/scandypro-monatlich-}" 2>/dev/null || true
+  markiere_generation "monatlich"
 elif [[ "$WOCHENTAG" == "7" ]]; then
-  ln -f "$ARCHIV" "${ARCHIV/scandypro-/scandypro-woechentlich-}" 2>/dev/null || true
+  markiere_generation "woechentlich"
 fi
 
 log "Rotation …"
