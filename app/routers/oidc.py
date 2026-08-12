@@ -3,7 +3,6 @@ die Zuordnungs-/Anlegelogik. Alle Routen antworten mit 404, solange kein
 Provider konfiguriert ist (settings.oidc_enabled), damit sich die App ohne
 SSO-Konfiguration exakt wie zuvor verhält."""
 
-from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -12,6 +11,7 @@ from app.core.config import settings
 from app.core.deps import SessionDep
 from app.core.oidc import finde_oder_lege_an, oauth
 from app.core.templating import templates
+from app.core.zeit import jetzt
 
 router = APIRouter(prefix="/auth/oidc", tags=["oidc"])
 
@@ -43,7 +43,7 @@ async def oidc_callback(request: Request, session: SessionDep):
             {"current_user": None, "oidc_provider_name": settings.oidc_provider_name},
         )
 
-    user.letzter_login = datetime.utcnow()
+    user.letzter_login = jetzt()
     session.add(user)
     await session.commit()
     request.session.clear()

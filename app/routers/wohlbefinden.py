@@ -1,7 +1,7 @@
 import base64
 import binascii
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
@@ -27,6 +27,7 @@ from app.core.tagesuebungen import (
 )
 from app.core.templating import templates
 from app.core.uploads import datei_lesen_entschluesselt, datei_loeschen, datei_speichern
+from app.core.zeit import jetzt
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.organisation import Abteilung, PsmZuordnung
 from app.models.user import RoleEnum, User
@@ -443,7 +444,7 @@ async def unterstuetzung_anfrage_gesehen(anfrage_id: int, current_user: CurrentU
     anfrage = await session.get(Unterstuetzungsanfrage, anfrage_id)
     if anfrage is None or anfrage.empfaenger_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    anfrage.gesehen_am = datetime.utcnow()
+    anfrage.gesehen_am = jetzt()
     session.add(anfrage)
     await session.commit()
     return RedirectResponse(url="/", status_code=303)
@@ -624,7 +625,7 @@ async def freigabe_widerrufen(freigabe_id: int, current_user: CurrentUser, sessi
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     require_owner(current_user, freigabe.teilnehmer_id, "Kein Zugriff auf diese Freigabe.")
 
-    freigabe.widerrufen_am = datetime.utcnow()
+    freigabe.widerrufen_am = jetzt()
     session.add(freigabe)
     await session.commit()
     return RedirectResponse(url="/wohlbefinden", status_code=303)
@@ -677,27 +678,27 @@ async def morgen_speichern(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ungültiger Energie-Level.")
         eintrag.energie_level = wert
     if atemuebung_erledigt and eintrag.atemuebung_erledigt_am is None:
-        eintrag.atemuebung_erledigt_am = datetime.utcnow()
+        eintrag.atemuebung_erledigt_am = jetzt()
 
     eintrag.morgen_uebung_typ = morgen_uebung_typ or morgenuebung_des_tages(current_user.id, tag_datum)
     if koerperscan_erledigt and eintrag.koerperscan_erledigt_am is None:
-        eintrag.koerperscan_erledigt_am = datetime.utcnow()
+        eintrag.koerperscan_erledigt_am = jetzt()
     if any([grounding_1, grounding_2, grounding_3, grounding_4, grounding_5]) and eintrag.grounding_erledigt_am is None:
-        eintrag.grounding_erledigt_am = datetime.utcnow()
+        eintrag.grounding_erledigt_am = jetzt()
     if wort_des_tages:
         eintrag.wort_des_tages = wort_des_tages
     eintrag.staerken_karte_frage = staerken_karte_frage or staerken_karte_des_tages(current_user.id, tag_datum)
     if staerken_karte_antwort:
         eintrag.staerken_karte_antwort = staerken_karte_antwort
     if staerken_karte_erledigt and eintrag.staerken_karte_erledigt_am is None:
-        eintrag.staerken_karte_erledigt_am = datetime.utcnow()
+        eintrag.staerken_karte_erledigt_am = jetzt()
 
     if morgen_uebung_frage:
         eintrag.morgen_uebung_frage = morgen_uebung_frage
     if morgen_uebung_ergebnis:
         eintrag.morgen_uebung_ergebnis = morgen_uebung_ergebnis
     if morgen_uebung_erledigt and eintrag.morgen_uebung_erledigt_am is None:
-        eintrag.morgen_uebung_erledigt_am = datetime.utcnow()
+        eintrag.morgen_uebung_erledigt_am = jetzt()
     eintrag.morgen_uebung_datei_pfad = await _uebungs_datei_aktualisieren(
         current_user.id,
         eintrag.morgen_uebung_datei_pfad,
@@ -705,7 +706,7 @@ async def morgen_speichern(
         bool(morgen_uebung_datei_entfernen),
     )
 
-    eintrag.morgen_ausgefuellt_am = datetime.utcnow()
+    eintrag.morgen_ausgefuellt_am = jetzt()
     session.add(eintrag)
     await session.commit()
     return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)
@@ -768,7 +769,7 @@ async def abend_speichern(
 
     eintrag.abend_uebung_typ = abend_uebung_typ or abenduebung_des_tages(current_user.id, tag_datum)
     if mandala_erledigt and eintrag.mandala_erledigt_am is None:
-        eintrag.mandala_erledigt_am = datetime.utcnow()
+        eintrag.mandala_erledigt_am = jetzt()
     if ruhe_ort_sehen:
         eintrag.ruhe_ort_sehen = ruhe_ort_sehen
     if ruhe_ort_hoeren:
@@ -780,7 +781,7 @@ async def abend_speichern(
     if gedanke_ausgewogen:
         eintrag.gedanke_ausgewogen = gedanke_ausgewogen
     if sorgen_los_erledigt and eintrag.sorgen_los_erledigt_am is None:
-        eintrag.sorgen_los_erledigt_am = datetime.utcnow()
+        eintrag.sorgen_los_erledigt_am = jetzt()
 
     if dankbarkeitsfoto_entfernen and eintrag.dankbarkeitsfoto_pfad:
         datei_loeschen(eintrag.dankbarkeitsfoto_pfad)
@@ -800,7 +801,7 @@ async def abend_speichern(
     if abend_uebung_ergebnis:
         eintrag.abend_uebung_ergebnis = abend_uebung_ergebnis
     if abend_uebung_erledigt and eintrag.abend_uebung_erledigt_am is None:
-        eintrag.abend_uebung_erledigt_am = datetime.utcnow()
+        eintrag.abend_uebung_erledigt_am = jetzt()
     eintrag.abend_uebung_datei_pfad = await _uebungs_datei_aktualisieren(
         current_user.id,
         eintrag.abend_uebung_datei_pfad,
@@ -808,7 +809,7 @@ async def abend_speichern(
         bool(abend_uebung_datei_entfernen),
     )
 
-    eintrag.abend_ausgefuellt_am = datetime.utcnow()
+    eintrag.abend_ausgefuellt_am = jetzt()
     session.add(eintrag)
     await session.commit()
     return RedirectResponse(url=f"/wohlbefinden?tag={datum}", status_code=303)

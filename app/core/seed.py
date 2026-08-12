@@ -9,13 +9,14 @@ werden kann.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.security import hash_password
 from app.core.tagebuch_prompts import abend_impuls_des_tages, morgen_impuls_des_tages
+from app.core.zeit import jetzt
 from app.models.kanban import Board, BoardFreigabe, BoardTyp, Karte, KartenSichtbarkeit, KartenZuweisung, Spalte, Unteraufgabe
 from app.models.organisation import (
     Abteilung,
@@ -133,7 +134,7 @@ async def seed_demo_data(session: AsyncSession) -> None:
         spalten.append(spalte)
     await session.flush()
 
-    heute = datetime.utcnow().date()
+    heute = jetzt().date()
     tanja = users["teilnehmer@demo.local"]
     klaus = users["teilnehmer2@demo.local"]
     offen, in_arbeit, wartet, erledigt = spalten
@@ -240,7 +241,7 @@ async def seed_demo_data(session: AsyncSession) -> None:
     session.add(PsmZuordnung(psm_id=users["psycho@demo.local"].id, teilnehmer_id=tanja.id))
     session.add(BerufstrainerZuordnung(berufstrainer_id=trainer.id, teilnehmer_id=klaus.id))
 
-    letzte_kw = datetime.utcnow() - timedelta(days=7)
+    letzte_kw = jetzt() - timedelta(days=7)
     demo_tage = leere_tage()
     demo_tage["montag"] = {"start": "08:00", "ende": "16:00", "taetigkeiten": "Drehbuch mit dem Team abgestimmt."}
     demo_tage["dienstag"] = {"start": "08:00", "ende": "16:00", "taetigkeiten": "Erste Szenenliste erstellt."}
@@ -253,7 +254,7 @@ async def seed_demo_data(session: AsyncSession) -> None:
             tage=demo_tage,
             besonderheiten="Kameraequipment muss noch reserviert werden.",
             status=WochenberichtStatus.abgegeben,
-            abgegeben_am=datetime.utcnow(),
+            abgegeben_am=jetzt(),
         )
     )
 
@@ -289,11 +290,11 @@ async def seed_demo_data(session: AsyncSession) -> None:
                 dankbarkeit_3=dankbarkeit[2],
                 morgen_impuls_frage=morgen_impuls_des_tages(tanja.id, datum),
                 morgen_impuls_antwort=morgen_antwort,
-                morgen_ausgefuellt_am=datetime.utcnow(),
+                morgen_ausgefuellt_am=jetzt(),
                 highlight_1=highlights[0],
                 abend_impuls_frage=abend_impuls_des_tages(tanja.id, datum),
                 abend_impuls_antwort=abend_antwort,
-                abend_ausgefuellt_am=datetime.utcnow() if abend_antwort else None,
+                abend_ausgefuellt_am=jetzt() if abend_antwort else None,
             )
         )
 

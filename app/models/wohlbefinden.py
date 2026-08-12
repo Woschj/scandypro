@@ -5,6 +5,7 @@ from sqlalchemy import Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from app.core.crypto import VerschluesselterText
+from app.core.zeit import jetzt
 
 
 class TagebuchEintrag(SQLModel, table=True):
@@ -126,7 +127,7 @@ class TagebuchEintrag(SQLModel, table=True):
     check_kleines_erfolgserlebnis: bool = False
     abend_ausgefuellt_am: datetime | None = None
 
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 class WohlbefindenFreigabeUmfang(str, Enum):
@@ -159,7 +160,7 @@ class WohlbefindenFreigabe(SQLModel, table=True):
     tagebuch_eintrag_id: int | None = Field(default=None, foreign_key="tagebucheintrag.id", index=True)
     gueltig_bis: date | None = None
     widerrufen_am: datetime | None = None
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 class Unterstuetzungsanfrage(SQLModel, table=True):
@@ -176,5 +177,5 @@ class Unterstuetzungsanfrage(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     teilnehmer_id: int = Field(foreign_key="user.id", index=True)
     empfaenger_id: int = Field(foreign_key="user.id", index=True)
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
     gesehen_am: datetime | None = None

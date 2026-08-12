@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -16,6 +16,7 @@ from app.core.fortschritt import woechentliche_schritte, woechentliche_tagebuch_
 from app.core.seed import seed_admin, seed_demo_data
 from app.core.static_cache import CachedStaticFiles
 from app.core.templating import templates
+from app.core.zeit import jetzt
 from app.models.bewerbung import Bewerbung, BewerbungsFreigabe, BewerbungStatus
 from app.models.kanban import Board, Karte, KartenBewegung, Spalte
 from app.models.organisation import BerufstrainerZuordnung, PsmZuordnung
@@ -175,7 +176,7 @@ async def dashboard(request: Request, session: SessionDep):
         # statt nur abstrakter Zahlen; bewusst nur positiv formuliert, nie als
         # Mahnung (CLAUDE.md §24).
         if schritte_diese_woche:
-            seit = datetime.utcnow() - timedelta(days=7)
+            seit = jetzt() - timedelta(days=7)
             letzte_bewegung_result = await session.execute(
                 select(Karte.titel, Board.id, Board.titel)
                 .select_from(KartenBewegung)
@@ -209,7 +210,7 @@ async def dashboard(request: Request, session: SessionDep):
     # schmaler Hinweis (letzte 14 Tage, jederzeit widerrufbare Freigabe),
     # kein separates Postfach/Ungelesen-System - passend zu CLAUDE.md
     # Abschnitt 24 "keine automatischen Eskalationen".
-    stichtag_neu = datetime.utcnow() - timedelta(days=14)
+    stichtag_neu = jetzt() - timedelta(days=14)
     if current_user.role == RoleEnum.berufstrainer:
         freigaben_result = await session.execute(
             select(BewerbungsFreigabe)

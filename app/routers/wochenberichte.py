@@ -15,6 +15,7 @@ from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.core.wochenbericht_export import wochenbericht_als_docx
+from app.core.zeit import jetzt
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.kanban import Board, Karte, KartenBewegung, KartenZuweisung, Spalte
 from app.models.user import RoleEnum, User
@@ -354,7 +355,7 @@ async def bericht_abgeben(bericht_id: int, current_user: CurrentUser, session: S
     require_owner(current_user, bericht.teilnehmer_id, "Kein Zugriff auf diesen Wochenbericht.")
 
     bericht.status = WochenberichtStatus.abgegeben
-    bericht.abgegeben_am = datetime.utcnow()
+    bericht.abgegeben_am = jetzt()
     session.add(bericht)
     await session.commit()
     return RedirectResponse(url="/wochenberichte", status_code=303)

@@ -6,7 +6,7 @@ CLAUDE.md vorgegebene Größenordnung wachsen zu lassen - gleicher Prefix,
 gleiche zentrale Zugriffsprüfung über app/core/access.py.
 """
 
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Body, Depends, Form, HTTPException, status
 from fastapi.responses import RedirectResponse
@@ -20,6 +20,7 @@ from app.core.access import (
     require_karte_sichtbar,
 )
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
+from app.core.zeit import jetzt
 from app.models.kanban import (
     Board,
     BoardTyp,
@@ -231,7 +232,7 @@ async def karte_verschieben(
     karte.reihenfolge = (max_reihenfolge_result.scalars().first() or 0) + 1
     if ziel_spalte.ist_system_erledigt:
         if karte.abgeschlossen_am is None:
-            karte.abgeschlossen_am = datetime.utcnow()
+            karte.abgeschlossen_am = jetzt()
     else:
         karte.abgeschlossen_am = None
     session.add(karte)
@@ -267,7 +268,7 @@ async def spalte_reihenfolge_setzen(
         karte.reihenfolge = index
         if ziel_spalte.ist_system_erledigt:
             if karte.abgeschlossen_am is None:
-                karte.abgeschlossen_am = datetime.utcnow()
+                karte.abgeschlossen_am = jetzt()
         else:
             karte.abgeschlossen_am = None
         session.add(karte)
@@ -360,7 +361,7 @@ async def unteraufgabe_umschalten(unteraufgabe_id: int, current_user: CurrentUse
     await _require_karte_entsperrt(session, karte)
 
     unteraufgabe.erledigt = not unteraufgabe.erledigt
-    unteraufgabe.erledigt_am = datetime.utcnow() if unteraufgabe.erledigt else None
+    unteraufgabe.erledigt_am = jetzt() if unteraufgabe.erledigt else None
     session.add(unteraufgabe)
     await session.commit()
 

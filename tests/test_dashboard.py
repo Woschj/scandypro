@@ -4,10 +4,10 @@ app/core/fortschritt.py) - deckt die neuen Felder mit echten Daten ab,
 from datetime import date
 
 from tests.conftest import login
+from app.core.zeit import jetzt
 
 
 async def test_dashboard_zeigt_stimmung_und_bewerbungen(client, seed_data, session_maker):
-    from datetime import datetime
 
     from app.models.bewerbung import Bewerbung, BewerbungStatus
     from app.models.wohlbefinden import TagebuchEintrag
@@ -20,7 +20,7 @@ async def test_dashboard_zeigt_stimmung_und_bewerbungen(client, seed_data, sessi
                 dankbarkeit_1="Sonne",
                 dankbarkeit_2="Kaffee",
                 dankbarkeit_3="Ruhe",
-                morgen_ausgefuellt_am=datetime.utcnow(),
+                morgen_ausgefuellt_am=jetzt(),
             )
         )
         session.add(

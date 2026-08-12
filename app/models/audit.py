@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import Enum
 
 from sqlmodel import Field, SQLModel
+from app.core.zeit import jetzt
 
 
 class AuditAktion(str, Enum):
@@ -34,7 +35,7 @@ class AuditLogEintrag(SQLModel, table=True):
     """
 
     id: int | None = Field(default=None, primary_key=True)
-    zeitpunkt: datetime = Field(default_factory=datetime.utcnow)
+    zeitpunkt: datetime = Field(default_factory=jetzt)
     akteur_id: int = Field(foreign_key="user.id", index=True)
     aktion: AuditAktion
     zieltyp: AuditZieltyp

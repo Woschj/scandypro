@@ -9,6 +9,7 @@ noch verteiltes Raten über viele E-Mails von derselben IP unbegrenzt bleibt.
 """
 
 from datetime import datetime, timedelta
+from app.core.zeit import jetzt
 
 MAX_VERSUCHE = 5
 FENSTER = timedelta(minutes=5)
@@ -24,17 +25,17 @@ def _schluessel(email: str, ip: str) -> str:
 
 def ist_gesperrt(email: str, ip: str) -> bool:
     bis = _gesperrt_bis.get(_schluessel(email, ip))
-    return bis is not None and bis > datetime.utcnow()
+    return bis is not None and bis > jetzt()
 
 
 def registriere_fehlversuch(email: str, ip: str) -> None:
     schluessel = _schluessel(email, ip)
-    jetzt = datetime.utcnow()
-    versuche = [t for t in _fehlversuche.get(schluessel, []) if jetzt - t < FENSTER]
-    versuche.append(jetzt)
+    zeitpunkt = jetzt()
+    versuche = [t for t in _fehlversuche.get(schluessel, []) if zeitpunkt - t < FENSTER]
+    versuche.append(zeitpunkt)
     _fehlversuche[schluessel] = versuche
     if len(versuche) >= MAX_VERSUCHE:
-        _gesperrt_bis[schluessel] = jetzt + SPERRDAUER
+        _gesperrt_bis[schluessel] = zeitpunkt + SPERRDAUER
 
 
 def zuruecksetzen(email: str, ip: str) -> None:

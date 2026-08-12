@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import Enum
 
 from sqlmodel import Field, SQLModel
+from app.core.zeit import jetzt
 
 
 class RoleEnum(str, Enum):
@@ -57,4 +58,4 @@ class User(SQLModel, table=True):
     # zwischen "aktiv" und Löschung (siehe app/routers/admin.py).
     aktiv: bool = True
     letzter_login: datetime | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=jetzt)

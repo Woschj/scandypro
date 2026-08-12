@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, status
@@ -11,6 +11,7 @@ from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.pdf_merge import unterlagen_zu_pdf
 from app.core.templating import templates
 from app.core.uploads import datei_lesen_entschluesselt, datei_loeschen, datei_speichern
+from app.core.zeit import jetzt
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.bewerbung import (
     Bewerbung,
@@ -361,7 +362,7 @@ async def freigabe_widerrufen(freigabe_id: int, current_user: CurrentUser, sessi
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     require_owner(current_user, freigabe.teilnehmer_id, "Kein Zugriff auf diese Freigabe.")
 
-    freigabe.widerrufen_am = datetime.utcnow()
+    freigabe.widerrufen_am = jetzt()
     session.add(freigabe)
     await session.commit()
     return RedirectResponse(url="/bewerbungen", status_code=303)

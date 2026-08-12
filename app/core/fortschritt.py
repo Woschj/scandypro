@@ -8,11 +8,12 @@ dargestellt. Bewusst kein allgemeines Aktivitäts-Log, nur dieses eine
 zweckgebundene Signal.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from sqlmodel import func, or_, select
 
 from app.core.deps import SessionDep
+from app.core.zeit import jetzt
 from app.models.kanban import Karte, KartenBewegung, Unteraufgabe
 from app.models.wohlbefinden import TagebuchEintrag
 
@@ -21,7 +22,7 @@ async def woechentliche_schritte(session: SessionDep, teilnehmer_id: int) -> int
     """Anzahl Karten, die die Person in den letzten 7 Tagen mindestens einen
     Schritt weitergezogen hat (jede Karte zählt nur einmal, egal wie oft sie
     bewegt wurde), plus abgeschlossene Unteraufgaben."""
-    seit = datetime.utcnow() - timedelta(days=7)
+    seit = jetzt() - timedelta(days=7)
 
     bewegte_karten_result = await session.execute(
         select(func.count(func.distinct(KartenBewegung.karte_id))).where(

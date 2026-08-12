@@ -3,6 +3,7 @@ from enum import Enum
 
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
+from app.core.zeit import jetzt
 
 WOCHENTAGE = ["montag", "dienstag", "mittwoch", "donnerstag", "freitag"]
 WOCHENTAG_LABELS = {
@@ -43,7 +44,7 @@ class Wochenbericht(SQLModel, table=True):
     besonderheiten: str | None = None
     status: WochenberichtStatus = WochenberichtStatus.entwurf
     abgegeben_am: datetime | None = None
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 def leere_tage() -> dict:

@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlmodel import Field, SQLModel
 
 from app.core.crypto import VerschluesselterText
+from app.core.zeit import jetzt
 
 
 class BewerbungStatus(str, Enum):
@@ -38,7 +39,7 @@ class Bewerbung(SQLModel, table=True):
     # zwecke, ohne Zeitzonen-/Kombinationslogik einzuführen.
     naechster_termin_uhrzeit: str | None = None
     naechster_termin_ort: str | None = None
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 class BewerbungsNotiz(SQLModel, table=True):
@@ -52,7 +53,7 @@ class BewerbungsNotiz(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     bewerbung_id: int = Field(foreign_key="bewerbung.id", index=True)
     text: str = Field(sa_column=Column(VerschluesselterText))
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 class UnterlagenKategorie(str, Enum):
@@ -86,7 +87,7 @@ class Bewerbungsunterlage(SQLModel, table=True):
     speicherpfad: str
     groesse_bytes: int
     reihenfolge: int = 0
-    hochgeladen_am: datetime = Field(default_factory=datetime.utcnow)
+    hochgeladen_am: datetime = Field(default_factory=jetzt)
 
 
 class BewerbungsFreigabeUmfang(str, Enum):
@@ -111,4 +112,4 @@ class BewerbungsFreigabe(SQLModel, table=True):
     bewerbung_id: int | None = Field(default=None, foreign_key="bewerbung.id", index=True)
     gueltig_bis: date | None = None
     widerrufen_am: datetime | None = None
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)

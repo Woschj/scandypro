@@ -17,6 +17,7 @@ import re
 import pytest_asyncio
 
 from tests.conftest import login
+from app.core.zeit import jetzt
 
 
 async def _csrf_token(client):
@@ -190,7 +191,6 @@ async def test_psm_mit_zuordnung_und_freigabe_darf_lesen(client, welt, session_m
 async def test_widerrufene_freigabe_sperrt_wieder(client, welt, session_maker):
     """Widerruf muss sofort greifen - sonst wäre die Widerrufbarkeit aus
     CLAUDE.md §8 wirkungslos."""
-    from datetime import datetime
 
     from app.models.wohlbefinden import WohlbefindenFreigabe, WohlbefindenFreigabeUmfang
 
@@ -200,7 +200,7 @@ async def test_widerrufene_freigabe_sperrt_wieder(client, welt, session_maker):
                 teilnehmer_id=welt["teilnehmer_id"],
                 empfaenger_id=welt["ids"]["psm_zustaendig"],
                 umfang=WohlbefindenFreigabeUmfang.alle,
-                widerrufen_am=datetime.utcnow(),
+                widerrufen_am=jetzt(),
             )
         )
         await session.commit()
@@ -490,7 +490,6 @@ async def test_admin_kommt_nicht_an_tagebuch_inhalte(client, welt, session_maker
 
 
 async def test_trainer_ohne_zuordnung_sieht_fremden_wochenbericht_nicht(client, welt, session_maker):
-    from datetime import datetime
 
     from app.models.wochenbericht import Wochenbericht, WochenberichtStatus, leere_tage
 
@@ -504,7 +503,7 @@ async def test_trainer_ohne_zuordnung_sieht_fremden_wochenbericht_nicht(client, 
                 kw_nummer=32,
                 tage=tage,
                 status=WochenberichtStatus.abgegeben,
-                abgegeben_am=datetime.utcnow(),
+                abgegeben_am=jetzt(),
             )
         )
         await session.commit()
@@ -517,7 +516,6 @@ async def test_trainer_ohne_zuordnung_sieht_fremden_wochenbericht_nicht(client, 
 
 async def test_wochenbericht_zugriff_wird_protokolliert(client, welt, session_maker):
     """CA-002: Fremdzugriff auf Wochenberichte muss im Audit-Log landen."""
-    from datetime import datetime
 
     from sqlmodel import select
 
@@ -532,7 +530,7 @@ async def test_wochenbericht_zugriff_wird_protokolliert(client, welt, session_ma
                 kw_nummer=32,
                 tage=leere_tage(),
                 status=WochenberichtStatus.abgegeben,
-                abgegeben_am=datetime.utcnow(),
+                abgegeben_am=jetzt(),
             )
         )
         await session.commit()

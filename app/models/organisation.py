@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlmodel import Field, SQLModel
+from app.core.zeit import jetzt
 
 
 class Abteilung(SQLModel, table=True):
@@ -54,7 +55,7 @@ class Teilnehmergruppe(SQLModel, table=True):
     name: str
     handlungsfeld_id: int = Field(foreign_key="handlungsfeld.id", index=True)
     erstellt_von: int = Field(foreign_key="user.id")
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 class TeilnehmergruppeMitglied(SQLModel, table=True):
@@ -75,7 +76,7 @@ class HandlungsfeldMitglied(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     handlungsfeld_id: int = Field(foreign_key="handlungsfeld.id", index=True)
     teilnehmer_id: int = Field(foreign_key="user.id", index=True)
-    hinzugefuegt_am: datetime = Field(default_factory=datetime.utcnow)
+    hinzugefuegt_am: datetime = Field(default_factory=jetzt)
 
 
 class PsmZuordnung(SQLModel, table=True):
@@ -91,7 +92,7 @@ class PsmZuordnung(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     psm_id: int = Field(foreign_key="user.id", index=True)
     teilnehmer_id: int = Field(foreign_key="user.id", index=True)
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 class BerufstrainerZuordnung(SQLModel, table=True):
@@ -108,4 +109,4 @@ class BerufstrainerZuordnung(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     berufstrainer_id: int = Field(foreign_key="user.id", index=True)
     teilnehmer_id: int = Field(foreign_key="user.id", index=True)
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)

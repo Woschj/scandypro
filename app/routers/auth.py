@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -12,6 +11,7 @@ from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.rate_limit import ist_gesperrt, registriere_fehlversuch, zuruecksetzen
 from app.core.security import hash_password, verify_password
 from app.core.templating import templates
+from app.core.zeit import jetzt
 from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.user import RoleEnum, User
 
@@ -75,7 +75,7 @@ async def login_submit(
             status_code=403,
         )
     zuruecksetzen(email, client_ip)
-    user.letzter_login = datetime.utcnow()
+    user.letzter_login = jetzt()
     session.add(user)
     await session.commit()
     request.session.clear()

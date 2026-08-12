@@ -2,6 +2,7 @@ from datetime import date, datetime
 from enum import Enum
 
 from sqlmodel import Field, SQLModel
+from app.core.zeit import jetzt
 
 
 class BoardTyp(str, Enum):
@@ -26,7 +27,7 @@ class Board(SQLModel, table=True):
     handlungsfeld_id: int | None = Field(default=None, foreign_key="handlungsfeld.id", index=True)
     person_teilnehmer_id: int | None = Field(default=None, foreign_key="user.id", index=True)
     ersteller_id: int = Field(foreign_key="user.id")
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
 
 
 class BoardFreigabe(SQLModel, table=True):
@@ -43,7 +44,7 @@ class BoardFreigabe(SQLModel, table=True):
     gruppe_id: int | None = Field(default=None, foreign_key="teilnehmergruppe.id", index=True)
     handlungsfeld_id: int | None = Field(default=None, foreign_key="handlungsfeld.id", index=True)
     teilnehmer_id: int | None = Field(default=None, foreign_key="user.id", index=True)
-    freigegeben_am: datetime = Field(default_factory=datetime.utcnow)
+    freigegeben_am: datetime = Field(default_factory=jetzt)
 
 
 class Spalte(SQLModel, table=True):
@@ -89,7 +90,7 @@ class Karte(SQLModel, table=True):
     ersteller_id: int = Field(foreign_key="user.id")
     sichtbarkeit: KartenSichtbarkeit = KartenSichtbarkeit.team
     reihenfolge: int = 0
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
     abgeschlossen_am: datetime | None = None
     """Gesetzt, sobald die Karte in die fest verankerte Erledigt-Spalte
     verschoben wird (siehe Spalte.ist_system_erledigt); wieder None, wenn
@@ -111,7 +112,7 @@ class KartenBewegung(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     karte_id: int = Field(foreign_key="karte.id", index=True)
     bewegt_von_id: int = Field(foreign_key="user.id", index=True)
-    bewegt_am: datetime = Field(default_factory=datetime.utcnow)
+    bewegt_am: datetime = Field(default_factory=jetzt)
 
 
 class KartenZuweisung(SQLModel, table=True):
@@ -133,5 +134,5 @@ class Unteraufgabe(SQLModel, table=True):
     erledigt: bool = False
     zugewiesen_an: int | None = Field(default=None, foreign_key="user.id")
     reihenfolge: int = 0
-    erstellt_am: datetime = Field(default_factory=datetime.utcnow)
+    erstellt_am: datetime = Field(default_factory=jetzt)
     erledigt_am: datetime | None = None
