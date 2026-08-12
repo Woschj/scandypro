@@ -25,8 +25,12 @@ ignore = [
 # Alembic-Migrationen folgen einem generierten Boilerplate-Muster (ungenutzte
 # Imports je nach Revision, `upgrade`/`downgrade` mit Platzhalter-Argumenten) -
 # an bestehenden, bereits gegen die Produktions-DB gelaufenen Migrationen wird
-# nichts mehr geaendert, auch nicht wegen Lint-Hinweisen.
-"alembic/versions/*.py" = ["F401", "F841"]
+# nichts mehr geaendert, auch nicht wegen Lint-Hinweisen. W291 (Trailing
+# Whitespace) steht aus demselben Grund hier: die Initial-Migration hat es im
+# generierten Docstring, und ein einzelner dauerhaft roter Befund wuerde nur
+# dazu fuehren, dass echte neue Funde uebersehen werden (siehe
+# tasks/codebase-audit/README.md, CA-010).
+"alembic/versions/*.py" = ["F401", "F841", "W291"]
 
 [lint.flake8-bugbear]
 # FastAPIs Dependency-Injection-Muster IST der Funktionsaufruf im Default-

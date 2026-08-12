@@ -7,11 +7,19 @@ from sqlmodel import Field, SQLModel
 class AuditAktion(str, Enum):
     wohlbefinden_gelesen = "wohlbefinden_gelesen"
     bewerbung_gelesen = "bewerbung_gelesen"
+    wochenbericht_gelesen = "wochenbericht_gelesen"
+    daten_exportiert = "daten_exportiert"
 
 
 class AuditZieltyp(str, Enum):
     wohlbefinden = "wohlbefinden"
     bewerbung = "bewerbung"
+    wochenbericht = "wochenbericht"
+    # Selbstauskunft nach Art. 15 DSGVO: die Person exportiert ihre eigenen
+    # Daten über alle Module hinweg - kein Fremdzugriff, wird aber
+    # protokolliert, weil der Export der belegrelevanteste Vorgang ist
+    # (siehe tasks/codebase-audit/README.md, CA-002).
+    eigene_daten = "eigene_daten"
 
 
 class AuditLogEintrag(SQLModel, table=True):

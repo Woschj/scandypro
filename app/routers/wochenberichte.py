@@ -11,9 +11,11 @@ from app.core.access import (
     require_role,
     sichtbare_board_ids_fuer_teilnehmer,
 )
+from app.core.audit import protokolliere
 from app.core.deps import CurrentUser, SessionDep, verify_csrf
 from app.core.templating import templates
 from app.core.wochenbericht_export import wochenbericht_als_docx
+from app.models.audit import AuditAktion, AuditZieltyp
 from app.models.kanban import Board, Karte, KartenBewegung, KartenZuweisung, Spalte
 from app.models.user import RoleEnum, User
 from app.models.wochenbericht import WOCHENTAG_LABELS, WOCHENTAGE, Wochenbericht, WochenberichtStatus, leere_tage
@@ -214,6 +216,21 @@ async def uebersicht(
                 select(User).where(User.id.in_(teilnehmer_ids)).order_by(User.name)
             )
             teilnehmer_by_id = {t.id: t for t in teilnehmer_result.scalars().all()}
+
+            # Wochenberichte enthalten Freitext zum Arbeitsalltag und sind
+            # damit personenbezogen - jeder Fremdzugriff wird protokolliert
+            # (CLAUDE.md §4, siehe tasks/codebase-audit/README.md CA-002).
+            # Protokolliert wird pro tatsächlich gelesener Person, nicht pro
+            # Seitenaufruf, damit der Log auch bei der ungefilterten
+            # Sammelansicht aussagekräftig bleibt.
+            for gelesene_id in sorted(berichte_by_teilnehmer):
+                await protokolliere(
+                    session,
+                    akteur_id=current_user.id,
+                    aktion=AuditAktion.wochenbericht_gelesen,
+                    zieltyp=AuditZieltyp.wochenbericht,
+                    ziel_teilnehmer_id=gelesene_id,
+                )
         return templates.TemplateResponse(
             request,
             "wochenberichte/trainer_uebersicht.html",

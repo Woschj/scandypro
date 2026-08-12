@@ -98,7 +98,6 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a3b0a9'%3E%3Cpath d='M5.25 7.5L10 12.25L14.75 7.5H5.25Z'/%3E%3C/svg%3E");
   }
   :root:not([data-theme="light"]) .karte-badge--faellig { background: #3a2c14; }
-  :root:not([data-theme="light"]) .tag-kommentar-btn--gesetzt { background: #3a2c14; }
 }
 
 :root[data-theme="dark"] .field input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
@@ -112,7 +111,6 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23a3b0a9'%3E%3Cpath d='M5.25 7.5L10 12.25L14.75 7.5H5.25Z'/%3E%3C/svg%3E");
 }
 :root[data-theme="dark"] .karte-badge--faellig { background: #3a2c14; }
-:root[data-theme="dark"] .tag-kommentar-btn--gesetzt { background: #3a2c14; }
 
 /* Umschalter-Button (siehe app/templates/base.html, app/static/js/theme-toggle.js):
    zeigt Mond ("zu Dunkel wechseln") wenn aktuell hell, Sonne wenn aktuell
@@ -535,7 +533,6 @@ button:not(.btn) {
 .wisch-karte--verlassen { opacity: 0 !important; transform: translateX(160px) rotate(12deg) !important; pointer-events: none; }
 .wisch-karte-eyebrow { color: var(--ink-soft); }
 .wisch-karte textarea { margin-top: var(--space-2); flex: 1; }
-.wisch-karten-hinweis { text-align: center; margin-top: var(--space-2); }
 .wisch-karten-fertig { text-align: center; padding: var(--space-4); color: var(--ink-soft); display: none; }
 
 /* --- Primitiv "Waage" (Gedanken-Waage) --- */
@@ -630,7 +627,6 @@ button:not(.btn) {
   font-weight: 600;
 }
 .chip-success { background: var(--success-bg); color: var(--success); }
-.chip-danger { background: var(--danger-bg); color: var(--danger); }
 .chip-neutral { background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); }
 .chip-brand { background: #e2ede9; color: var(--brand-ink); }
 
@@ -653,14 +649,6 @@ button:not(.btn) {
 /* Privates Wochen-Fortschritts-Signal (siehe app/core/fortschritt.py) -
    nie als Statistik/Balken, nie negativ formuliert, auch bei 0 eine
    einladende neutrale Zeile statt einer Zahl. */
-.fortschritt-signal {
-  background: color-mix(in srgb, var(--success, #2d6b4c) 8%, var(--bg-card, var(--bg)));
-  border-radius: var(--radius);
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-4);
-  font-size: 0.9375rem;
-}
-.fortschritt-signal p { margin: 0; }
 
 /* Layout / Topnav */
 .app-shell { min-height: 100dvh; display: flex; flex-direction: column; }
@@ -848,9 +836,9 @@ button:not(.btn) {
 .kontakt-karte-aktionen { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .kontakt-karte-aktionen .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
-/* Rückblick-Kacheln (Schritte/Stimmung/Bewerbungen) - dieselbe ruhige,
-   nie wertende Optik wie das bestehende .fortschritt-signal, nur als
-   Reihe statt Fließtext. */
+/* Rückblick-Kacheln (Schritte/Tagebuch-Tage/Bewerbungen) - bewusst ruhige,
+   nie wertende Optik: reine Zählwerte ohne Ampelfarben oder Trendpfeile
+   (siehe CLAUDE.md "keine roten Warnsymbole"). */
 .rueckblick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); }
 .rueckblick-stat {
   display: block;
@@ -868,7 +856,6 @@ button:not(.btn) {
 .rueckblick-stat .rueckblick-emoji { font-size: 2rem; line-height: 1; }
 .rueckblick-stat .rueckblick-zahl { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--ink); }
 .rueckblick-stat .rueckblick-label { font-size: 0.75rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; margin-top: var(--space-2); }
-.rueckblick-stat .auswertung-trend { font-size: 1rem; margin-top: 0.25rem; }
 .rueckblick-stat .rueckblick-hinweis {
   font-size: 0.8125rem;
   color: var(--ink-soft);
@@ -1231,7 +1218,6 @@ button:not(.btn) {
 .neue-karte-toggle[open] > summary { border-style: solid; margin-bottom: var(--space-3); }
 .neue-karte-toggle .field { margin-bottom: var(--space-3); }
 
-
 /* Zuklappbare Listen (Board-Übersicht, Wochenberichte) */
 .zuklapp-liste { display: flex; flex-direction: column; gap: var(--space-3); }
 .zuklapp-eintrag {
@@ -1308,9 +1294,6 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 }
 .checkbox-list input[type="checkbox"] { width: auto; min-height: auto; flex-shrink: 0; }
 
-.scale-input { display: flex; gap: var(--space-3); flex-wrap: wrap; }
-.scale-input label { display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; color: var(--ink); }
-
 .section-divider { border: none; border-top: 1px solid var(--line); margin: var(--space-6) 0; }
 
 /* Wiederkehrendes Muster "aufklappbarer Card-Header" (siehe
@@ -1323,128 +1306,11 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
    Bewerbungsmodul (siehe tasks/uiux-audit/UI-013.md). */
 .datei-zeile { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
 
-/* Mein Tag - Emoji-Skala */
-.wochen-nav, .tage-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
-.wochen-nav .wochen-label, .tage-nav .tage-nav-label { font-family: var(--font-display); font-weight: 600; }
-
-.tage-widget { position: relative; }
-
-.tag-eintrag-kopf { display: flex; justify-content: flex-end; margin-bottom: var(--space-3); }
-
-.tag-kommentar-btn {
-  border: 1px solid var(--line);
-  background: var(--bg);
-  border-radius: 999px;
-  padding: 0.4rem 0.875rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-.tag-kommentar-btn:hover { background: var(--bg-raised); border-color: var(--brand); }
-.tag-kommentar-btn--gesetzt { border-color: var(--accent); background: #fbf0dd; }
-
-.emoji-picker { margin-bottom: var(--space-4); }
-.emoji-picker:last-child { margin-bottom: 0; }
-.emoji-picker-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2rem; }
-.emoji-picker-label {
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.emoji-picker-preview { font-size: 1.75rem; line-height: 1; }
-
-.emoji-slider {
-  width: 100%;
-  height: 2rem;
-  margin: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-.emoji-slider::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: var(--line); }
-.emoji-slider::-moz-range-track { height: 6px; border-radius: 999px; background: var(--line); }
-.emoji-slider::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 1.75rem;
-  height: 1.75rem;
-  margin-top: -0.7rem;
-  border-radius: 50%;
-  background: var(--bg-raised);
-  border: 2px solid var(--brand);
-  box-shadow: var(--shadow-card);
-}
-.emoji-slider--energie::-webkit-slider-thumb { border-color: var(--accent); }
-.emoji-slider::-moz-range-thumb {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  background: var(--bg-raised);
-  border: 2px solid var(--brand);
-  box-shadow: var(--shadow-card);
-}
-.emoji-slider--energie::-moz-range-thumb { border-color: var(--accent); }
+/* Mein Tag - Tages-Navigation */
+.tage-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+.tage-nav .tage-nav-label { font-family: var(--font-display); font-weight: 600; }
 
 /* Mood-Heatmap ("Dein Verlauf") */
-.heatmap-wochen { display: flex; flex-direction: column; gap: 4px; }
-.heatmap-woche { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.heatmap-tag {
-  aspect-ratio: 1;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9375rem;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  padding: 0;
-  width: 100%;
-  font-family: inherit;
-  cursor: pointer;
-}
-.heatmap-tag--zukunft { cursor: default; }
-.heatmap-tag--zukunft { visibility: hidden; }
-.heatmap-legende { display: flex; align-items: center; gap: 0.3rem; margin-top: var(--space-3); font-size: 0.75rem; color: var(--ink-soft); }
-.heatmap-legende-farben { display: flex; gap: 2px; }
-.heatmap-legende-swatch { width: 14px; height: 14px; border-radius: 3px; }
-
-.zeitlinie-toast {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background: var(--brand-ink);
-  color: #fff;
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  opacity: 0;
-  transform: translateY(-6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: none;
-}
-.zeitlinie-toast.sichtbar { opacity: 1; transform: translateY(0); }
-
-.kommentar-panel {
-  display: none;
-  position: absolute;
-  inset: 0;
-  background: rgba(20, 32, 29, 0.35);
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-.kommentar-panel.sichtbar { display: flex; }
-.kommentar-panel-box {
-  background: var(--bg-raised);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-6);
-  width: min(90%, 420px);
-}
 
 /* Gebrandetes Bestätigungs-Modal für destruktive Aktionen (siehe
    app/static/js/confirm.js, tasks/uiux-audit/UI-005.md) statt native(s)
@@ -1469,14 +1335,3 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 .confirm-modal-box p { color: var(--ink); margin-bottom: var(--space-4); }
 .confirm-modal-actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
 
-.auswertung-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); }
-.auswertung-stat { text-align: center; }
-.auswertung-stat .auswertung-emoji { font-size: 2.5rem; line-height: 1; }
-.auswertung-stat .auswertung-trend { font-size: 1.25rem; font-weight: 700; margin-top: 0.25rem; cursor: default; }
-/* trend-auf bewusst deutlich hervorgehoben (Erfolgsfarbe), trend-ab UND
-   trend-gleich bewusst in derselben neutralen Farbe - ein rückläufiger
-   Wert soll sichtbar, aber nie wie eine Warnung wirken (siehe
-   app/core/skala.py:trend, CLAUDE.md "keine roten Warnsymbole"). */
-.auswertung-trend.trend-auf { color: var(--success); }
-.auswertung-trend.trend-ab { color: var(--ink-soft); }
-.auswertung-trend.trend-gleich { color: var(--ink-soft); }
