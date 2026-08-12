@@ -8,6 +8,30 @@ Versionierung nach [Semantic Versioning](https://semver.org/lang/de/) (vor
 enthalten - üblich für Software vor dem ersten stabilen Release). Gepflegt
 analog zum Schwestermodul Scandy-Lite.
 
+## [0.1.43] - 2026-08-12
+
+### Added
+- **Strukturtests für die Alembic-Migrationskette**
+  (`tests/test_migrationen.py`, 5 Tests). Die Tests bauen ihr Schema über
+  `SQLModel.metadata.create_all` - Alembic lief bisher in keinem einzigen
+  Test, die Migrationen wurden erst beim Start der echten App ausgeführt.
+  Genau dort ist bereits einmal eine doppelt vergebene Revision-ID
+  aufgefallen und hat den Start blockiert. Geprüft werden jetzt statisch:
+  keine doppelten IDs, genau ein Head (per Regex und per Alembics eigenem
+  Parser), genau eine Wurzel, lückenlose Kette, sowie ein grober
+  Drift-Check gegen die Modellfelder. Per Gegenprobe verifiziert.
+- **`tasks/produktivreife/README.md`**: neun priorisierte Punkte (PR-001
+  bis PR-009), die einem Einsatz mit echten Teilnehmerdaten im Weg stehen -
+  Betriebs- und Compliance-Sicht als Ergänzung zum Codebase-Audit.
+  Wichtigster Befund: **es gibt kein Backup**, weder für die Datenbank
+  noch für die Uploads. Ebenfalls offen: die beiden jüngsten Migrationen
+  sind noch nie gegen PostgreSQL gelaufen.
+
+### Changed
+- README: Abschnitt "Bekannte Lücken" auf den aktuellen Stand gebracht und
+  auf die neue Produktivreife-Liste verwiesen; die dort noch genannten
+  Berechtigungs-/Löschtests sind seit 0.1.42 erledigt.
+
 ## [0.1.42] - 2026-08-12
 
 ### Security

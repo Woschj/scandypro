@@ -254,20 +254,38 @@ docker compose down -v       # Container stoppen UND Datenbank löschen
 ## Bekannte Lücken dieses Prototyps (bewusst, siehe CLAUDE.md)
 
 Dieser Stand dient der **Funktions-/UX-Bewertung**, nicht dem
-Produktivbetrieb. Vor echtem Einsatz mit echten Teilnehmerdaten fehlen
-noch zwingend:
+Produktivbetrieb.
 
-- **Virenscan/Content-Prüfung** von Uploads – aktuell nur Endungs- und
-  Größen-Whitelist (`app/core/uploads.py`), kein Scan des Dateiinhalts
-- **Vollständige Konto-Löschung** (Login/Account selbst) – aktuell nur
-  Inhaltsdaten löschbar, siehe oben
-- **Key-Rotation** für die Feldverschlüsselung
+> 📋 **Vollständige Liste mit Schweregrad, Begründung und Reihenfolge:**
+> [`tasks/produktivreife/README.md`](tasks/produktivreife/README.md)
+
+Die wichtigsten Punkte in Kürze:
+
+- **Kein Backup** (PR-001) – Datenbank und Uploads liegen ausschließlich in
+  Docker-Volumes, ohne Dump, Wiederherstellungs-Prozedur oder Restore-Test.
+  Das einzige Risiko auf der Liste, bei dem hinterher nichts mehr zu retten
+  ist – deshalb zuerst angehen.
+- **Migrationen ohne echten Postgres-Testlauf** (PR-002) – die Kette wird
+  seit 0.1.43 statisch geprüft (`tests/test_migrationen.py`), aber nie
+  tatsächlich ausgeführt. Die beiden jüngsten Migrationen sind noch nie
+  gegen PostgreSQL gelaufen.
+- **Virenscan/Content-Prüfung** von Uploads (PR-003) – es gibt Endungs-,
+  Größen- und Magic-Byte-Prüfung (`app/core/uploads.py`), aber keinen Scan
+  auf Schadinhalte.
+- **Key-Rotation** für die Feldverschlüsselung (PR-004).
+- **Vollständige Konto-Löschung** (PR-005) – aktuell nur Inhaltsdaten
+  löschbar, siehe oben.
+- **DSGVO-Dokumentation und rechtliche Prüfung** (PR-008) – organisatorisch,
+  aber echter Blocker bei Art.-9-Daten.
 - **TLS im Standard-Setup** – Caddy läuft ohne eigene Domain auf Port 8080
   ohne Verschlüsselung (nur für lokale Bewertung, nicht so deployen). Sowohl
   echte Domain mit automatischem HTTPS als auch selbstsigniertes HTTPS
   fürs rein interne Netz sind bereits vorbereitet, aber ein bewusster
   manueller Schritt – siehe Abschnitt "TLS (Produktivbetrieb)" unten.
-- Tests (Berechtigungs-/Löschtests laut CLAUDE.md-Review-Checkliste)
+
+Erledigt seit 0.1.42: Berechtigungs- und Löschtests laut
+CLAUDE.md-Review-Checkliste (31 Tests, siehe
+[`tasks/codebase-audit/README.md`](tasks/codebase-audit/README.md)).
 
 Diese Punkte sind kein Versehen, sondern bewusst auf spätere Phasen
 verschoben, um zuerst die Kernfunktionalität bewerten zu können – siehe
