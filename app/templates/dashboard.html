@@ -4,7 +4,7 @@
 <h1>Willkommen, {{ current_user.name }}</h1>
 
 {% if trainer_kontakt or psm_kontakt %}
-<div class="kontakt-karten" style="margin-bottom: var(--space-6);">
+<div class="kontakt-karten abstand-unten-6">
   {% if trainer_kontakt %}
   <div class="kontakt-karte">
     <span class="avatar avatar-{{ trainer_kontakt.id % 5 }}">{{ trainer_kontakt.name | initialen }}</span>
@@ -51,8 +51,8 @@
 {% endif %}
 
 {% if was_steht_an %}
-<div class="card" style="margin-bottom: var(--space-6);">
-  <h3 style="margin-top:0;">Was steht an</h3>
+<div class="card abstand-unten-6">
+  <h3 class="ohne-abstand-oben">Was steht an</h3>
   <ul class="checkbox-list" style="gap: var(--space-2);">
     {% for eintrag in was_steht_an %}
     <li>
@@ -68,8 +68,8 @@
 {% endif %}
 
 {% if offene_unterstuetzungsanfragen %}
-<div class="card" style="margin-bottom: var(--space-6);">
-  <h3 style="margin-top:0;">Unterstützungsanfragen</h3>
+<div class="card abstand-unten-6">
+  <h3 class="ohne-abstand-oben">Unterstützungsanfragen</h3>
   <p class="karte-meta">Jemand hat aktiv um Unterstützung gebeten - unabhängig davon, was sonst im Tagebuch steht.</p>
   <ul class="checkbox-list" style="gap: var(--space-2); margin-top: var(--space-3);">
     {% for eintrag in offene_unterstuetzungsanfragen %}
@@ -88,8 +88,8 @@
 {% endif %}
 
 {% if neu_geteilt %}
-<div class="card" style="margin-bottom: var(--space-6);">
-  <h3 style="margin-top:0;">Neu geteilt</h3>
+<div class="card abstand-unten-6">
+  <h3 class="ohne-abstand-oben">Neu geteilt</h3>
   <ul class="checkbox-list" style="gap: var(--space-2);">
     {% for eintrag in neu_geteilt %}
     <li>
@@ -104,8 +104,8 @@
 {% if current_user.role.value == "teilnehmer" %}
 
 {% if schritte_diese_woche is not none or tagebuch_tage_woche is not none or bewerbungen_uebersicht is not none %}
-<h2 style="margin-top: 0;">Deine Woche im Rückblick</h2>
-<div class="rueckblick-grid" style="margin-bottom: var(--space-6);">
+<h2 class="ohne-abstand-oben">Deine Woche im Rückblick</h2>
+<div class="rueckblick-grid abstand-unten-6">
   {% if schritte_diese_woche is not none %}
   <a class="rueckblick-stat" href="{{ letzte_kanban_aktivitaet.link if letzte_kanban_aktivitaet else '/kanban' }}">
     {% if schritte_diese_woche > 0 %}
@@ -128,7 +128,7 @@
     {% if tagebuch_tage_woche > 0 %}
     <div class="rueckblick-zahl">{{ tagebuch_tage_woche }}</div>
     <div class="rueckblick-label">{{ "Tag ins Tagebuch geschrieben" if tagebuch_tage_woche == 1 else "Tage ins Tagebuch geschrieben" }}</div>
-    <div class="karte-meta" style="margin-top: var(--space-2);">
+    <div class="karte-meta abstand-oben-2">
       {{ "Schön, dass du dir diese Woche Zeit dafür genommen hast." if tagebuch_tage_woche == 1 else "Schön, dass du dir in dieser Woche mehrmals Zeit dafür genommen hast." }}
     </div>
     {% else %}
@@ -145,7 +145,7 @@
     <div class="rueckblick-zahl">{{ bewerbungen_uebersicht.aktiv }}</div>
     <div class="rueckblick-label">Laufende Bewerbung{{ "en" if bewerbungen_uebersicht.aktiv != 1 }}</div>
     {% if bewerbungen_uebersicht.wartend > 0 %}
-    <div class="karte-meta" style="margin-top: var(--space-2);">Davon {{ bewerbungen_uebersicht.wartend }} auf Rückmeldung wartend</div>
+    <div class="karte-meta abstand-oben-2">Davon {{ bewerbungen_uebersicht.wartend }} auf Rückmeldung wartend</div>
     {% endif %}
     {% if letzte_aktive_bewerbung %}
     <div class="rueckblick-hinweis">Zuletzt: <strong>{{ letzte_aktive_bewerbung }}</strong></div>

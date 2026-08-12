@@ -70,7 +70,7 @@
   <p class="karte-meta">Team-Boards, die für dich freigegeben sind - anders als bei
     "Mein Tag" und Bewerbungen ist das eine organisatorische Freigabe, kein Widerruf durch dich möglich.</p>
   {% if board_freigaben %}
-  <table style="margin-top: var(--space-3);">
+  <table class="abstand-oben-3">
     <thead><tr><th>Board</th><th>Freigegeben als</th></tr></thead>
     <tbody>
     {% for f in board_freigaben %}
@@ -112,11 +112,11 @@
 
 <details class="card">
   <summary class="card-collapsible-summary"><h3>Alle Daten in einem Bereich löschen</h3></summary>
-  <div style="margin-top: var(--space-4);">
+  <div class="abstand-oben-4">
     <p class="karte-meta">Das entfernt deine Einträge unwiderruflich (inkl. Dateien und Freigaben) - dein
       Zugang zu ScandyPro bleibt bestehen. Zur Bestätigung bitte "LÖSCHEN" eintippen.</p>
 
-    <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" class="form-row" style="margin-bottom: var(--space-4);">
+    <form method="post" action="/freigaben/konto/wohlbefinden-loeschen" class="form-row abstand-unten-4">
       {% include "partials/csrf_field.html" %}
       <div class="field">
         <label for="bestaetigung-wb">Alle Einträge zu "Mein Tag" löschen</label>
@@ -125,7 +125,7 @@
       <button type="submit" class="link-btn danger">Löschen</button>
     </form>
 
-    <form method="post" action="/freigaben/konto/bewerbungen-loeschen" class="form-row" style="margin-bottom: var(--space-4);">
+    <form method="post" action="/freigaben/konto/bewerbungen-loeschen" class="form-row abstand-unten-4">
       {% include "partials/csrf_field.html" %}
       <div class="field">
         <label for="bestaetigung-bw">Alle Bewerbungsdaten löschen</label>

@@ -48,7 +48,7 @@
           {% endfor %}
           </tbody>
         </table>
-        {% if b.besonderheiten %}<p style="margin-top: var(--space-3);"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
+        {% if b.besonderheiten %}<p class="abstand-oben-3"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
         <p class="karte-meta">Abgegeben am {{ b.abgegeben_am.strftime("%d.%m.%Y %H:%M") }}</p>
         <a class="btn btn-ghost btn-sm" href="/wochenberichte/{{ b.id }}/word">Als Word-Formular herunterladen</a>
       </div>

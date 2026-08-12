@@ -84,7 +84,7 @@
   <div class="seiten-tabs-panels">
     <div x-show="tab === 'board'" x-cloak>
       {% if bewerbungen %}
-      <p class="karte-meta" style="margin-bottom: var(--space-4);">Ziehe eine Bewerbung in eine andere Spalte, um ihren
+      <p class="karte-meta abstand-unten-4">Ziehe eine Bewerbung in eine andere Spalte, um ihren
         Status zu ändern.</p>
       <div class="board-columns">
         {% for s in status_optionen %}
@@ -117,7 +117,7 @@
 
             <div class="karte-body">
 
-              <div class="zuklapp-liste" style="margin-top: var(--space-3);">
+              <div class="zuklapp-liste abstand-oben-3">
                 <details class="zuklapp-eintrag">
                   <summary>
                     <span class="zuklapp-eintrag-chevron">▸</span>
@@ -153,8 +153,8 @@
                   <div class="zuklapp-eintrag-body">
                     {% for notiz in notizen %}
                     <div class="datei-zeile">
-                      <div style="flex:1;">
-                        <p style="margin:0;">{{ notiz.text }}</p>
+                      <div class="fuellt-rest">
+                        <p class="ohne-abstand">{{ notiz.text }}</p>
                         <span class="karte-meta">{{ notiz.erstellt_am.strftime("%d.%m.%Y %H:%M") }}</span>
                       </div>
                       <form method="post" action="/bewerbungen/notizen/{{ notiz.id }}/loeschen" data-confirm="Notiz löschen?">
@@ -165,9 +165,9 @@
                     {% else %}
                     <p class="empty-state">Noch keine Notizen.</p>
                     {% endfor %}
-                    <form method="post" action="/bewerbungen/{{ b.id }}/notizen" class="form-row" style="margin-top: var(--space-3);">
+                    <form method="post" action="/bewerbungen/{{ b.id }}/notizen" class="form-row abstand-oben-3">
                       {% include "partials/csrf_field.html" %}
-                      <div class="field" style="flex:1;">
+                      <div class="field fuellt-rest">
                         <label for="notiz-{{ b.id }}">Neue Notiz</label>
                         <textarea id="notiz-{{ b.id }}" name="text" placeholder="z. B. Telefonat geführt, Zusage laut Anruf …" required></textarea>
                       </div>
@@ -184,7 +184,7 @@
                     {% if anzahl_unterlagen %}<span class="chip chip-neutral">{{ anzahl_unterlagen }}</span>{% endif %}
                   </summary>
                   <div class="zuklapp-eintrag-body">
-                    <div class="eyebrow" style="margin-bottom: var(--space-2);">Deckblatt (optional, vor dem Anschreiben)</div>
+                    <div class="eyebrow abstand-unten-2">Deckblatt (optional, vor dem Anschreiben)</div>
                     {% for u in deckblatt_by_bewerbung.get(b.id, []) %}
                     <div class="datei-zeile">
                       <a href="/bewerbungen/unterlagen/{{ u.id }}/download">{{ u.original_dateiname }}</a>
@@ -234,7 +234,7 @@
                 </details>
               </div>
 
-              <form method="post" action="/bewerbungen/{{ b.id }}/loeschen" data-confirm="Bewerbung &quot;{{ b.firma }} — {{ b.position }}&quot; endgültig löschen?" style="margin-top: var(--space-3);">
+              <form class="abstand-oben-3" method="post" action="/bewerbungen/{{ b.id }}/loeschen" data-confirm="Bewerbung &quot;{{ b.firma }} — {{ b.position }}&quot; endgültig löschen?">
                 {% include "partials/csrf_field.html" %}
                 <button type="submit" class="link-btn danger">Bewerbung löschen</button>
               </form>
@@ -347,7 +347,7 @@
           </tbody>
         </table>
         {% endif %}
-        <form method="post" action="/bewerbungen/unterlagen" enctype="multipart/form-data" class="form-row" style="margin-top: var(--space-4);">
+        <form method="post" action="/bewerbungen/unterlagen" enctype="multipart/form-data" class="form-row abstand-oben-4">
           {% include "partials/csrf_field.html" %}
           <div class="field">
             <label for="kategorie">Kategorie</label>
@@ -400,7 +400,7 @@
         {% endif %}
 
         {% if freigaben %}
-        <table style="margin-top: var(--space-4);">
+        <table class="abstand-oben-4">
           <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
           <tbody>
           {% for f in freigaben %}

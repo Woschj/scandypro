@@ -48,7 +48,7 @@
     <div class="zuklapp-eintrag-body">
       {% include "kanban/_spalten.html" %}
       {% if k.board.typ.value == "team" and current_user.role.value == "berufstrainer" %}
-      <p style="margin-top: var(--space-3);"><a href="/kanban/boards/{{ k.board.id }}">Board verwalten (Freigaben für Arbeitsgruppen)</a></p>
+      <p class="abstand-oben-3"><a href="/kanban/boards/{{ k.board.id }}">Board verwalten (Freigaben für Arbeitsgruppen)</a></p>
       {% endif %}
     </div>
   </details>

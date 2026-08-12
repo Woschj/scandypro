@@ -59,11 +59,11 @@
         <div class="karte-body">
           {% if karte.beschreibung %}<p>{{ karte.beschreibung }}</p>{% endif %}
           {% if unteraufgaben %}
-          <div class="eyebrow" style="margin-top: var(--space-3);">Unteraufgaben</div>
+          <div class="eyebrow abstand-oben-3">Unteraufgaben</div>
           {% for u in unteraufgaben %}
           <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}">
             <span aria-hidden="true">{{ "✓" if u.erledigt else "○" }}</span>
-            <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
+            <span class="unteraufgabe-titel fuellt-rest">{{ u.titel }}</span>
             {% if u.zugewiesen_an and u.zugewiesen_an in k.anzeige_personen %}
             <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.anzeige_personen[u.zugewiesen_an].name }}">{{ k.anzeige_personen[u.zugewiesen_an].name | initialen }}</span>
             {% endif %}

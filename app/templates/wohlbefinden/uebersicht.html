@@ -6,30 +6,30 @@
 
 <details class="card">
   <summary class="card-collapsible-summary"><h3>Ich möchte jetzt Unterstützung</h3></summary>
-  <div style="margin-top: var(--space-4);">
+  <div class="abstand-oben-4">
     <p class="karte-meta">Das hier ist unabhängig von deinen Tagebuch-Einträgen - niemand wird automatisch
       benachrichtigt, egal was du oben einträgst oder nicht einträgst.</p>
     {% if psm_kontakt %}
-    <p style="margin-top: var(--space-3);">Deine zuständige psychosoziale Mitarbeiter:in ist
+    <p class="abstand-oben-3">Deine zuständige psychosoziale Mitarbeiter:in ist
       <strong>{{ psm_kontakt.name }}</strong> -
       <a href="mailto:{{ psm_kontakt.email }}">{{ psm_kontakt.email }}</a>{% if psm_kontakt.telefon %},
       {{ psm_kontakt.telefon }}{% endif %}.</p>
     {% if anfrage_offen %}
-    <p class="karte-meta" style="margin-top: var(--space-3);">Deine Anfrage ist unterwegs - {{ psm_kontakt.name }}
+    <p class="karte-meta abstand-oben-3">Deine Anfrage ist unterwegs - {{ psm_kontakt.name }}
       sieht sie beim nächsten Login.</p>
-    <form method="post" action="/wohlbefinden/unterstuetzung-anfragen/{{ offene_anfrage_id }}/zurueckziehen" style="margin-top: var(--space-2);">
+    <form class="abstand-oben-2" method="post" action="/wohlbefinden/unterstuetzung-anfragen/{{ offene_anfrage_id }}/zurueckziehen">
       {% include "partials/csrf_field.html" %}
       <button type="submit" class="btn btn-ghost btn-sm">Anfrage zurückziehen</button>
     </form>
     {% else %}
-    <form method="post" action="/wohlbefinden/unterstuetzung-anfragen" style="margin-top: var(--space-3);">
+    <form class="abstand-oben-3" method="post" action="/wohlbefinden/unterstuetzung-anfragen">
       {% include "partials/csrf_field.html" %}
       <button type="submit" class="btn btn-primary btn-sm">Jetzt Unterstützung anfragen</button>
     </form>
     {% endif %}
     {% endif %}
     {% if andere_psm %}
-    <div class="eyebrow" style="margin-top: var(--space-4);">Weitere psychosoziale Mitarbeiter:innen deiner Abteilung</div>
+    <div class="eyebrow abstand-oben-4">Weitere psychosoziale Mitarbeiter:innen deiner Abteilung</div>
     <ul style="margin: var(--space-2) 0 0;">
       {% for psm in andere_psm %}
       <li><strong>{{ psm.name }}</strong> - <a href="mailto:{{ psm.email }}">{{ psm.email }}</a>{% if psm.telefon %}, {{ psm.telefon }}{% endif %}</li>
@@ -37,7 +37,7 @@
     </ul>
     {% endif %}
     {% if not psm_kontakt and not andere_psm %}
-    <p class="empty-state" style="margin-top: var(--space-3);">Dir ist noch keine psychosoziale Mitarbeiter:in zugeordnet - sprich deine Einrichtung an.</p>
+    <p class="empty-state abstand-oben-3">Dir ist noch keine psychosoziale Mitarbeiter:in zugeordnet - sprich deine Einrichtung an.</p>
     {% endif %}
   </div>
 </details>
@@ -175,7 +175,7 @@
         <div class="wisch-karte" data-wisch-karte style="z-index: 1;">
           <div class="wisch-karte-eyebrow eyebrow">Wegwischen zum Loslassen</div>
           <textarea rows="3" placeholder="Was von gestern beschäftigt dich noch?"></textarea>
-          <button type="button" class="btn btn-ghost btn-sm" data-wisch-button style="margin-top: var(--space-2);">Loslassen</button>
+          <button type="button" class="btn btn-ghost btn-sm abstand-oben-2" data-wisch-button>Loslassen</button>
         </div>
         <input type="hidden" name="morgen_uebung_erledigt" data-wisch-erledigt value="">
         <p class="wisch-karten-fertig" data-wisch-fertig>Losgelassen - der Tag darf neu anfangen.</p>
@@ -196,7 +196,7 @@
         <input type="file" name="morgen_uebung_datei" accept="image/png,image/jpeg">
       </div>
       {% if tag.hat_morgen_uebung_datei %}
-      <label class="tagebuch-chip" style="margin-top: var(--space-2);"><input type="checkbox" name="morgen_uebung_datei_entfernen" value="true"> Foto entfernen</label>
+      <label class="tagebuch-chip abstand-oben-2"><input type="checkbox" name="morgen_uebung_datei_entfernen" value="true"> Foto entfernen</label>
       {% endif %}
 
       {% elif tag.morgen_uebung_typ == "staerken_karte" %}
@@ -237,8 +237,8 @@
     <div class="field">
       <label>Ich bin dankbar für …</label>
       <input type="text" name="dankbarkeit_1" value="{{ tag.dankbarkeit[0] }}" placeholder="1.">
-      <input type="text" name="dankbarkeit_2" value="{{ tag.dankbarkeit[1] }}" placeholder="2." style="margin-top: var(--space-2);">
-      <input type="text" name="dankbarkeit_3" value="{{ tag.dankbarkeit[2] }}" placeholder="3." style="margin-top: var(--space-2);">
+      <input class="abstand-oben-2" type="text" name="dankbarkeit_2" value="{{ tag.dankbarkeit[1] }}" placeholder="2.">
+      <input class="abstand-oben-2" type="text" name="dankbarkeit_3" value="{{ tag.dankbarkeit[2] }}" placeholder="3.">
     </div>
 
     <div class="field">
@@ -274,8 +274,8 @@
     <div class="field">
       <label>3 großartige Dinge, die heute passiert sind</label>
       <input type="text" name="highlight_1" value="{{ tag.highlights[0] }}" placeholder="1.">
-      <input type="text" name="highlight_2" value="{{ tag.highlights[1] }}" placeholder="2." style="margin-top: var(--space-2);">
-      <input type="text" name="highlight_3" value="{{ tag.highlights[2] }}" placeholder="3." style="margin-top: var(--space-2);">
+      <input class="abstand-oben-2" type="text" name="highlight_2" value="{{ tag.highlights[1] }}" placeholder="2.">
+      <input class="abstand-oben-2" type="text" name="highlight_3" value="{{ tag.highlights[2] }}" placeholder="3.">
     </div>
 
     <div class="field">
@@ -322,8 +322,8 @@
           <div class="flip-karte-hinten">
             <p class="karte-meta">Stell dir kurz einen Ort vor, an dem du dich sicher und ruhig fühlst.</p>
             <input type="text" name="ruhe_ort_sehen" value="{{ tag.ruhe_ort_sehen }}" placeholder="Was siehst du dort?">
-            <input type="text" name="ruhe_ort_hoeren" value="{{ tag.ruhe_ort_hoeren }}" placeholder="Was hörst du dort?" style="margin-top: var(--space-2);">
-            <input type="text" name="ruhe_ort_spueren" value="{{ tag.ruhe_ort_spueren }}" placeholder="Was spürst du dort?" style="margin-top: var(--space-2);">
+            <input class="abstand-oben-2" type="text" name="ruhe_ort_hoeren" value="{{ tag.ruhe_ort_hoeren }}" placeholder="Was hörst du dort?">
+            <input class="abstand-oben-2" type="text" name="ruhe_ort_spueren" value="{{ tag.ruhe_ort_spueren }}" placeholder="Was spürst du dort?">
           </div>
         </div>
       </div>
@@ -338,7 +338,7 @@
         </div>
         <div class="gedanken-waage-staender"></div>
         <textarea name="gedanke_belastend" rows="2" placeholder="Ein Gedanke, der dich heute beschäftigt hat">{{ tag.gedanke_belastend }}</textarea>
-        <textarea name="gedanke_ausgewogen" rows="2" placeholder="Eine andere, ausgewogenere Sicht darauf" style="margin-top: var(--space-2);">{{ tag.gedanke_ausgewogen }}</textarea>
+        <textarea class="abstand-oben-2" name="gedanke_ausgewogen" rows="2" placeholder="Eine andere, ausgewogenere Sicht darauf">{{ tag.gedanke_ausgewogen }}</textarea>
       </div>
 
       {% elif tag.abend_uebung_typ == "sorgen_loslassen" %}
@@ -352,7 +352,7 @@
         <div class="wisch-karte" data-wisch-karte style="z-index: 1;">
           <div class="wisch-karte-eyebrow eyebrow">Wegwischen zum Loslassen</div>
           <textarea rows="3" placeholder="Was beschäftigt dich?"></textarea>
-          <button type="button" class="btn btn-ghost btn-sm" data-wisch-button style="margin-top: var(--space-2);">Loslassen</button>
+          <button type="button" class="btn btn-ghost btn-sm abstand-oben-2" data-wisch-button>Loslassen</button>
         </div>
         <input type="hidden" name="sorgen_los_erledigt" data-wisch-erledigt value="">
         <p class="wisch-karten-fertig" data-wisch-fertig>Losgelassen - schön, dass du dir das gegönnt hast.</p>
@@ -372,7 +372,7 @@
         <input type="file" name="dankbarkeitsfoto" accept="image/png,image/jpeg">
       </div>
       {% if tag.hat_dankbarkeitsfoto %}
-      <label class="tagebuch-chip" style="margin-top: var(--space-2);"><input type="checkbox" name="dankbarkeitsfoto_entfernen" value="true"> Foto entfernen</label>
+      <label class="tagebuch-chip abstand-oben-2"><input type="checkbox" name="dankbarkeitsfoto_entfernen" value="true"> Foto entfernen</label>
       {% endif %}
 
       {% elif tag.abend_uebung_typ == "mini_ziel" %}
@@ -386,7 +386,7 @@
           </div>
           <div class="flip-karte-hinten">
             <input type="text" name="mini_ziel_text" value="{{ tag.mini_ziel_text }}" placeholder="Ein kleines Ziel, das du dir heute gesetzt hattest">
-            <label class="tagebuch-chip" style="margin-top: var(--space-2);">
+            <label class="tagebuch-chip abstand-oben-2">
               <input type="checkbox" name="mini_ziel_geschafft" value="true" {% if tag.mini_ziel_geschafft %}checked{% endif %}>
               Hat geklappt
             </label>
@@ -460,7 +460,7 @@
         <canvas width="600" height="360" {% if tag.hat_zeichnung %}style="display:none;"{% endif %}></canvas>
         <input type="hidden" name="zeichnung_daten">
         <input type="hidden" name="zeichnung_entfernen" value="">
-        <button type="button" class="btn btn-ghost btn-sm" data-zeichenfeld-loeschen style="margin-top: var(--space-2);">Zeichnung löschen</button>
+        <button type="button" class="btn btn-ghost btn-sm abstand-oben-2" data-zeichenfeld-loeschen>Zeichnung löschen</button>
       </div>
       {% endif %}
       <input type="hidden" name="abend_uebung_typ" value="{{ tag.abend_uebung_typ }}">
@@ -504,7 +504,7 @@
 
 <details class="card">
   <summary class="card-collapsible-summary"><h3>Für wen freigeben</h3></summary>
-  <div style="margin-top: var(--space-4);">
+  <div class="abstand-oben-4">
     {% if psm_kontakt %}
     <p class="karte-meta">Die zuständige psychosoziale Mitarbeiter:in (<strong>{{ psm_kontakt.name }}</strong>) sieht dein
       Tagebuch erst, wenn du hier aktiv freigibst - jederzeit widerrufbar.</p>
@@ -529,7 +529,7 @@
     {% endif %}
 
     {% if freigaben %}
-    <table style="margin-top: var(--space-4);">
+    <table class="abstand-oben-4">
       <thead><tr><th>Freigegeben für</th><th>Umfang</th><th>Gültig bis</th><th></th></tr></thead>
       <tbody>
       {% for f in freigaben %}

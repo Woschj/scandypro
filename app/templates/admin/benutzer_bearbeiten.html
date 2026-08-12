@@ -10,7 +10,7 @@
 
 {% if benutzer.role is none %}
 <div class="card" style="max-width: 480px; border-color: var(--accent);">
-  <p style="margin:0;">Dieser Account hat sich per {{ benutzer.auth_source.value | upper }} angemeldet und wartet auf
+  <p class="ohne-abstand">Dieser Account hat sich per {{ benutzer.auth_source.value | upper }} angemeldet und wartet auf
     Freischaltung: Rolle unten zuweisen und speichern, dann den Account aktivieren.</p>
 </div>
 {% endif %}

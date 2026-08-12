@@ -10,7 +10,7 @@
     <summary>+ Spalte hinzufügen</summary>
     <form method="post" action="/kanban/boards/{{ k.board.id }}/spalten" class="form-row">
       {% include "partials/csrf_field.html" %}
-      <div class="field" style="flex:1;">
+      <div class="field fuellt-rest">
         <input type="text" name="name" placeholder="z. B. Wartet auf Rückmeldung" required>
       </div>
       <button type="submit" class="btn btn-ghost btn-sm">Hinzufügen</button>
@@ -95,7 +95,7 @@
           {% if k.spalten | length > 1 %}
           <form method="post" action="/kanban/karten/{{ karte.id }}/verschieben" class="form-row">
             {% include "partials/csrf_field.html" %}
-            <div class="field" style="flex:1;">
+            <div class="field fuellt-rest">
               <label for="verschieben-{{ karte.id }}">Karte in andere Spalte verschieben (auch per Tastatur bedienbar, als Alternative zum Ziehen mit der Maus)</label>
               <select id="verschieben-{{ karte.id }}" name="ziel_spalte_id" required aria-label="Zielspalte für {{ karte.titel }}">
                 <option value="" selected disabled>– Spalte wählen –</option>
@@ -136,14 +136,14 @@
           {% endif %}
 
           {% if k.boardmitglieder and k.board.typ.value != "person" %}
-          <div class="eyebrow" style="margin-top: var(--space-4);">Zugewiesen</div>
+          <div class="eyebrow abstand-oben-4">Zugewiesen</div>
           {% if zuweisungen %}
           <div class="avatar-liste" style="margin: var(--space-2) 0;">
             {% for z in zuweisungen %}
             {% set person = k.anzeige_personen.get(z.teilnehmer_id) %}
             <div class="avatar-liste-eintrag">
               <span class="avatar avatar-{{ z.teilnehmer_id % 5 }}">{{ (person.name | initialen) if person else "?" }}</span>
-              <span style="flex:1;">{{ person.name if person else "?" }}{% if person and person.id not in k.boardmitglieder %} <span class="karte-meta">(nicht mehr im Team)</span>{% endif %}</span>
+              <span class="fuellt-rest">{{ person.name if person else "?" }}{% if person and person.id not in k.boardmitglieder %} <span class="karte-meta">(nicht mehr im Team)</span>{% endif %}</span>
               {% if not ist_gesperrt %}
               <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen/{{ z.id }}/entfernen">
                 {% include "partials/csrf_field.html" %}
@@ -158,7 +158,7 @@
           {% set zugewiesene_ids = zuweisungen | map(attribute="teilnehmer_id") | list %}
           {% set freie_mitglieder = k.boardmitglieder.values() | rejectattr("id", "in", zugewiesene_ids) | list %}
           {% if freie_mitglieder %}
-          <div class="eyebrow" style="margin-top: var(--space-2);">Antippen zum Zuweisen</div>
+          <div class="eyebrow abstand-oben-2">Antippen zum Zuweisen</div>
           <div class="zuweisen-chips">
             {% for m in freie_mitglieder %}
             <form method="post" action="/kanban/karten/{{ karte.id }}/zuweisungen">
@@ -175,7 +175,7 @@
           {% endif %}
           {% endif %}
 
-          <div class="eyebrow" style="margin-top: var(--space-4);">Unteraufgaben</div>
+          <div class="eyebrow abstand-oben-4">Unteraufgaben</div>
           {% for u in unteraufgaben %}
           <div class="unteraufgabe {% if u.erledigt %}unteraufgabe--erledigt{% endif %}" data-unteraufgabe-id="{{ u.id }}">
             {% if ist_gesperrt %}
@@ -186,7 +186,7 @@
               <button type="submit" class="btn btn-ghost btn-sm unteraufgabe-toggle-btn" style="min-height:auto; padding: 0.15rem 0.5rem;" aria-label="Unteraufgabe &quot;{{ u.titel }}&quot; als {{ 'offen' if u.erledigt else 'erledigt' }} markieren">{{ "✓" if u.erledigt else "○" }}</button>
             </form>
             {% endif %}
-            <span class="unteraufgabe-titel" style="flex:1;">{{ u.titel }}</span>
+            <span class="unteraufgabe-titel fuellt-rest">{{ u.titel }}</span>
             {% if u.zugewiesen_an and u.zugewiesen_an in k.anzeige_personen %}
             <span class="avatar avatar-{{ u.zugewiesen_an % 5 }}" title="{{ k.anzeige_personen[u.zugewiesen_an].name }}">{{ k.anzeige_personen[u.zugewiesen_an].name | initialen }}</span>
             {% endif %}
@@ -221,7 +221,7 @@
           {% endif %}
 
           {% if not ist_gesperrt and (k.darf_board_verwalten or karte.ersteller_id == current_user.id) %}
-          <form method="post" action="/kanban/karten/{{ karte.id }}/loeschen" data-confirm="Karte &quot;{{ karte.titel }}&quot; endgültig löschen?" style="margin-top: var(--space-4);">
+          <form class="abstand-oben-4" method="post" action="/kanban/karten/{{ karte.id }}/loeschen" data-confirm="Karte &quot;{{ karte.titel }}&quot; endgültig löschen?">
             {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Karte löschen</button>
           </form>
@@ -240,7 +240,7 @@
         {% include "partials/csrf_field.html" %}
         <div class="field">
           <label>Titel</label>
-          <input type="text" name="titel" placeholder="Titel" required style="margin-bottom: var(--space-2);">
+          <input class="abstand-unten-2" type="text" name="titel" placeholder="Titel" required>
           <textarea name="beschreibung" placeholder="Beschreibung (optional)"></textarea>
         </div>
         {% if k.boardmitglieder and k.board.typ.value != "person" %}

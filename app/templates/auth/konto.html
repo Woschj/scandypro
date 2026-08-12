@@ -33,7 +33,7 @@
   {% if passwort_error %}<div class="form-error">{{ passwort_error }}</div>{% endif %}
   {% if erfolg %}<div class="form-success">Passwort geändert.</div>{% endif %}
   {% if current_user.password_hash is none %}
-  <p class="karte-meta" style="margin-bottom: var(--space-3);">Du meldest dich aktuell über {{ oidc_provider_name or "SSO" }} an.
+  <p class="karte-meta abstand-unten-3">Du meldest dich aktuell über {{ oidc_provider_name or "SSO" }} an.
     Optional kannst du zusätzlich ein lokales Passwort als Alternative einrichten.</p>
   {% endif %}
   <form method="post" action="/konto/passwort">
@@ -63,7 +63,7 @@
   <h3>Meine Daten</h3>
   <p class="karte-meta"><a href="/freigaben">Meine Freigaben ansehen</a> - wer gerade Zugriff auf welche
     deiner Daten hat, und dort auch: eigene Daten löschen.</p>
-  <p style="margin-top: var(--space-3);">
+  <p class="abstand-oben-3">
     <a class="btn btn-ghost btn-sm" href="/konto/export">Meine Daten herunterladen</a>
   </p>
 </div>

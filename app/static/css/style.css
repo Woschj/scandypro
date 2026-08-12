@@ -25,6 +25,15 @@
   --line: #d9d5c9;
   --line-strong: #b9b4a4;
 
+  /* Eigene Tokens für Brand-/Danger-Farben als TEXT (siehe
+     tasks/uiux-audit/UI-019.md). --brand und --danger sind auf hellen Text
+     als Button-Hintergrund optimiert; als Textfarbe auf hellem Grund
+     reichten sie im Dark-Mode nicht für WCAG AA (2,99:1 bzw. 3,12:1).
+     Im hellen Theme identisch mit --brand/--danger, im dunklen aufgehellt. */
+  --brand-text: #1b5e5a;
+  --danger-text: #96372a;
+  --chip-brand-bg: #e2ede9;
+
   --font-display: "Trebuchet MS", Trebuchet, "Segoe UI", Verdana, sans-serif;
   --font-body: "Trebuchet MS", Trebuchet, "Segoe UI", Verdana, sans-serif;
 
@@ -64,6 +73,9 @@
     --danger-bg: #3a211d;
     --line: #33413c;
     --line-strong: #4a5d56;
+    --brand-text: #4bb0a4;
+    --danger-text: #e08a78;
+    --chip-brand-bg: #1a3733;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.35);
   }
 }
@@ -83,6 +95,11 @@
   --danger-bg: #3a211d;
   --line: #33413c;
   --line-strong: #4a5d56;
+  /* Aufgehellte Textvarianten, siehe Kommentar in :root - erreichen auf
+     --bg-raised 5,89:1 (brand) bzw. 5,91:1 (danger). */
+  --brand-text: #4bb0a4;
+  --danger-text: #e08a78;
+  --chip-brand-bg: #1a3733;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
@@ -270,7 +287,7 @@ button:not(.btn) {
   justify-content: center;
 }
 .link-btn:hover { color: var(--brand-ink); }
-.link-btn.danger { color: var(--danger); }
+.link-btn.danger { color: var(--danger-text); }
 .link-btn.danger:hover { background: var(--danger-bg); border-radius: var(--radius); }
 .link-btn:disabled { opacity: 0.6; cursor: default; }
 
@@ -312,7 +329,7 @@ button:not(.btn) {
 
 .form-error {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: var(--danger-text);
   border: 1px solid var(--danger);
   border-radius: var(--radius);
   padding: var(--space-3);
@@ -628,7 +645,7 @@ button:not(.btn) {
 }
 .chip-success { background: var(--success-bg); color: var(--success); }
 .chip-neutral { background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); }
-.chip-brand { background: #e2ede9; color: var(--brand-ink); }
+.chip-brand { background: var(--chip-brand-bg); color: var(--brand-ink); }
 
 .eyebrow {
   font-family: var(--font-display);
@@ -735,7 +752,7 @@ button:not(.btn) {
 
 .user-chip { display: flex; align-items: center; gap: var(--space-3); font-size: 0.8125rem; color: var(--ink-soft); }
 .user-chip a { color: inherit; text-decoration: none; }
-.user-chip a:hover, .user-chip a.active { color: var(--brand); }
+.user-chip a:hover, .user-chip a.active { color: var(--brand-text); }
 
 /* Mobile-Kollaps der Topnav via Alpine.js (siehe app/templates/base.html:
    x-data="{ menuOpen: false }") - 1:1 aus dem Schwestermodul Scandy-Lite
@@ -923,7 +940,7 @@ button:not(.btn) {
     transition: background-color 0.1s ease;
   }
   .tab-bar a:active { background: var(--bg); }
-  .tab-bar a.active { color: var(--brand); }
+  .tab-bar a.active { color: var(--brand-text); }
   .tab-bar svg { width: 26px; height: 26px; }
 
   .main-content { padding-bottom: calc(var(--tab-bar-height) + var(--space-6)); }
@@ -1334,4 +1351,30 @@ td { padding: var(--space-3); border-bottom: 1px solid var(--line); }
 }
 .confirm-modal-box p { color: var(--ink); margin-bottom: var(--space-4); }
 .confirm-modal-actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
+
+/* ---------------------------------------------------------------------
+   Abstands-Utilities (siehe tasks/uiux-audit/UI-013.md)
+
+   Bewusst eine sehr kleine, geschlossene Menge: nur die Muster, die in den
+   Templates vielfach als Inline-Style dupliziert waren. Kein
+   Tailwind-artiges Vollsortiment - die Skala bleibt bei den vier
+   --space-*-Stufen des Design-Systems, damit Abstände nicht wieder
+   freihändig gesetzt werden.
+
+   Neue Templates verwenden diese Klassen statt style="margin-top: ...".
+   --------------------------------------------------------------------- */
+.abstand-oben-2 { margin-top: var(--space-2); }
+.abstand-oben-3 { margin-top: var(--space-3); }
+.abstand-oben-4 { margin-top: var(--space-4); }
+.abstand-oben-6 { margin-top: var(--space-6); }
+.abstand-unten-2 { margin-bottom: var(--space-2); }
+.abstand-unten-3 { margin-bottom: var(--space-3); }
+.abstand-unten-4 { margin-bottom: var(--space-4); }
+.abstand-unten-6 { margin-bottom: var(--space-6); }
+.ohne-abstand { margin: 0; }
+.ohne-abstand-oben { margin-top: 0; }
+
+/* Layout-Utilities: ebenfalls nur die real duplizierten Fälle. */
+.fuellt-rest { flex: 1; }
+.rechtsbuendig { text-align: right; }
 

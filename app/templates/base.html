@@ -94,7 +94,7 @@
 
         <div class="user-chip">
           <a href="/konto" class="{% if request.url.path.startswith('/konto') %}active{% endif %}">{{ current_user.name }} <span class="eyebrow">({{ current_user.role.value | rollenname }})</span></a>
-          <form method="post" action="/logout" style="margin:0;">
+          <form class="ohne-abstand" method="post" action="/logout">
             {% include "partials/csrf_field.html" %}
             <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
           </form>

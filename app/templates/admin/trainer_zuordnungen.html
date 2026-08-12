@@ -52,7 +52,7 @@
       {% for teilnehmer_id in zugeordnete_ids %}
       <tr>
         <td>{{ user_by_id[teilnehmer_id].name }}</td>
-        <td style="text-align: right;">
+        <td class="rechtsbuendig">
           <form method="post" action="/admin/trainer-zuordnungen/{{ zuordnung_id_by_trainer_teilnehmer[trainer.id][teilnehmer_id] }}/entfernen">
             {% include "partials/csrf_field.html" %}
             <button type="submit" class="link-btn danger">Entfernen</button>
@@ -73,7 +73,7 @@
     <form method="post" action="/admin/trainer-zuordnungen" class="form-row">
       {% include "partials/csrf_field.html" %}
       <input type="hidden" name="berufstrainer_id" value="{{ trainer.id }}">
-      <div class="field" style="flex: 1;">
+      <div class="field fuellt-rest">
         <select name="teilnehmer_id" required>
           <option value="" selected disabled>– Teilnehmer:in wählen –</option>
           {% for t in verfuegbare_teilnehmer %}

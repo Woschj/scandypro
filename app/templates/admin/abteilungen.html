@@ -50,7 +50,7 @@
           <span class="chip chip-neutral">{{ handlungsfelder | length }} Handlungsfeld{{ "er" if handlungsfelder | length != 1 else "" }}</span>
         </summary>
         <div class="zuklapp-eintrag-body">
-          <form method="post" action="/admin/abteilungen/{{ abteilung.id }}/umbenennen" class="form-row" style="margin-bottom: var(--space-4);">
+          <form method="post" action="/admin/abteilungen/{{ abteilung.id }}/umbenennen" class="form-row abstand-unten-4">
             {% include "partials/csrf_field.html" %}
             <div class="field">
               <label>Abteilung</label>
@@ -62,10 +62,10 @@
           <hr class="section-divider">
           <h3>Handlungsfelder</h3>
 
-          <form method="post" action="/admin/handlungsfelder" class="form-row" style="margin-bottom: var(--space-3);">
+          <form method="post" action="/admin/handlungsfelder" class="form-row abstand-unten-3">
             {% include "partials/csrf_field.html" %}
             <input type="hidden" name="abteilung_id" value="{{ abteilung.id }}">
-            <div class="field" style="flex: 1;">
+            <div class="field fuellt-rest">
               <input type="text" name="name" placeholder="Neues Handlungsfeld" required>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">Anlegen</button>
@@ -87,7 +87,7 @@
                 <span class="empty-state">keine Leitung</span>
                 {% endif %}
               </td>
-              <td style="text-align: right;">
+              <td class="rechtsbuendig">
                 <details class="zeile-verwalten">
                   <summary title="Handlungsfeld verwalten" aria-label="Handlungsfeld &quot;{{ h.name }}&quot; verwalten">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false"><circle cx="8" cy="3" r="1.4" fill="currentColor"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="8" cy="13" r="1.4" fill="currentColor"/></svg>
@@ -95,7 +95,7 @@
                   <div class="zeile-verwalten-body">
                     <form method="post" action="/admin/handlungsfelder/{{ h.id }}/umbenennen" class="form-row">
                       {% include "partials/csrf_field.html" %}
-                      <div class="field" style="flex: 1;">
+                      <div class="field fuellt-rest">
                         <input type="text" name="name" value="{{ h.name }}" required>
                       </div>
                       <button type="submit" class="btn btn-ghost btn-sm">Umbenennen</button>
@@ -116,7 +116,7 @@
 
                     <form method="post" action="/admin/handlungsfelder/{{ h.id }}/leitung" class="form-row">
                       {% include "partials/csrf_field.html" %}
-                      <div class="field" style="flex: 1;">
+                      <div class="field fuellt-rest">
                         <select name="berufstrainer_id" required>
                           <option value="" selected disabled>– Berufstrainer:in wählen –</option>
                           {% for t in alle_trainer %}

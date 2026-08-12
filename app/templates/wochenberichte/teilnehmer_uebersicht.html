@@ -7,15 +7,15 @@
 
 <details class="card">
   <summary class="card-collapsible-summary"><h3>Neuer Wochenbericht</h3></summary>
-  <form method="post" action="/wochenberichte" style="margin-top: var(--space-4);" data-warn-on-leave>
+  <form class="abstand-oben-4" method="post" action="/wochenberichte" data-warn-on-leave>
     {% include "partials/csrf_field.html" %}
     <div class="field" style="max-width: 220px;">
       <label for="woche">Kalenderwoche</label>
       <input type="week" id="woche" name="woche" value="{{ aktuelle_kw }}" required>
     </div>
 
-    <p class="karte-meta" style="margin-bottom: var(--space-3);">Ein Tag nach dem anderen - tippe auf einen Wochentag, um ihn auszufüllen.</p>
-    <div class="zuklapp-liste" style="margin-bottom: var(--space-4);">
+    <p class="karte-meta abstand-unten-3">Ein Tag nach dem anderen - tippe auf einen Wochentag, um ihn auszufüllen.</p>
+    <div class="zuklapp-liste abstand-unten-4">
     {% for tag in wochentage %}
     <details class="zuklapp-eintrag" {% if loop.first %}open{% endif %}>
       <summary>
@@ -38,9 +38,9 @@
           <textarea id="taetigkeiten_{{ tag }}" name="taetigkeiten_{{ tag }}" rows="2"></textarea>
         </div>
         {% if kanban_vorschlaege and kanban_vorschlaege.get(tag) %}
-        <div class="karte-meta" style="margin-top: var(--space-2);">
+        <div class="karte-meta abstand-oben-2">
           Diese Woche im Kanban erledigt (antippen zum Übernehmen):
-          <div class="wort-chip-liste" data-vorschlag-chips="taetigkeiten_{{ tag }}" style="margin-top: var(--space-2);">
+          <div class="wort-chip-liste abstand-oben-2" data-vorschlag-chips="taetigkeiten_{{ tag }}">
             {% for titel in kanban_vorschlaege[tag] %}
             <button type="button" class="wort-chip" data-vorschlag-text="{{ titel }}">{{ titel }}</button>
             {% endfor %}
@@ -78,8 +78,8 @@
     <form method="post" action="/wochenberichte/{{ b.id }}/bearbeiten" data-warn-on-leave>
       {% include "partials/csrf_field.html" %}
       {% set ausgefuellte_tage = eintrag.tage | selectattr("taetigkeiten") | list | length %}
-      <p class="karte-meta" style="margin-bottom: var(--space-3);">{{ ausgefuellte_tage }} von {{ eintrag.tage | length }} Tagen ausgefüllt.</p>
-      <div class="zuklapp-liste" style="margin-bottom: var(--space-4);">
+      <p class="karte-meta abstand-unten-3">{{ ausgefuellte_tage }} von {{ eintrag.tage | length }} Tagen ausgefüllt.</p>
+      <div class="zuklapp-liste abstand-unten-4">
       {% for tag in eintrag.tage %}
       <details class="zuklapp-eintrag" {% if loop.first or not tag.taetigkeiten %}open{% endif %}>
         <summary>
@@ -125,7 +125,7 @@
       {% endfor %}
       </tbody>
     </table>
-    {% if b.besonderheiten %}<p style="margin-top: var(--space-3);"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
+    {% if b.besonderheiten %}<p class="abstand-oben-3"><strong>Besonderheiten:</strong> {{ b.besonderheiten }}</p>{% endif %}
     {% endif %}
 
     <div style="display:flex; gap: var(--space-2); align-items:center; margin-top: var(--space-3); flex-wrap: wrap;">
