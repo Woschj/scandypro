@@ -31,10 +31,22 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 async def get_current_user_optional(request: Request, session: SessionDep) -> User | None:
+    """Wie get_current_user, aber ohne HTTPException - für Stellen, die auch
+    ohne Anmeldung funktionieren müssen (Dashboard-Redirect, Fehlerseiten).
+
+    Prüft `aktiv` genauso wie get_current_user: sonst behielte ein
+    zwischenzeitlich deaktivierter Account weiterhin Zugriff auf das
+    Dashboard (Kontaktdaten, "Was steht an" inkl. Kartentiteln,
+    Wochenrückblick), weil ausgerechnet die Startseite die optionale
+    Variante nutzt (siehe app/main.py)."""
     user_id = request.session.get("user_id")
     if user_id is None:
         return None
-    return await session.get(User, user_id)
+    user = await session.get(User, user_id)
+    if user is None or not user.aktiv:
+        request.session.clear()
+        return None
+    return user
 
 
 async def verify_csrf(request: Request) -> None:
